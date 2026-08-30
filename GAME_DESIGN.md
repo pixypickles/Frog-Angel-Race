@@ -253,3 +253,11 @@
 
 ### Prototype v0.6 course direction
 The race corridor should not read as a dirt road. Racers are airborne above pond terrain; only the tall grass guard walls define the legal corridor. Background terrain can freely vary between pond, puddles, lily pads, wetland, etc. Major bends and all hairpins should have a tongue anchor on the inside.
+
+
+## v1.1 調整
+- ミカエルの泡弾：弾速を 620 → 1250 に大幅アップ。クールタイムを約0.9秒に設定。
+- ガブリエルA：水弾を廃止し、後方へ水を噴射して前方へ短く加速する「水ブースト」に変更。
+- ガブリエルB：大反動の水レーザー旋回を維持。舌を使わず曲がりやすい初心者向け特性。
+- ガブリエルはA/B固定でスキル変更不可という成長方針。
+- ミカエルは家でスキル変更可能。イベント報酬で新スキルを増やし、進行後は加速系などでガブリエルに追いつき・上回れる構成を狙う。
