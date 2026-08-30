@@ -60,22 +60,49 @@ function strokeLoop(){ctx.beginPath();ctx.moveTo(path[0].x,path[0].y);for(let i=
 function drawTree(x,y){ctx.fillStyle='#6c4626';ctx.fillRect(x-12,y-15,24,62);ctx.fillStyle='#2c823f';ctx.beginPath();ctx.arc(x,y-25,42,0,Math.PI*2);ctx.fill();ctx.fillStyle='#a8e26e';ctx.beginPath();ctx.arc(x-13,y-35,20,0,Math.PI*2);ctx.fill()}
 function drawRacer(r){
  if(r.tongue){let t=r.tongue.target;ctx.strokeStyle='#e86a91';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(r.x,r.y+2);ctx.quadraticCurveTo((r.x+t.x)/2,(r.y+t.y)/2+18,t.x,t.y);ctx.stroke()}
- // Four dedicated top-down poses. The frog itself never rotates like a butterfly-shaped sprite.
+ // Dedicated cardinal poses. Up shows the back, left/right show profile, down shows the front.
  let a=((r.face%(Math.PI*2))+Math.PI*2)%(Math.PI*2),dir=a<Math.PI/4||a>=7*Math.PI/4?'right':a<3*Math.PI/4?'down':a<5*Math.PI/4?'left':'up';
  ctx.save();ctx.translate(r.x,r.y);
- const green=r.color, belly=r.name==='Michael'?'#e8f2d9':'#d9f2f5';
- // angel wings: layered feather silhouette, inspired by the old game's bright wing motif
- if(r.flight>0){ctx.fillStyle='#fff';ctx.strokeStyle='#c8dce8';ctx.lineWidth=2;let flap=r.wing>0?5:0;
-   for(const side of [-1,1]){ctx.save();ctx.translate(side*18,4);ctx.rotate(side*(.38+flap*.025));for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(side*(12+i*7),8+i*5,19-i*2,8,-side*.35,0,Math.PI*2);ctx.fill();ctx.stroke()}ctx.restore()}}
- // humanoid torso + limbs
- ctx.strokeStyle=green;ctx.lineWidth=13;ctx.lineCap='round';
- let dx=dir==='right'?1:dir==='left'?-1:0,dy=dir==='down'?1:dir==='up'?-1:0;
- ctx.beginPath();ctx.moveTo(-13,13);ctx.lineTo(-20,28);ctx.moveTo(13,13);ctx.lineTo(20,28);ctx.moveTo(-15,2);ctx.lineTo(-25+dx*5,8+dy*5);ctx.moveTo(15,2);ctx.lineTo(25+dx*5,8+dy*5);ctx.stroke();
- ctx.fillStyle=green;ctx.beginPath();ctx.ellipse(0,7,22,27,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=belly;ctx.beginPath();ctx.ellipse(0,12,12,17,0,0,Math.PI*2);ctx.fill();
- // head stays at the top of the body; face details have four explicit orientations
- ctx.fillStyle=green;ctx.beginPath();ctx.ellipse(0,-19,24,20,0,0,Math.PI*2);ctx.fill();
- let ex=dx*5,ey=dy*4;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-10,-31,8,0,Math.PI*2);ctx.arc(10,-31,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#122019';ctx.beginPath();ctx.arc(-10+ex,-31+ey,3.5,0,Math.PI*2);ctx.arc(10+ex,-31+ey,3.5,0,Math.PI*2);ctx.fill();
- ctx.strokeStyle='#24452f';ctx.lineWidth=2.5;ctx.beginPath();if(dir==='right'){ctx.moveTo(4,-17);ctx.lineTo(17,-15)}else if(dir==='left'){ctx.moveTo(-4,-17);ctx.lineTo(-17,-15)}else if(dir==='up'){ctx.moveTo(-7,-20);ctx.quadraticCurveTo(0,-24,7,-20)}else{ctx.moveTo(-7,-14);ctx.quadraticCurveTo(0,-10,7,-14)}ctx.stroke();
+ const skin=r.color, belly=r.name==='Michael'?'#e8f2d9':'#d9f2f5';
+ const flap=r.flight>0?(r.wing>0?0.25:0.08):0;
+ function feather(x,y,rx,ry,rot){ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
+ function wing(side,profile=false){
+   // Root is intentionally high, at the shoulder blade instead of the hips.
+   ctx.fillStyle='#fff';ctx.strokeStyle='#bfd8e6';ctx.lineWidth=1.8;
+   if(profile){let sx=side; feather(sx*15,-4,17,7,sx*(.65+flap));feather(sx*23,2,18,7,sx*(.52+flap));feather(sx*27,9,15,6,sx*(.38+flap));}
+   else {feather(side*17,-3,18,7,side*(.48+flap));feather(side*26,3,20,7,side*(.35+flap));feather(side*30,10,16,6,side*(.22+flap));}
+ }
+ ctx.lineCap='round';ctx.lineJoin='round';
+ if(dir==='up'){
+   // BACK: wings sit clearly on both shoulder blades, belly and facial features are hidden.
+   wing(-1); wing(1);
+   ctx.strokeStyle=skin;ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(-12,12);ctx.lineTo(-18,29);ctx.moveTo(12,12);ctx.lineTo(18,29);ctx.moveTo(-15,0);ctx.lineTo(-25,8);ctx.moveTo(15,0);ctx.lineTo(25,8);ctx.stroke();
+   ctx.fillStyle=skin;ctx.beginPath();ctx.ellipse(0,7,21,27,0,0,Math.PI*2);ctx.fill();
+   ctx.beginPath();ctx.ellipse(0,-19,24,20,0,0,Math.PI*2);ctx.fill();
+   // subtle back/shoulder seam makes the back pose readable
+   ctx.strokeStyle='#17663788';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,-1);ctx.quadraticCurveTo(0,4,10,-1);ctx.stroke();
+ } else if(dir==='left'||dir==='right'){
+   // PROFILE: one shoulder/wing is dominant; body and head are side-on.
+   let side=dir==='right'?1:-1;
+   wing(-side,true); // far wing first
+   ctx.strokeStyle=skin;ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(-side*4,14);ctx.lineTo(-side*9,29);ctx.moveTo(side*7,13);ctx.lineTo(side*18,27);ctx.moveTo(-side*6,0);ctx.lineTo(-side*15,8);ctx.moveTo(side*10,0);ctx.lineTo(side*25,5);ctx.stroke();
+   ctx.fillStyle=skin;ctx.beginPath();ctx.ellipse(side*2,7,17,27,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=belly;ctx.beginPath();ctx.ellipse(side*9,11,8,16,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=skin;ctx.beginPath();ctx.ellipse(side*3,-19,22,19,0,0,Math.PI*2);ctx.fill();
+   // protruding frog snout in travel direction
+   ctx.beginPath();ctx.ellipse(side*18,-17,12,9,0,0,Math.PI*2);ctx.fill();
+   wing(side,true); // near wing roots at the visible shoulder
+   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(side*9,-30,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#122019';ctx.beginPath();ctx.arc(side*12,-30,3.5,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle='#24452f';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(side*15,-15);ctx.lineTo(side*25,-14);ctx.stroke();
+ } else {
+   // FRONT (down): both eyes, belly and arms face the camera; wings begin beside the shoulders.
+   wing(-1);wing(1);
+   ctx.strokeStyle=skin;ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(-13,13);ctx.lineTo(-20,29);ctx.moveTo(13,13);ctx.lineTo(20,29);ctx.moveTo(-15,0);ctx.lineTo(-26,9);ctx.moveTo(15,0);ctx.lineTo(26,9);ctx.stroke();
+   ctx.fillStyle=skin;ctx.beginPath();ctx.ellipse(0,7,22,27,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=belly;ctx.beginPath();ctx.ellipse(0,12,12,17,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=skin;ctx.beginPath();ctx.ellipse(0,-19,24,20,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-10,-31,8,0,Math.PI*2);ctx.arc(10,-31,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#122019';ctx.beginPath();ctx.arc(-10,-28,3.5,0,Math.PI*2);ctx.arc(10,-28,3.5,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle='#24452f';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-7,-14);ctx.quadraticCurveTo(0,-10,7,-14);ctx.stroke();
+ }
  ctx.restore();ctx.fillStyle='#17352d';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(r.name,r.x,r.y-58)
 }
 function drawEffect(e){if(e.kind==='bubble'){ctx.fillStyle='#bcecffaa';ctx.strokeStyle='#4eaeeb';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,17,0,Math.PI*2);ctx.fill();ctx.stroke()}else{let len=e.kind==='laser'?640:120;ctx.strokeStyle=e.kind==='laser'?'#baf5ff':'#7bd7ff';ctx.lineWidth=e.kind==='laser'?7:15;ctx.globalAlpha=Math.max(.15,e.t/e.max);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(e.a)*len,e.y+Math.sin(e.a)*len);ctx.stroke();ctx.globalAlpha=1}}
