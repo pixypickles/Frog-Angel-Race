@@ -250,3 +250,6 @@
 - 手甲の変わり身成功時は短剣を出さず、丸太＋側面移動の後に左→右→左の三連拳で反撃。
 - 短剣の変わり身は丸太＋側面移動＋右左二連斬りへ整理。
 - カウンター受付終了時に変わり身待機フラグを確実に解除。
+
+### Prototype v0.6 course direction
+The race corridor should not read as a dirt road. Racers are airborne above pond terrain; only the tall grass guard walls define the legal corridor. Background terrain can freely vary between pond, puddles, lily pads, wetland, etc. Major bends and all hairpins should have a tongue anchor on the inside.

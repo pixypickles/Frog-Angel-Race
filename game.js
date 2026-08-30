@@ -2,16 +2,35 @@
 const C=document.querySelector('#game'),ctx=C.getContext('2d'),W=C.width,H=C.height;
 const ui={who:$('#who'),speed:$('#speed'),lap:$('#lap'),status:$('#status'),jump:$('#jump'),tongue:$('#tongue'),a:$('#skillA'),b:$('#skillB'),swap:$('#swap'),stick:$('#stick')};
 function $(s){return document.querySelector(s)}
-const world={w:4300,h:2850};
-// Large clockwise circuit: the camera only sees a small part of the course at once.
-const path=[{x:620,y:520},{x:1500,y:300},{x:2700,y:380},{x:3650,y:760},{x:3860,y:1450},{x:3420,y:2300},{x:2300,y:2520},{x:1200,y:2350},{x:430,y:1770},{x:330,y:1030}];
-const anchors=[{x:1580,y:650},{x:2740,y:720},{x:3400,y:1040},{x:3380,y:1910},{x:2380,y:2150},{x:1280,y:2050},{x:760,y:1610},{x:720,y:930}];
-const checkpoints=path.map((p,i)=>({x:p.x,y:p.y,r:210,i}));
+const world={w:6000,h:4400};
+// A long pond circuit with real hairpins and S-bends. The camera only sees a small section at once.
+const path=[
+ {x:700,y:700},{x:2500,y:500},{x:4700,y:700},{x:5200,y:1400},
+ {x:4800,y:1900},{x:3150,y:1900},{x:2650,y:2300},{x:3150,y:2700},
+ {x:5000,y:2700},{x:5350,y:3400},{x:4550,y:3900},{x:2200,y:3900},
+ {x:900,y:3450},{x:600,y:2700},{x:900,y:2200},{x:1850,y:2200},
+ {x:2250,y:1750},{x:1800,y:1300},{x:800,y:1300}
+];
+// Every major corner has an inside post/tree for tongue cornering, including both hairpins.
+const anchors=[
+ {x:2500,y:760},{x:4560,y:990},{x:4850,y:1450},{x:4540,y:1660},
+ {x:3180,y:2160},{x:2860,y:2300},{x:3180,y:2440},{x:4820,y:2960},
+ {x:4920,y:3370},{x:4490,y:3620},{x:2230,y:3630},{x:1110,y:3280},
+ {x:860,y:2700},{x:1090,y:2400},{x:1850,y:1940},{x:1970,y:1740},
+ {x:1760,y:1560},{x:920,y:1560}
+];
+const lilies=[
+ {x:420,y:420,r:76},{x:1100,y:420,r:54},{x:3600,y:360,r:70},{x:5450,y:750,r:82},
+ {x:5600,y:1900,r:62},{x:4050,y:1450,r:58},{x:2400,y:1450,r:74},{x:1500,y:1800,r:54},
+ {x:3900,y:2350,r:88},{x:5600,y:2950,r:66},{x:3900,y:3450,r:64},{x:2850,y:4250,r:82},
+ {x:1450,y:4100,r:58},{x:400,y:3450,r:72},{x:350,y:2200,r:56},{x:1200,y:2700,r:70}
+];
+const checkpoints=path.map((p,i)=>({x:p.x,y:p.y,r:240,i}));
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
-const racers=[makeRacer('Michael','#49a94f',0,560,520),makeRacer('Gabriel','#3188e6',1,565,575)];
+const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
-function reset(){racers.splice(0,2,makeRacer('Michael','#49a94f',0,560,520),makeRacer('Gabriel','#3188e6',1,565,575));racers[controlledIndex].ai=false;racers[1-controlledIndex].ai=true;finished=false;ui.status.textContent='ジャンプ3回で最高速！'}
+function reset(){racers.splice(0,2,makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740));racers[controlledIndex].ai=false;racers[1-controlledIndex].ai=true;finished=false;ui.status.textContent='ジャンプ3回で最高速！'}
 function pressJump(r){if(r.finished)return;if(r.flight===0){r.flight=1;r.onGround=false;r.speed=Math.max(r.speed,285);r.wing=.2;msg('ジャンプ！ もう一度で羽ばたき');}
 else if(r.flight===1){r.flight=2;r.speed=Math.max(r.speed,405);r.wing=.55;msg('羽ばたき加速！ もう一度で滑空');}
 else if(r.flight===2){r.flight=3;r.glideClock=0;r.glideGrace=0;r.speed=Math.max(r.speed,520);r.wing=1;msg('滑空！ 最高速へ');}
@@ -65,10 +84,25 @@ function updateEffects(dt){for(const e of effects){e.t-=dt;if(e.kind==='bubble')
 function trackInfo(px,py){let best={d:1e9,qx:0,qy:0};for(let i=0;i<path.length;i++){let a=path[i],b=path[(i+1)%path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);if(d<best.d)best={d,qx,qy}}return best}
 function trackDistance(px,py){return trackInfo(px,py).d}
 function draw(){let me=racers[controlledIndex];camera.x=approach(camera.x,me.x-W/2,.16*W);camera.y=approach(camera.y,me.y-H/2,.16*H);camera.x=Math.max(0,Math.min(world.w-W,camera.x));camera.y=Math.max(0,Math.min(world.h-H,camera.y));ctx.clearRect(0,0,W,H);ctx.save();ctx.translate(-camera.x,-camera.y);drawWorld();for(const e of effects)drawEffect(e);for(const r of racers)drawRacer(r);ctx.restore();drawMini();updateHud(me)}
-function drawWorld(){ctx.fillStyle='#83cc6c';ctx.fillRect(0,0,world.w,world.h);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#4b7c48';ctx.lineWidth=470;strokeLoop();ctx.strokeStyle='#d7c68b';ctx.lineWidth=390;strokeLoop();ctx.strokeStyle='#f2e5b1';ctx.lineWidth=6;ctx.setLineDash([28,34]);strokeLoop();ctx.setLineDash([]);for(const a of anchors)drawTree(a.x,a.y); // start line
- ctx.save();ctx.translate(590,520);ctx.rotate(Math.atan2(path[1].y-path[0].y,path[1].x-path[0].x)+Math.PI/2);for(let i=-3;i<=3;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*24,-135,24,270)}ctx.restore();}
+function drawWorld(){
+ // The race is airborne: below the racers is a pond, not a road surface.
+ ctx.fillStyle='#69cbe0';ctx.fillRect(0,0,world.w,world.h);
+ // soft water patches make different sections feel like pond / puddle zones
+ for(let y=240;y<world.h;y+=620){for(let x=260;x<world.w;x+=760){let n=((x*13+y*7)%190)-95;ctx.fillStyle='rgba(255,255,255,.055)';ctx.beginPath();ctx.ellipse(x+n,y-n*.35,170,72,.18,0,Math.PI*2);ctx.fill();}}
+ for(const l of lilies)drawLily(l.x,l.y,l.r);
+ ctx.lineCap='round';ctx.lineJoin='round';
+ // thick outer stroke = tall guard grass. Inner stroke returns to water, leaving only grass walls at both sides.
+ ctx.strokeStyle='#2f713c';ctx.lineWidth=500;strokeLoop();
+ ctx.strokeStyle='#78d1df';ctx.lineWidth=390;strokeLoop();
+ // little highlights on the flying corridor; no asphalt / dirt road line.
+ ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=3;ctx.setLineDash([18,46]);strokeLoop();ctx.setLineDash([]);
+ for(const a of anchors)drawTree(a.x,a.y);
+ // start gate across the water corridor
+ ctx.save();ctx.translate(path[0].x,path[0].y);ctx.rotate(Math.atan2(path[1].y-path[0].y,path[1].x-path[0].x)+Math.PI/2);for(let i=-4;i<=4;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*20,-190,20,380)}ctx.restore();
+}
 function strokeLoop(){ctx.beginPath();ctx.moveTo(path[0].x,path[0].y);for(let i=1;i<path.length;i++)ctx.lineTo(path[i].x,path[i].y);ctx.closePath();ctx.stroke()}
-function drawTree(x,y){ctx.fillStyle='#6c4626';ctx.fillRect(x-12,y-15,24,62);ctx.fillStyle='#2c823f';ctx.beginPath();ctx.arc(x,y-25,42,0,Math.PI*2);ctx.fill();ctx.fillStyle='#a8e26e';ctx.beginPath();ctx.arc(x-13,y-35,20,0,Math.PI*2);ctx.fill()}
+function drawLily(x,y,r){ctx.save();ctx.translate(x,y);ctx.fillStyle='#4aa74c';ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.lineTo(0,0);ctx.arc(0,0,r,-.48,.48,true);ctx.closePath();ctx.fill();ctx.fillStyle='#8cd45d';ctx.beginPath();ctx.arc(-r*.22,-r*.18,r*.22,0,Math.PI*2);ctx.fill();if(r>65){ctx.fillStyle='#f5bfd4';for(let i=0;i<6;i++){let a=i*Math.PI/3;ctx.beginPath();ctx.ellipse(Math.cos(a)*r*.18,Math.sin(a)*r*.18,r*.16,r*.07,a,0,Math.PI*2);ctx.fill()}ctx.fillStyle='#ffd86b';ctx.beginPath();ctx.arc(0,0,r*.08,0,Math.PI*2);ctx.fill()}ctx.restore()}
+function drawTree(x,y){ctx.fillStyle='#714624';ctx.fillRect(x-10,y-8,20,72);ctx.fillStyle='#247b3c';ctx.beginPath();ctx.arc(x,y-20,34,0,Math.PI*2);ctx.fill();ctx.fillStyle='#8bd85d';ctx.beginPath();ctx.arc(x-10,y-30,14,0,Math.PI*2);ctx.fill()}
 function angelWing(x,y,side,scale=1,tilt=0){
  // One connected angel-wing silhouette. Broad at the shoulder, tapered into layered feather tips.
  ctx.save();ctx.translate(x,y);ctx.scale(side*scale,scale);ctx.rotate(tilt);
@@ -157,7 +191,7 @@ function drawRacer(r){if(r.tongue){let t=r.tongue.target;ctx.strokeStyle='#e86a9
  if(r.flight>0&&r.wing>0){ctx.globalAlpha=.14;ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(0,-4,40+6*Math.sin(performance.now()/55),0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
  ctx.restore();ctx.fillStyle='#17352d';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(r.name,r.x,r.y-68)}
 function drawEffect(e){if(e.kind==='bubble'){ctx.fillStyle='#bcecffaa';ctx.strokeStyle='#4eaeeb';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,17,0,Math.PI*2);ctx.fill();ctx.stroke()}else{let len=e.kind==='laser'?640:120;ctx.strokeStyle=e.kind==='laser'?'#baf5ff':'#7bd7ff';ctx.lineWidth=e.kind==='laser'?7:15;ctx.globalAlpha=Math.max(.15,e.t/e.max);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(e.a)*len,e.y+Math.sin(e.a)*len);ctx.stroke();ctx.globalAlpha=1}}
-function drawMini(){let sx=185/world.w,sy=118/world.h,ox=18,oy=58;ctx.fillStyle='#102820c9';ctx.fillRect(ox,oy,185,118);ctx.strokeStyle='#d7c68b';ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(ox+path[0].x*sx,oy+path[0].y*sy);for(let i=1;i<path.length;i++)ctx.lineTo(ox+path[i].x*sx,oy+path[i].y*sy);ctx.closePath();ctx.stroke();for(const r of racers){ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(ox+r.x*sx,oy+r.y*sy,5,0,Math.PI*2);ctx.fill()}}
+function drawMini(){let sx=185/world.w,sy=118/world.h,ox=18,oy=58;ctx.fillStyle='#102820c9';ctx.fillRect(ox,oy,185,118);ctx.strokeStyle='#2f713c';ctx.lineWidth=17;ctx.beginPath();ctx.moveTo(ox+path[0].x*sx,oy+path[0].y*sy);for(let i=1;i<path.length;i++)ctx.lineTo(ox+path[i].x*sx,oy+path[i].y*sy);ctx.closePath();ctx.stroke();ctx.strokeStyle='#78d1df';ctx.lineWidth=10;ctx.stroke();for(const r of racers){ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(ox+r.x*sx,oy+r.y*sy,5,0,Math.PI*2);ctx.fill()}}
 function updateHud(r){ui.who.textContent='操作：'+(r.name==='Michael'?'ミカエル':'ガブリエル');ui.speed.textContent=Math.round(r.speed*.56)+' km/h';ui.a.innerHTML='A<small>'+(r.name==='Gabriel'?'水弾':'パンチ')+'</small>';ui.b.innerHTML='B<small>'+(r.name==='Gabriel'?'水レーザー':'泡弾')+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3)phase+=' '+Math.min(9.9,r.glideClock).toFixed(1)+'s';ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
 function msg(t){ui.status.textContent=t;clearTimeout(msg.timer);msg.timer=setTimeout(()=>ui.status.textContent='ジャンプ3回＋舌ターンで最速を狙え！',2200)}
 function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;for(const r of racers)updateRacer(r,dt);updateEffects(dt);draw();requestAnimationFrame(loop)}

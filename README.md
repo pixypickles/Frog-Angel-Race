@@ -27,3 +27,11 @@
 
 ## 調整候補
 最高速、通常旋回限界、滑空維持受付（現状およそ3.8〜5.9秒）、舌の最適解除時間、水レーザー反動量は次版でプレイ感を見ながら詰める前提です。
+
+## v0.6 changes
+- Action buttons are now a fixed 2x2 block: Jump / Tongue on the top row, Skill A / Skill B on the bottom row, kept inside the safe screen area.
+- World expanded to 6000 x 4400.
+- Replaced the simple oval circuit with a long pond course containing multiple hairpins and S-bends.
+- The course is now an airborne corridor over water. The visible boundaries are tall guard-grass walls; below are pond water, puddle-like highlights, and lily pads.
+- Inner corner posts/trees remain tongue anchors and are placed around the major turns and hairpins.
+- Grass-wall collisions still reduce speed and reflect the racer back toward the course.
