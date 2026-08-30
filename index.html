@@ -12,4 +12,42 @@
 </div>
 <button id="swap">操作交代</button>
 <div id="help">左スティック：旋回　ジャンプ×3：最高速滑空　滑空後は約5秒ごとにジャンプで維持　舌：コーナー木を最優先／ライバルにも命中<br>ガブリエル A：水弾（小反動）　B：水レーザー（大反動・壁まで）　※水は旋回したい方向へ反動が出るよう自動で横撃ち</div>
-</main><script src="game.js"></script></body></html>
+</main><script src="game.js">
+function drawJaggedGrass(ctx, pts, width=44) {
+  if (!pts || pts.length < 2) return;
+  ctx.save();
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#087d35";
+  ctx.lineWidth = width * 0.68;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.stroke();
+
+  // Short triangular blades along both sides make the barrier read as tall grass.
+  ctx.fillStyle = "#129a43";
+  const spacing = 24, blade = 18;
+  for (let i=0;i<pts.length-1;i++) {
+    const a=pts[i], b=pts[i+1], dx=b.x-a.x, dy=b.y-a.y;
+    const len=Math.hypot(dx,dy); if(len<1) continue;
+    const nx=-dy/len, ny=dx/len, tx=dx/len, ty=dy/len;
+    for(let d=0; d<len; d+=spacing){
+      const x=a.x+tx*d, y=a.y+ty*d;
+      for(const side of [-1,1]){
+        const bx=x+nx*side*(width*.28), by=y+ny*side*(width*.28);
+        const tipx=bx+nx*side*blade+tx*((d/spacing|0)%2?5:-5);
+        const tipy=by+ny*side*blade+ty*((d/spacing|0)%2?5:-5);
+        ctx.beginPath();
+        ctx.moveTo(bx-tx*7,by-ty*7);
+        ctx.lineTo(tipx,tipy);
+        ctx.lineTo(bx+tx*7,by+ty*7);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+</script></body></html>

@@ -35,3 +35,9 @@
 - The course is now an airborne corridor over water. The visible boundaries are tall guard-grass walls; below are pond water, puddle-like highlights, and lily pads.
 - Inner corner posts/trees remain tongue anchors and are placed around the major turns and hairpins.
 - Grass-wall collisions still reduce speed and reflect the racer back toward the course.
+
+
+## v0.8
+- 左スティックと右側4ボタンを全体的に上へ移動。
+- 低い画面でも下端から余白を確保。
+- ガード草を滑らかな帯ではなく、三角形の草葉が連なるギザギザ表現へ変更。
