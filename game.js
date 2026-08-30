@@ -41,7 +41,9 @@ else { // maintenance: generous window centered around five seconds
 }}
 function desiredInput(r){if(!r.ai){let kx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),ky=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);let x=joy.x||kx,y=joy.y||ky,m=Math.hypot(x,y);return m>.08?{x:x/m,y:y/m,m:Math.min(1,m)}:{x:Math.cos(r.face),y:Math.sin(r.face),m:0};}
  let target=path[r.cp%path.length],dx=target.x-r.x,dy=target.y-r.y,m=Math.hypot(dx,dy)||1;return {x:dx/m,y:dy/m,m:1};}
-function updateRacer(r,dt){if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
+function updateRacer(r,dt){
+  r.tongueBoostFx=Math.max(0,(r.tongueBoostFx||0)-dt);
+if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
  const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),turn=(turnGround*(1-ratio)+turnFast*ratio)*dt;
  if(Math.abs(diff)<turn)r.face=want;else r.face+=Math.sign(diff)*turn;
  // AI flight rhythm
@@ -70,7 +72,7 @@ function updateRacer(r,dt){if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA
 function pressJumpSilent(r){if(r.flight===0){r.flight=1;r.speed=Math.max(r.speed,285)}else if(r.flight===1){r.flight=2;r.speed=Math.max(r.speed,405)}else if(r.flight===2){r.flight=3;r.glideClock=0;r.speed=Math.max(r.speed,520)}else if(r.glideClock>3.8){r.glideClock=0;r.speed=Math.max(r.speed,550)}}
 function aiSkills(r,dt){if(r.name!=='Gabriel')return;let t=path[r.cp%path.length],to=Math.atan2(t.y-r.y,t.x-r.x),bend=Math.abs(norm(to-r.face));if(bend>.56&&r.skillCdB<=0&&Math.random()<dt*3){waterSkill(r,true,true)}else if(bend>.3&&r.skillCdA<=0&&Math.random()<dt*2){waterBoost(r,true)}}
 function updateCheckpoint(r){let cp=checkpoints[r.cp%checkpoints.length];if(Math.hypot(r.x-cp.x,r.y-cp.y)<cp.r){r.cp++;if(r.cp>=checkpoints.length){r.finished=true;r.speed=0;if(!finished){finished=true;msg((r===racers[controlledIndex]?'YOU WIN! ':'')+r.name+' ゴール！');}}}}
-function startTongue(r){if(r.finished)return;const TONGUE_ANCHOR_RANGE=330;let anchor=nearestAnchor(r,TONGUE_ANCHOR_RANGE);if(anchor){let cross=Math.sin(norm(Math.atan2(anchor.y-r.y,anchor.x-r.x)-r.face));r.tongue={kind:'anchor',target:anchor,started:performance.now(),side:cross>0?-1:1};msg('アンカーに舌！ 離すタイミングで脱出');return;}
+function startTongue(r){if(r.finished)return;const TONGUE_ANCHOR_RANGE=330;let anchor=nearestAnchor(r,TONGUE_ANCHOR_RANGE);if(anchor){let cross=Math.sin(norm(Math.atan2(anchor.y-r.y,anchor.x-r.x)-r.face));r.tongue={kind:'anchor',target:anchor,started:performance.now(),side:cross>0?-1:1};tongueSlipstreamBoost(r);msg('アンカーに舌！ 離すタイミングで脱出');return;}
  let other=racers[1-r.index],d=Math.hypot(other.x-r.x,other.y-r.y);if(d<270){r.tongue={kind:'rival',target:other,started:performance.now()};other.hitSlow=.42;r.boost=.28;msg('ライバルを舌で絡めた！ 一瞬加速');return;}
  let near=nearestAnchor(r,560);if(near){msg('アンカーが遠い！ 外へ膨らみすぎて舌が届かない');}else msg('舌を伸ばしたが対象なし');}
 function endTongue(r){if(!r.tongue)return;if(r.tongue.kind==='anchor'){let held=(performance.now()-r.tongue.started)/1000;if(held<.35)msg('舌を離すのが早い！ 外へ膨らむ');else if(held>.98){r.speed*=.82;msg('離すのが遅い！ 木に引かれて減速');}else{r.boost=.18;msg('ナイス舌ターン！');}}r.tongue=null;}
@@ -81,6 +83,13 @@ let effects=[];
 function waterBoost(r,silent){if(r.skillCdA>0)return;r.skillCdA=1.15;let jetAng=r.face+Math.PI;r.speed=Math.min(maxSpeed+65,r.speed+58);r.boost=Math.max(r.boost||0,.34);effects.push({kind:'waterBoost',x:r.x-Math.cos(r.face)*18,y:r.y-Math.sin(r.face)*18,a:jetAng,t:.32,max:.32,owner:r});if(!silent)msg('後方放水ブースト！');}
 function waterSkill(r,laser,silent){let key=laser?'skillCdB':'skillCdA';if(r[key]>0)return;r[key]=laser?2.25:1.05;let inp=desiredInput(r),desired=Math.atan2(inp.y,inp.x),steer=norm(desired-r.face);let turnSide=Math.sign(steer||1); // recoil goes toward desired turn, jet fires opposite side
  let recoilAng=r.face+turnSide*Math.PI/2,jetAng=recoilAng+Math.PI;r.face=norm(r.face+turnSide*(laser?.62:.24));r.x+=Math.cos(recoilAng)*(laser?48:19);r.y+=Math.sin(recoilAng)*(laser?48:19);r.speed=Math.min(maxSpeed+20,r.speed+(laser?36:12));effects.push({kind:laser?'laser':'water',x:r.x,y:r.y,a:jetAng,t:laser?.23:.34,max:laser?.23:.34,owner:r});if(!silent)msg(laser?'水レーザー反動！ 舌なし急旋回':'水弾反動！ 横へスライド');}
+
+function tongueSlipstreamBoost(r){
+  if(!r) return;
+  r.speed=Math.min(maxSpeed+90,r.speed+72);
+  r.boost=Math.max(r.boost||0,.32);
+  r.tongueBoostFx=.32;
+}
 function pushRival(o,face,amt){let side=Math.random()<.5?-1:1;o.x+=Math.cos(face+side*Math.PI/2)*amt;o.y+=Math.sin(face+side*Math.PI/2)*amt;}
 function updateEffects(dt){for(const e of effects){e.t-=dt;if(e.kind==='bubble'){e.x+=e.vx*dt;e.y+=e.vy*dt;let o=racers[1-e.owner.index];if(Math.hypot(o.x-e.x,o.y-e.y)<o.r+18){pushRival(o,Math.atan2(e.vy,e.vx),70);e.t=0;if(e.owner===racers[controlledIndex])msg('泡弾ヒット！ 壁に押し出せ！')}}}effects=effects.filter(e=>e.t>0)}
 function trackInfo(px,py){let best={d:1e9,qx:0,qy:0};for(let i=0;i<path.length;i++){let a=path[i],b=path[(i+1)%path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);if(d<best.d)best={d,qx,qy}}return best}
@@ -211,6 +220,22 @@ function frogSide(r,left){
  ctx.restore();
 }
 function drawRacer(r){
+  if(r.tongueBoostFx>0){
+    ctx.save();
+    ctx.globalAlpha=Math.min(1,r.tongueBoostFx*3);
+    ctx.strokeStyle='#d8fff2';
+    ctx.lineWidth=4;
+    let a=r.face||0;
+    for(let i=-1;i<=1;i++){
+      let ox=Math.cos(a+Math.PI/2)*i*12,oy=Math.sin(a+Math.PI/2)*i*12;
+      ctx.beginPath();
+      ctx.moveTo(r.x- Math.cos(a)*20 + ox,r.y- Math.sin(a)*20 + oy);
+      ctx.lineTo(r.x- Math.cos(a)*58 + ox,r.y- Math.sin(a)*58 + oy);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
  if(r.tongue){let t=r.tongue.target;ctx.strokeStyle='#e86a91';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(r.x,r.y+2);ctx.quadraticCurveTo((r.x+t.x)/2,(r.y+t.y)/2+18,t.x,t.y);ctx.stroke()}
  const now=performance.now()/1000;
  // Jump reads as actual lift in this top-down view: body rises away from its shadow.

@@ -266,3 +266,9 @@ The race corridor should not read as a dirt road. Racers are airborne above pond
 ## v1.2
 - ミカエルの泡弾は発射時に相手の現在位置へ自動照準。
 - 発射後は追尾せず、その方向へ直進する。
+
+
+## v1.3
+- ライバルを舌で捉えた瞬間、使用者が前方へ短時間ブースト。
+- ライバル側は少しだけ減速。
+- スリップストリームのように前走者を利用して追いつく用途を強化。
