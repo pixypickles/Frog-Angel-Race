@@ -94,6 +94,8 @@ function drawWorld(){
  // thick outer stroke = tall guard grass. Inner stroke returns to water, leaving only grass walls at both sides.
  ctx.strokeStyle='#2f713c';ctx.lineWidth=500;strokeLoop();
  ctx.strokeStyle='#78d1df';ctx.lineWidth=390;strokeLoop();
+ // Visible blade tips on both edges: the guard wall should read as tall grass, not a smooth green rail.
+ drawGrassBlades();
  // little highlights on the flying corridor; no asphalt / dirt road line.
  ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=3;ctx.setLineDash([18,46]);strokeLoop();ctx.setLineDash([]);
  for(const a of anchors)drawTree(a.x,a.y);
@@ -101,6 +103,28 @@ function drawWorld(){
  ctx.save();ctx.translate(path[0].x,path[0].y);ctx.rotate(Math.atan2(path[1].y-path[0].y,path[1].x-path[0].x)+Math.PI/2);for(let i=-4;i<=4;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*20,-190,20,380)}ctx.restore();
 }
 function strokeLoop(){ctx.beginPath();ctx.moveTo(path[0].x,path[0].y);for(let i=1;i<path.length;i++)ctx.lineTo(path[i].x,path[i].y);ctx.closePath();ctx.stroke()}
+function drawGrassBlades(){
+ const edge=201, blade=28, spacing=34;
+ ctx.fillStyle='#2f8a43';
+ for(let i=0;i<path.length;i++){
+  const a=path[i],b=path[(i+1)%path.length],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+  const tx=dx/len,ty=dy/len,nx=-ty,ny=tx;
+  const count=Math.max(1,Math.floor(len/spacing));
+  for(let j=0;j<=count;j++){
+   const d=Math.min(len,j*spacing), wob=((j+i)&1)?7:-7;
+   const cx=a.x+tx*d,cy=a.y+ty*d;
+   for(const side of [-1,1]){
+    const bx=cx+nx*edge*side,by=cy+ny*edge*side;
+    const tipx=bx+nx*blade*side+tx*wob,tipy=by+ny*blade*side+ty*wob;
+    ctx.beginPath();
+    ctx.moveTo(bx-tx*11,by-ty*11);
+    ctx.lineTo(tipx,tipy);
+    ctx.lineTo(bx+tx*11,by+ty*11);
+    ctx.closePath();ctx.fill();
+   }
+  }
+ }
+}
 function drawLily(x,y,r){ctx.save();ctx.translate(x,y);ctx.fillStyle='#4aa74c';ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.lineTo(0,0);ctx.arc(0,0,r,-.48,.48,true);ctx.closePath();ctx.fill();ctx.fillStyle='#8cd45d';ctx.beginPath();ctx.arc(-r*.22,-r*.18,r*.22,0,Math.PI*2);ctx.fill();if(r>65){ctx.fillStyle='#f5bfd4';for(let i=0;i<6;i++){let a=i*Math.PI/3;ctx.beginPath();ctx.ellipse(Math.cos(a)*r*.18,Math.sin(a)*r*.18,r*.16,r*.07,a,0,Math.PI*2);ctx.fill()}ctx.fillStyle='#ffd86b';ctx.beginPath();ctx.arc(0,0,r*.08,0,Math.PI*2);ctx.fill()}ctx.restore()}
 function drawTree(x,y){ctx.fillStyle='#714624';ctx.fillRect(x-10,y-8,20,72);ctx.fillStyle='#247b3c';ctx.beginPath();ctx.arc(x,y-20,34,0,Math.PI*2);ctx.fill();ctx.fillStyle='#8bd85d';ctx.beginPath();ctx.arc(x-10,y-30,14,0,Math.PI*2);ctx.fill()}
 function angelWing(x,y,side,scale=1,tilt=0){
