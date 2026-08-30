@@ -2,16 +2,16 @@
 const C=document.querySelector('#game'),ctx=C.getContext('2d'),W=C.width,H=C.height;
 const ui={who:$('#who'),speed:$('#speed'),lap:$('#lap'),status:$('#status'),jump:$('#jump'),tongue:$('#tongue'),a:$('#skillA'),b:$('#skillB'),swap:$('#swap'),stick:$('#stick')};
 function $(s){return document.querySelector(s)}
-const world={w:2280,h:1500};
+const world={w:4700,h:3100};
 // clockwise loop; curve anchors are deliberately placed on every important inside corner.
-const path=[{x:430,y:360},{x:1050,y:250},{x:1770,y:360},{x:1970,y:720},{x:1770,y:1135},{x:1070,y:1245},{x:420,y:1120},{x:260,y:730}];
-const anchors=[{x:1080,y:535},{x:1650,y:545},{x:1660,y:945},{x:1080,y:965},{x:555,y:940},{x:530,y:555}];
-const checkpoints=path.map((p,i)=>({x:p.x,y:p.y,r:210,i}));
+const path=[{x:700,y:650},{x:2050,y:420},{x:3650,y:650},{x:4150,y:1450},{x:3650,y:2450},{x:2150,y:2700},{x:720,y:2400},{x:360,y:1500}];
+const anchors=[{x:2100,y:880},{x:3450,y:920},{x:3500,y:2100},{x:2150,y:2200},{x:980,y:2050},{x:1000,y:920}];
+const checkpoints=path.map((p,i)=>({x:p.x,y:p.y,r:280,i}));
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
-const racers=[makeRacer('Michael','#49a94f',0,360,405),makeRacer('Gabriel','#3188e6',1,365,455)];
+const racers=[makeRacer('Michael','#49a94f',0,600,690),makeRacer('Gabriel','#3188e6',1,610,760)];
 function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
-function reset(){racers.splice(0,2,makeRacer('Michael','#49a94f',0,360,405),makeRacer('Gabriel','#3188e6',1,365,455));racers[controlledIndex].ai=false;racers[1-controlledIndex].ai=true;finished=false;ui.status.textContent='ジャンプ3回で最高速！'}
+function reset(){racers.splice(0,2,makeRacer('Michael','#49a94f',0,600,690),makeRacer('Gabriel','#3188e6',1,610,760));racers[controlledIndex].ai=false;racers[1-controlledIndex].ai=true;finished=false;ui.status.textContent='ジャンプ3回で最高速！'}
 function pressJump(r){if(r.finished)return;if(r.flight===0){r.flight=1;r.onGround=false;r.speed=Math.max(r.speed,285);r.wing=.2;msg('ジャンプ！ もう一度で羽ばたき');}
 else if(r.flight===1){r.flight=2;r.speed=Math.max(r.speed,405);r.wing=.55;msg('羽ばたき加速！ もう一度で滑空');}
 else if(r.flight===2){r.flight=3;r.glideClock=0;r.glideGrace=0;r.speed=Math.max(r.speed,520);r.wing=1;msg('滑空！ 最高速へ');}
@@ -58,9 +58,26 @@ function drawWorld(){ctx.fillStyle='#83cc6c';ctx.fillRect(0,0,world.w,world.h);c
  ctx.save();ctx.translate(390,375);ctx.rotate(Math.atan2(path[1].y-path[0].y,path[1].x-path[0].x)+Math.PI/2);for(let i=-3;i<=3;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*24,-135,24,270)}ctx.restore();}
 function strokeLoop(){ctx.beginPath();ctx.moveTo(path[0].x,path[0].y);for(let i=1;i<path.length;i++)ctx.lineTo(path[i].x,path[i].y);ctx.closePath();ctx.stroke()}
 function drawTree(x,y){ctx.fillStyle='#6c4626';ctx.fillRect(x-12,y-15,24,62);ctx.fillStyle='#2c823f';ctx.beginPath();ctx.arc(x,y-25,42,0,Math.PI*2);ctx.fill();ctx.fillStyle='#a8e26e';ctx.beginPath();ctx.arc(x-13,y-35,20,0,Math.PI*2);ctx.fill()}
-function drawRacer(r){if(r.tongue){let t=r.tongue.target;ctx.strokeStyle='#e86a91';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(r.x,r.y+2);ctx.quadraticCurveTo((r.x+t.x)/2,(r.y+t.y)/2+18,t.x,t.y);ctx.stroke()}
- ctx.save();ctx.translate(r.x,r.y);ctx.rotate(r.face);if(r.flight>0){ctx.fillStyle='#fff';ctx.strokeStyle='#bfd8de';ctx.lineWidth=2;let flap=r.wing>0?14:0;ctx.beginPath();ctx.ellipse(-5,-30-flap,28,12,-.4,0,Math.PI*2);ctx.ellipse(-5,30+flap,28,12,.4,0,Math.PI*2);ctx.fill();ctx.stroke()}
- ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(0,0,31,24,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d9f0c5';ctx.beginPath();ctx.ellipse(8,0,18,15,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(15,-18,9,0,Math.PI*2);ctx.arc(15,18,9,0,Math.PI*2);ctx.fill();ctx.fillStyle='#101a16';ctx.beginPath();ctx.arc(18,-18,4,0,Math.PI*2);ctx.arc(18,18,4,0,Math.PI*2);ctx.fill();ctx.restore();ctx.fillStyle='#17352d';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(r.name,r.x,r.y-42)}
+function drawRacer(r){
+ if(r.tongue){let t=r.tongue.target;ctx.strokeStyle='#e86a91';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(r.x,r.y+2);ctx.quadraticCurveTo((r.x+t.x)/2,(r.y+t.y)/2+18,t.x,t.y);ctx.stroke()}
+ // Four dedicated top-down poses. The frog itself never rotates like a butterfly-shaped sprite.
+ let a=((r.face%(Math.PI*2))+Math.PI*2)%(Math.PI*2),dir=a<Math.PI/4||a>=7*Math.PI/4?'right':a<3*Math.PI/4?'down':a<5*Math.PI/4?'left':'up';
+ ctx.save();ctx.translate(r.x,r.y);
+ const green=r.color, belly=r.name==='Michael'?'#e8f2d9':'#d9f2f5';
+ // angel wings: layered feather silhouette, inspired by the old game's bright wing motif
+ if(r.flight>0){ctx.fillStyle='#fff';ctx.strokeStyle='#c8dce8';ctx.lineWidth=2;let flap=r.wing>0?5:0;
+   for(const side of [-1,1]){ctx.save();ctx.translate(side*18,4);ctx.rotate(side*(.38+flap*.025));for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(side*(12+i*7),8+i*5,19-i*2,8,-side*.35,0,Math.PI*2);ctx.fill();ctx.stroke()}ctx.restore()}}
+ // humanoid torso + limbs
+ ctx.strokeStyle=green;ctx.lineWidth=13;ctx.lineCap='round';
+ let dx=dir==='right'?1:dir==='left'?-1:0,dy=dir==='down'?1:dir==='up'?-1:0;
+ ctx.beginPath();ctx.moveTo(-13,13);ctx.lineTo(-20,28);ctx.moveTo(13,13);ctx.lineTo(20,28);ctx.moveTo(-15,2);ctx.lineTo(-25+dx*5,8+dy*5);ctx.moveTo(15,2);ctx.lineTo(25+dx*5,8+dy*5);ctx.stroke();
+ ctx.fillStyle=green;ctx.beginPath();ctx.ellipse(0,7,22,27,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=belly;ctx.beginPath();ctx.ellipse(0,12,12,17,0,0,Math.PI*2);ctx.fill();
+ // head stays at the top of the body; face details have four explicit orientations
+ ctx.fillStyle=green;ctx.beginPath();ctx.ellipse(0,-19,24,20,0,0,Math.PI*2);ctx.fill();
+ let ex=dx*5,ey=dy*4;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-10,-31,8,0,Math.PI*2);ctx.arc(10,-31,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#122019';ctx.beginPath();ctx.arc(-10+ex,-31+ey,3.5,0,Math.PI*2);ctx.arc(10+ex,-31+ey,3.5,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='#24452f';ctx.lineWidth=2.5;ctx.beginPath();if(dir==='right'){ctx.moveTo(4,-17);ctx.lineTo(17,-15)}else if(dir==='left'){ctx.moveTo(-4,-17);ctx.lineTo(-17,-15)}else if(dir==='up'){ctx.moveTo(-7,-20);ctx.quadraticCurveTo(0,-24,7,-20)}else{ctx.moveTo(-7,-14);ctx.quadraticCurveTo(0,-10,7,-14)}ctx.stroke();
+ ctx.restore();ctx.fillStyle='#17352d';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(r.name,r.x,r.y-58)
+}
 function drawEffect(e){if(e.kind==='bubble'){ctx.fillStyle='#bcecffaa';ctx.strokeStyle='#4eaeeb';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,17,0,Math.PI*2);ctx.fill();ctx.stroke()}else{let len=e.kind==='laser'?640:120;ctx.strokeStyle=e.kind==='laser'?'#baf5ff':'#7bd7ff';ctx.lineWidth=e.kind==='laser'?7:15;ctx.globalAlpha=Math.max(.15,e.t/e.max);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(e.a)*len,e.y+Math.sin(e.a)*len);ctx.stroke();ctx.globalAlpha=1}}
 function drawMini(){let sx=185/world.w,sy=118/world.h,ox=18,oy=58;ctx.fillStyle='#102820c9';ctx.fillRect(ox,oy,185,118);ctx.strokeStyle='#d7c68b';ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(ox+path[0].x*sx,oy+path[0].y*sy);for(let i=1;i<path.length;i++)ctx.lineTo(ox+path[i].x*sx,oy+path[i].y*sy);ctx.closePath();ctx.stroke();for(const r of racers){ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(ox+r.x*sx,oy+r.y*sy,5,0,Math.PI*2);ctx.fill()}}
 function updateHud(r){ui.who.textContent='操作：'+(r.name==='Michael'?'ミカエル':'ガブリエル');ui.speed.textContent=Math.round(r.speed*.56)+' km/h';ui.a.innerHTML='A<small>'+(r.name==='Gabriel'?'水弾':'パンチ')+'</small>';ui.b.innerHTML='B<small>'+(r.name==='Gabriel'?'水レーザー':'泡弾')+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3)phase+=' '+Math.min(9.9,r.glideClock).toFixed(1)+'s';ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
