@@ -69,46 +69,93 @@ function drawWorld(){ctx.fillStyle='#83cc6c';ctx.fillRect(0,0,world.w,world.h);c
  ctx.save();ctx.translate(590,520);ctx.rotate(Math.atan2(path[1].y-path[0].y,path[1].x-path[0].x)+Math.PI/2);for(let i=-3;i<=3;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*24,-135,24,270)}ctx.restore();}
 function strokeLoop(){ctx.beginPath();ctx.moveTo(path[0].x,path[0].y);for(let i=1;i<path.length;i++)ctx.lineTo(path[i].x,path[i].y);ctx.closePath();ctx.stroke()}
 function drawTree(x,y){ctx.fillStyle='#6c4626';ctx.fillRect(x-12,y-15,24,62);ctx.fillStyle='#2c823f';ctx.beginPath();ctx.arc(x,y-25,42,0,Math.PI*2);ctx.fill();ctx.fillStyle='#a8e26e';ctx.beginPath();ctx.arc(x-13,y-35,20,0,Math.PI*2);ctx.fill()}
-function featherWing(x,y,side,scale=1){
- ctx.save();ctx.translate(x,y);ctx.scale(side*scale,scale);ctx.fillStyle='#fff';ctx.strokeStyle='#c7dce3';ctx.lineWidth=2;
- const feathers=[[0,0,42,-20,63,-10],[2,3,46,-8,68,3],[0,7,43,7,62,19],[-2,11,34,18,48,30]];
- for(const f of feathers){ctx.beginPath();ctx.moveTo(f[0],f[1]);ctx.quadraticCurveTo(f[2],f[3],f[4],f[5]);ctx.quadraticCurveTo(38,f[5]+10,5,18);ctx.closePath();ctx.fill();ctx.stroke()}
+function angelWing(x,y,side,scale=1,tilt=0){
+ // One connected angel-wing silhouette. Broad at the shoulder, tapered into layered feather tips.
+ ctx.save();ctx.translate(x,y);ctx.scale(side*scale,scale);ctx.rotate(tilt);
+ ctx.fillStyle='#fffdf5';ctx.strokeStyle='#c9d9dc';ctx.lineWidth=2.2;ctx.lineJoin='round';
+ ctx.beginPath();
+ ctx.moveTo(0,2);
+ ctx.bezierCurveTo(12,-17,32,-27,55,-25);
+ ctx.bezierCurveTo(48,-18,43,-12,39,-8);
+ ctx.bezierCurveTo(52,-11,64,-8,72,-2);
+ ctx.bezierCurveTo(62,2,54,5,47,8);
+ ctx.bezierCurveTo(57,9,65,14,69,20);
+ ctx.bezierCurveTo(58,21,48,20,39,18);
+ ctx.bezierCurveTo(47,23,51,28,50,34);
+ ctx.bezierCurveTo(37,33,27,29,20,24);
+ ctx.bezierCurveTo(24,31,23,37,18,41);
+ ctx.bezierCurveTo(8,31,3,18,0,2);
+ ctx.closePath();ctx.fill();ctx.stroke();
+ // restrained feather separators: keep the wing reading as one mass, not insect wings
+ ctx.strokeStyle='#e2ecee';ctx.lineWidth=1.8;
+ for(const pts of [[[9,3],[33,-13],[55,-16]],[[10,9],[34,1],[59,1]],[[10,15],[31,13],[55,18]],[[9,21],[25,25],[41,31]]]){
+  ctx.beginPath();ctx.moveTo(...pts[0]);ctx.quadraticCurveTo(...pts[1],...pts[2]);ctx.stroke();
+ }
  ctx.restore();
 }
 function frogFront(r){
- // wings behind the shoulders, as in the reference front view
- featherWing(-18,-5,-1,.92);featherWing(18,-5,1,.92);
- ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(0,5,25,31,0,0,Math.PI*2);ctx.fill();
- ctx.beginPath();ctx.arc(-13,-19,15,0,Math.PI*2);ctx.arc(13,-19,15,0,Math.PI*2);ctx.fill();
- ctx.fillStyle='#dff2c9';ctx.beginPath();ctx.ellipse(0,9,13,19,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(-24,5,9,17,-.35,0,Math.PI*2);ctx.ellipse(24,5,9,17,.35,0,Math.PI*2);ctx.ellipse(-13,30,10,15,.35,0,Math.PI*2);ctx.ellipse(13,30,10,15,-.35,0,Math.PI*2);ctx.fill();
- ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-12,-23,10,0,Math.PI*2);ctx.arc(12,-23,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#142019';ctx.beginPath();ctx.arc(-10,-24,4,0,Math.PI*2);ctx.arc(10,-24,4,0,Math.PI*2);ctx.fill();
- ctx.strokeStyle='#17352d';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-6,7,.2,Math.PI-.2);ctx.stroke();
+ // broad, friendly frog head and compact human-like body; wings emerge from the shoulders
+ angelWing(-18,-3,-1,.94,-.03);angelWing(18,-3,1,.94,.03);
+ ctx.fillStyle=r.color;
+ // legs behind body
+ ctx.beginPath();ctx.ellipse(-11,28,9,16,.28,0,Math.PI*2);ctx.ellipse(11,28,9,16,-.28,0,Math.PI*2);ctx.fill();
+ // compact torso
+ ctx.beginPath();ctx.roundRect(-18,-1,36,39,16);ctx.fill();
+ // simple arms
+ ctx.beginPath();ctx.ellipse(-23,10,7,16,.35,0,Math.PI*2);ctx.ellipse(23,10,7,16,-.35,0,Math.PI*2);ctx.fill();
+ // oversized frog head
+ ctx.beginPath();ctx.ellipse(0,-21,31,25,0,0,Math.PI*2);ctx.fill();
+ // eye bumps integrated into head
+ ctx.beginPath();ctx.arc(-14,-38,13,0,Math.PI*2);ctx.arc(14,-38,13,0,Math.PI*2);ctx.fill();
+ // belly
+ ctx.fillStyle='#e7f4c9';ctx.beginPath();ctx.ellipse(0,13,12,17,0,0,Math.PI*2);ctx.fill();
+ // eyes
+ ctx.fillStyle='#fffdf4';ctx.beginPath();ctx.arc(-14,-39,10,0,Math.PI*2);ctx.arc(14,-39,10,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#142019';ctx.beginPath();ctx.arc(-12,-39,4,0,Math.PI*2);ctx.arc(12,-39,4,0,Math.PI*2);ctx.fill();
+ // smile, centered lower on the face like the original game character
+ ctx.strokeStyle='#17352d';ctx.lineWidth=3.2;ctx.lineCap='round';ctx.beginPath();ctx.arc(0,-18,10,.18,Math.PI-.18);ctx.stroke();
 }
 function frogBack(r){
- // back first, then the wing roots overlap the body: wings are on the viewer side of the back.
- ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(0,5,25,31,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(0,-18,28,23,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(-23,7,9,17,.25,0,Math.PI*2);ctx.ellipse(23,7,9,17,-.25,0,Math.PI*2);ctx.ellipse(-13,31,10,15,.35,0,Math.PI*2);ctx.ellipse(13,31,10,15,-.35,0,Math.PI*2);ctx.fill();
- featherWing(-14,-8,-1,.98);featherWing(14,-8,1,.98);
- // shoulder root patches make the attachment read as coming from the upper back
- ctx.fillStyle='#eef8fb';ctx.beginPath();ctx.ellipse(-15,-5,7,10,-.4,0,Math.PI*2);ctx.ellipse(15,-5,7,10,.4,0,Math.PI*2);ctx.fill();
+ // body first; wings are intentionally drawn afterwards so their roots sit on the viewer side of the upper back
+ ctx.fillStyle=r.color;
+ ctx.beginPath();ctx.ellipse(-11,28,9,16,.28,0,Math.PI*2);ctx.ellipse(11,28,9,16,-.28,0,Math.PI*2);ctx.fill();
+ ctx.beginPath();ctx.roundRect(-18,-1,36,39,16);ctx.fill();
+ ctx.beginPath();ctx.ellipse(-23,10,7,16,.35,0,Math.PI*2);ctx.ellipse(23,10,7,16,-.35,0,Math.PI*2);ctx.fill();
+ ctx.beginPath();ctx.ellipse(0,-21,31,25,0,0,Math.PI*2);ctx.fill();
+ ctx.beginPath();ctx.arc(-14,-38,13,0,Math.PI*2);ctx.arc(14,-38,13,0,Math.PI*2);ctx.fill();
+ // wings overlap the upper back at the shoulder blades
+ angelWing(-15,-7,-1,.98,-.03);angelWing(15,-7,1,.98,.03);
+ // small green shoulder caps in front of the wing roots sell the attachment point
+ ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(-16,-3,8,10,-.45,0,Math.PI*2);ctx.ellipse(16,-3,8,10,.45,0,Math.PI*2);ctx.fill();
 }
 function frogSide(r,left){
  const d=left?-1:1;ctx.save();ctx.scale(d,1);
- // one large visible wing grows from the shoulder and trails backward
- featherWing(-7,-8,-1,.96);
- ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(0,6,23,30,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(9,-18,24,21,-.05,0,Math.PI*2);ctx.fill();
- ctx.fillStyle='#dff2c9';ctx.beginPath();ctx.ellipse(10,8,10,18,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(21,7,9,17,-.25,0,Math.PI*2);ctx.ellipse(-7,31,11,15,.3,0,Math.PI*2);ctx.ellipse(13,31,10,14,-.2,0,Math.PI*2);ctx.fill();
- ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(19,-24,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#142019';ctx.beginPath();ctx.arc(22,-24,4,0,Math.PI*2);ctx.fill();
- ctx.strokeStyle='#17352d';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(25,-8);ctx.quadraticCurveTo(31,-5,25,-1);ctx.stroke();ctx.restore();
+ // far wing peeks behind the body, main wing grows from the visible shoulder and sweeps backward
+ ctx.globalAlpha=.78;angelWing(-10,-5,-1,.76,-.06);ctx.globalAlpha=1;
+ ctx.fillStyle=r.color;
+ ctx.beginPath();ctx.ellipse(-8,28,10,16,.28,0,Math.PI*2);ctx.ellipse(9,29,9,15,-.18,0,Math.PI*2);ctx.fill();
+ ctx.beginPath();ctx.roundRect(-16,-1,34,39,15);ctx.fill();
+ ctx.beginPath();ctx.ellipse(-20,9,7,15,.28,0,Math.PI*2);ctx.fill();
+ // frog side-profile head: rounded rear, short projecting muzzle
+ ctx.beginPath();ctx.ellipse(4,-21,28,24,0,0,Math.PI*2);ctx.fill();
+ ctx.beginPath();ctx.arc(13,-38,13,0,Math.PI*2);ctx.fill();
+ ctx.beginPath();ctx.ellipse(25,-18,13,12,0,0,Math.PI*2);ctx.fill();
+ // visible wing on top of shoulder/body connection
+ angelWing(-11,-7,-1,.96,-.04);
+ ctx.fillStyle='#e7f4c9';ctx.beginPath();ctx.ellipse(8,13,10,17,0,0,Math.PI*2);ctx.fill();
+ // one readable eye in profile
+ ctx.fillStyle='#fffdf4';ctx.beginPath();ctx.arc(15,-39,10,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#142019';ctx.beginPath();ctx.arc(18,-39,4,0,Math.PI*2);ctx.fill();
+ // tiny mouth curve near muzzle
+ ctx.strokeStyle='#17352d';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.arc(22,-17,7,.35,Math.PI-.5);ctx.stroke();
+ ctx.restore();
 }
 function drawRacer(r){if(r.tongue){let t=r.tongue.target;ctx.strokeStyle='#e86a91';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(r.x,r.y+2);ctx.quadraticCurveTo((r.x+t.x)/2,(r.y+t.y)/2+18,t.x,t.y);ctx.stroke()}
  ctx.save();ctx.translate(r.x,r.y);let a=norm(r.face),dir=Math.abs(a)<Math.PI/4?'right':Math.abs(a)>Math.PI*3/4?'left':a<0?'up':'down';
  if(dir==='down')frogFront(r);else if(dir==='up')frogBack(r);else frogSide(r,dir==='left');
- // flight flap pulse: extra feather tips, without rotating the whole frog
- if(r.flight>0&&r.wing>0){ctx.globalAlpha=.42;ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(-43,-4,18,7,-.35,0,Math.PI*2);ctx.ellipse(43,-4,18,7,.35,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
- ctx.restore();ctx.fillStyle='#17352d';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(r.name,r.x,r.y-58)}
+ // flap feedback is a subtle scale pulse instead of extra detached feathers
+ if(r.flight>0&&r.wing>0){ctx.globalAlpha=.14;ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(0,-4,40+6*Math.sin(performance.now()/55),0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+ ctx.restore();ctx.fillStyle='#17352d';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(r.name,r.x,r.y-68)}
 function drawEffect(e){if(e.kind==='bubble'){ctx.fillStyle='#bcecffaa';ctx.strokeStyle='#4eaeeb';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,17,0,Math.PI*2);ctx.fill();ctx.stroke()}else{let len=e.kind==='laser'?640:120;ctx.strokeStyle=e.kind==='laser'?'#baf5ff':'#7bd7ff';ctx.lineWidth=e.kind==='laser'?7:15;ctx.globalAlpha=Math.max(.15,e.t/e.max);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(e.a)*len,e.y+Math.sin(e.a)*len);ctx.stroke();ctx.globalAlpha=1}}
 function drawMini(){let sx=185/world.w,sy=118/world.h,ox=18,oy=58;ctx.fillStyle='#102820c9';ctx.fillRect(ox,oy,185,118);ctx.strokeStyle='#d7c68b';ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(ox+path[0].x*sx,oy+path[0].y*sy);for(let i=1;i<path.length;i++)ctx.lineTo(ox+path[i].x*sx,oy+path[i].y*sy);ctx.closePath();ctx.stroke();for(const r of racers){ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(ox+r.x*sx,oy+r.y*sy,5,0,Math.PI*2);ctx.fill()}}
 function updateHud(r){ui.who.textContent='操作：'+(r.name==='Michael'?'ミカエル':'ガブリエル');ui.speed.textContent=Math.round(r.speed*.56)+' km/h';ui.a.innerHTML='A<small>'+(r.name==='Gabriel'?'水弾':'パンチ')+'</small>';ui.b.innerHTML='B<small>'+(r.name==='Gabriel'?'水レーザー':'泡弾')+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3)phase+=' '+Math.min(9.9,r.glideClock).toFixed(1)+'s';ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
