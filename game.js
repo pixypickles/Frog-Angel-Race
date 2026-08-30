@@ -2,16 +2,16 @@
 const C=document.querySelector('#game'),ctx=C.getContext('2d'),W=C.width,H=C.height;
 const ui={who:$('#who'),speed:$('#speed'),lap:$('#lap'),status:$('#status'),jump:$('#jump'),tongue:$('#tongue'),a:$('#skillA'),b:$('#skillB'),swap:$('#swap'),stick:$('#stick')};
 function $(s){return document.querySelector(s)}
-const world={w:4700,h:3100};
-// clockwise loop; curve anchors are deliberately placed on every important inside corner.
-const path=[{x:700,y:650},{x:2050,y:420},{x:3650,y:650},{x:4150,y:1450},{x:3650,y:2450},{x:2150,y:2700},{x:720,y:2400},{x:360,y:1500}];
-const anchors=[{x:2100,y:880},{x:3450,y:920},{x:3500,y:2100},{x:2150,y:2200},{x:980,y:2050},{x:1000,y:920}];
-const checkpoints=path.map((p,i)=>({x:p.x,y:p.y,r:280,i}));
+const world={w:4300,h:2850};
+// Large clockwise circuit: the camera only sees a small part of the course at once.
+const path=[{x:620,y:520},{x:1500,y:300},{x:2700,y:380},{x:3650,y:760},{x:3860,y:1450},{x:3420,y:2300},{x:2300,y:2520},{x:1200,y:2350},{x:430,y:1770},{x:330,y:1030}];
+const anchors=[{x:1580,y:650},{x:2740,y:720},{x:3400,y:1040},{x:3380,y:1910},{x:2380,y:2150},{x:1280,y:2050},{x:760,y:1610},{x:720,y:930}];
+const checkpoints=path.map((p,i)=>({x:p.x,y:p.y,r:210,i}));
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
-const racers=[makeRacer('Michael','#49a94f',0,600,690),makeRacer('Gabriel','#3188e6',1,610,760)];
+const racers=[makeRacer('Michael','#49a94f',0,560,520),makeRacer('Gabriel','#3188e6',1,565,575)];
 function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
-function reset(){racers.splice(0,2,makeRacer('Michael','#49a94f',0,600,690),makeRacer('Gabriel','#3188e6',1,610,760));racers[controlledIndex].ai=false;racers[1-controlledIndex].ai=true;finished=false;ui.status.textContent='ジャンプ3回で最高速！'}
+function reset(){racers.splice(0,2,makeRacer('Michael','#49a94f',0,560,520),makeRacer('Gabriel','#3188e6',1,565,575));racers[controlledIndex].ai=false;racers[1-controlledIndex].ai=true;finished=false;ui.status.textContent='ジャンプ3回で最高速！'}
 function pressJump(r){if(r.finished)return;if(r.flight===0){r.flight=1;r.onGround=false;r.speed=Math.max(r.speed,285);r.wing=.2;msg('ジャンプ！ もう一度で羽ばたき');}
 else if(r.flight===1){r.flight=2;r.speed=Math.max(r.speed,405);r.wing=.55;msg('羽ばたき加速！ もう一度で滑空');}
 else if(r.flight===2){r.flight=3;r.glideClock=0;r.glideGrace=0;r.speed=Math.max(r.speed,520);r.wing=1;msg('滑空！ 最高速へ');}
@@ -32,8 +32,18 @@ function updateRacer(r,dt){if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA
  // Tongue anchor overrides ordinary turn. Player/rival overlap never affects anchor tongue.
  if(r.tongue?.kind==='anchor'){let a=r.tongue.target,dx=a.x-r.x,dy=a.y-r.y,d=Math.hypot(dx,dy)||1,tan=Math.atan2(dy,dx)+(r.tongue.side>0?Math.PI/2:-Math.PI/2);let hold=(performance.now()-r.tongue.started)/1000;r.face=lerpAngle(r.face,tan,Math.min(1,dt*7.5));if(hold>1.05)r.speed=Math.max(220,r.speed-250*dt);else r.speed=Math.max(r.speed,Math.min(maxSpeed,520));}
  r.vx=Math.cos(r.face)*r.speed;r.vy=Math.sin(r.face)*r.speed;r.x+=r.vx*dt;r.y+=r.vy*dt;
- // wide grass boundary / wall collision; course itself is defined by distance to polyline
- if(trackDistance(r.x,r.y)>190){r.x-=r.vx*dt*1.25;r.y-=r.vy*dt*1.25;r.speed*=.72;r.bump=.22;if(!r.ai)msg('ガード草に激突！ 少し減速');}
+ // Guard-grass wall: lose speed, but reflect back into the course instead of sticking to it.
+ let hit=trackInfo(r.x,r.y);
+ if(hit.d>198){
+   let nx=(r.x-hit.qx)/(hit.d||1),ny=(r.y-hit.qy)/(hit.d||1);
+   let dot=r.vx*nx+r.vy*ny;
+   let rvx=r.vx-2*dot*nx,rvy=r.vy-2*dot*ny;
+   r.speed=Math.max(175,Math.hypot(rvx,rvy)*.68);
+   r.face=Math.atan2(rvy,rvx);
+   // place the racer just inside the wall so the next frame does not collide again
+   r.x=hit.qx+nx*188;r.y=hit.qy+ny*188;
+   r.bump=.26;if(!r.ai)msg('ガード草に激突！ 減速して跳ね返った');
+ }
  r.x=Math.max(90,Math.min(world.w-90,r.x));r.y=Math.max(90,Math.min(world.h-90,r.y));
  updateCheckpoint(r);
  if(r.ai)aiSkills(r,dt);
@@ -52,59 +62,53 @@ function waterSkill(r,laser,silent){let key=laser?'skillCdB':'skillCdA';if(r[key
  let recoilAng=r.face+turnSide*Math.PI/2,jetAng=recoilAng+Math.PI;r.face=norm(r.face+turnSide*(laser?.62:.24));r.x+=Math.cos(recoilAng)*(laser?48:19);r.y+=Math.sin(recoilAng)*(laser?48:19);r.speed=Math.min(maxSpeed+20,r.speed+(laser?36:12));effects.push({kind:laser?'laser':'water',x:r.x,y:r.y,a:jetAng,t:laser?.23:.34,max:laser?.23:.34,owner:r});if(!silent)msg(laser?'水レーザー反動！ 舌なし急旋回':'水弾反動！ 横へスライド');}
 function pushRival(o,face,amt){let side=Math.random()<.5?-1:1;o.x+=Math.cos(face+side*Math.PI/2)*amt;o.y+=Math.sin(face+side*Math.PI/2)*amt;}
 function updateEffects(dt){for(const e of effects){e.t-=dt;if(e.kind==='bubble'){e.x+=e.vx*dt;e.y+=e.vy*dt;let o=racers[1-e.owner.index];if(Math.hypot(o.x-e.x,o.y-e.y)<o.r+18){pushRival(o,Math.atan2(e.vy,e.vx),70);e.t=0;if(e.owner===racers[controlledIndex])msg('泡弾ヒット！ 壁に押し出せ！')}}}effects=effects.filter(e=>e.t>0)}
-function trackDistance(px,py){let best=1e9;for(let i=0;i<path.length;i++){let a=path[i],b=path[(i+1)%path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy;best=Math.min(best,Math.hypot(px-qx,py-qy))}return best}
+function trackInfo(px,py){let best={d:1e9,qx:0,qy:0};for(let i=0;i<path.length;i++){let a=path[i],b=path[(i+1)%path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);if(d<best.d)best={d,qx,qy}}return best}
+function trackDistance(px,py){return trackInfo(px,py).d}
 function draw(){let me=racers[controlledIndex];camera.x=approach(camera.x,me.x-W/2,.16*W);camera.y=approach(camera.y,me.y-H/2,.16*H);camera.x=Math.max(0,Math.min(world.w-W,camera.x));camera.y=Math.max(0,Math.min(world.h-H,camera.y));ctx.clearRect(0,0,W,H);ctx.save();ctx.translate(-camera.x,-camera.y);drawWorld();for(const e of effects)drawEffect(e);for(const r of racers)drawRacer(r);ctx.restore();drawMini();updateHud(me)}
-function drawWorld(){ctx.fillStyle='#83cc6c';ctx.fillRect(0,0,world.w,world.h);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#4b7c48';ctx.lineWidth=430;strokeLoop();ctx.strokeStyle='#d7c68b';ctx.lineWidth=360;strokeLoop();ctx.strokeStyle='#f2e5b1';ctx.lineWidth=6;ctx.setLineDash([28,34]);strokeLoop();ctx.setLineDash([]);for(const a of anchors)drawTree(a.x,a.y); // start line
- ctx.save();ctx.translate(390,375);ctx.rotate(Math.atan2(path[1].y-path[0].y,path[1].x-path[0].x)+Math.PI/2);for(let i=-3;i<=3;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*24,-135,24,270)}ctx.restore();}
+function drawWorld(){ctx.fillStyle='#83cc6c';ctx.fillRect(0,0,world.w,world.h);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#4b7c48';ctx.lineWidth=470;strokeLoop();ctx.strokeStyle='#d7c68b';ctx.lineWidth=390;strokeLoop();ctx.strokeStyle='#f2e5b1';ctx.lineWidth=6;ctx.setLineDash([28,34]);strokeLoop();ctx.setLineDash([]);for(const a of anchors)drawTree(a.x,a.y); // start line
+ ctx.save();ctx.translate(590,520);ctx.rotate(Math.atan2(path[1].y-path[0].y,path[1].x-path[0].x)+Math.PI/2);for(let i=-3;i<=3;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*24,-135,24,270)}ctx.restore();}
 function strokeLoop(){ctx.beginPath();ctx.moveTo(path[0].x,path[0].y);for(let i=1;i<path.length;i++)ctx.lineTo(path[i].x,path[i].y);ctx.closePath();ctx.stroke()}
 function drawTree(x,y){ctx.fillStyle='#6c4626';ctx.fillRect(x-12,y-15,24,62);ctx.fillStyle='#2c823f';ctx.beginPath();ctx.arc(x,y-25,42,0,Math.PI*2);ctx.fill();ctx.fillStyle='#a8e26e';ctx.beginPath();ctx.arc(x-13,y-35,20,0,Math.PI*2);ctx.fill()}
-function drawRacer(r){
- if(r.tongue){let t=r.tongue.target;ctx.strokeStyle='#e86a91';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(r.x,r.y+2);ctx.quadraticCurveTo((r.x+t.x)/2,(r.y+t.y)/2+18,t.x,t.y);ctx.stroke()}
- // Dedicated cardinal poses. Up shows the back, left/right show profile, down shows the front.
- let a=((r.face%(Math.PI*2))+Math.PI*2)%(Math.PI*2),dir=a<Math.PI/4||a>=7*Math.PI/4?'right':a<3*Math.PI/4?'down':a<5*Math.PI/4?'left':'up';
- ctx.save();ctx.translate(r.x,r.y);
- const skin=r.color, belly=r.name==='Michael'?'#e8f2d9':'#d9f2f5';
- const flap=r.flight>0?(r.wing>0?0.25:0.08):0;
- function feather(x,y,rx,ry,rot){ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore()}
- function wing(side,profile=false){
-   // Root is intentionally high, at the shoulder blade instead of the hips.
-   ctx.fillStyle='#fff';ctx.strokeStyle='#bfd8e6';ctx.lineWidth=1.8;
-   if(profile){let sx=side; feather(sx*15,-4,17,7,sx*(.65+flap));feather(sx*23,2,18,7,sx*(.52+flap));feather(sx*27,9,15,6,sx*(.38+flap));}
-   else {feather(side*17,-3,18,7,side*(.48+flap));feather(side*26,3,20,7,side*(.35+flap));feather(side*30,10,16,6,side*(.22+flap));}
- }
- ctx.lineCap='round';ctx.lineJoin='round';
- if(dir==='up'){
-   // BACK: wings sit clearly on both shoulder blades, belly and facial features are hidden.
-   wing(-1); wing(1);
-   ctx.strokeStyle=skin;ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(-12,12);ctx.lineTo(-18,29);ctx.moveTo(12,12);ctx.lineTo(18,29);ctx.moveTo(-15,0);ctx.lineTo(-25,8);ctx.moveTo(15,0);ctx.lineTo(25,8);ctx.stroke();
-   ctx.fillStyle=skin;ctx.beginPath();ctx.ellipse(0,7,21,27,0,0,Math.PI*2);ctx.fill();
-   ctx.beginPath();ctx.ellipse(0,-19,24,20,0,0,Math.PI*2);ctx.fill();
-   // subtle back/shoulder seam makes the back pose readable
-   ctx.strokeStyle='#17663788';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,-1);ctx.quadraticCurveTo(0,4,10,-1);ctx.stroke();
- } else if(dir==='left'||dir==='right'){
-   // PROFILE: one shoulder/wing is dominant; body and head are side-on.
-   let side=dir==='right'?1:-1;
-   wing(-side,true); // far wing first
-   ctx.strokeStyle=skin;ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(-side*4,14);ctx.lineTo(-side*9,29);ctx.moveTo(side*7,13);ctx.lineTo(side*18,27);ctx.moveTo(-side*6,0);ctx.lineTo(-side*15,8);ctx.moveTo(side*10,0);ctx.lineTo(side*25,5);ctx.stroke();
-   ctx.fillStyle=skin;ctx.beginPath();ctx.ellipse(side*2,7,17,27,0,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle=belly;ctx.beginPath();ctx.ellipse(side*9,11,8,16,0,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle=skin;ctx.beginPath();ctx.ellipse(side*3,-19,22,19,0,0,Math.PI*2);ctx.fill();
-   // protruding frog snout in travel direction
-   ctx.beginPath();ctx.ellipse(side*18,-17,12,9,0,0,Math.PI*2);ctx.fill();
-   wing(side,true); // near wing roots at the visible shoulder
-   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(side*9,-30,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#122019';ctx.beginPath();ctx.arc(side*12,-30,3.5,0,Math.PI*2);ctx.fill();
-   ctx.strokeStyle='#24452f';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(side*15,-15);ctx.lineTo(side*25,-14);ctx.stroke();
- } else {
-   // FRONT (down): both eyes, belly and arms face the camera; wings begin beside the shoulders.
-   wing(-1);wing(1);
-   ctx.strokeStyle=skin;ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(-13,13);ctx.lineTo(-20,29);ctx.moveTo(13,13);ctx.lineTo(20,29);ctx.moveTo(-15,0);ctx.lineTo(-26,9);ctx.moveTo(15,0);ctx.lineTo(26,9);ctx.stroke();
-   ctx.fillStyle=skin;ctx.beginPath();ctx.ellipse(0,7,22,27,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=belly;ctx.beginPath();ctx.ellipse(0,12,12,17,0,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle=skin;ctx.beginPath();ctx.ellipse(0,-19,24,20,0,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-10,-31,8,0,Math.PI*2);ctx.arc(10,-31,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#122019';ctx.beginPath();ctx.arc(-10,-28,3.5,0,Math.PI*2);ctx.arc(10,-28,3.5,0,Math.PI*2);ctx.fill();
-   ctx.strokeStyle='#24452f';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-7,-14);ctx.quadraticCurveTo(0,-10,7,-14);ctx.stroke();
- }
- ctx.restore();ctx.fillStyle='#17352d';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(r.name,r.x,r.y-58)
+function featherWing(x,y,side,scale=1){
+ ctx.save();ctx.translate(x,y);ctx.scale(side*scale,scale);ctx.fillStyle='#fff';ctx.strokeStyle='#c7dce3';ctx.lineWidth=2;
+ const feathers=[[0,0,42,-20,63,-10],[2,3,46,-8,68,3],[0,7,43,7,62,19],[-2,11,34,18,48,30]];
+ for(const f of feathers){ctx.beginPath();ctx.moveTo(f[0],f[1]);ctx.quadraticCurveTo(f[2],f[3],f[4],f[5]);ctx.quadraticCurveTo(38,f[5]+10,5,18);ctx.closePath();ctx.fill();ctx.stroke()}
+ ctx.restore();
 }
+function frogFront(r){
+ // wings behind the shoulders, as in the reference front view
+ featherWing(-18,-5,-1,.92);featherWing(18,-5,1,.92);
+ ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(0,5,25,31,0,0,Math.PI*2);ctx.fill();
+ ctx.beginPath();ctx.arc(-13,-19,15,0,Math.PI*2);ctx.arc(13,-19,15,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#dff2c9';ctx.beginPath();ctx.ellipse(0,9,13,19,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(-24,5,9,17,-.35,0,Math.PI*2);ctx.ellipse(24,5,9,17,.35,0,Math.PI*2);ctx.ellipse(-13,30,10,15,.35,0,Math.PI*2);ctx.ellipse(13,30,10,15,-.35,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-12,-23,10,0,Math.PI*2);ctx.arc(12,-23,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#142019';ctx.beginPath();ctx.arc(-10,-24,4,0,Math.PI*2);ctx.arc(10,-24,4,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='#17352d';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-6,7,.2,Math.PI-.2);ctx.stroke();
+}
+function frogBack(r){
+ // back first, then the wing roots overlap the body: wings are on the viewer side of the back.
+ ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(0,5,25,31,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(0,-18,28,23,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(-23,7,9,17,.25,0,Math.PI*2);ctx.ellipse(23,7,9,17,-.25,0,Math.PI*2);ctx.ellipse(-13,31,10,15,.35,0,Math.PI*2);ctx.ellipse(13,31,10,15,-.35,0,Math.PI*2);ctx.fill();
+ featherWing(-14,-8,-1,.98);featherWing(14,-8,1,.98);
+ // shoulder root patches make the attachment read as coming from the upper back
+ ctx.fillStyle='#eef8fb';ctx.beginPath();ctx.ellipse(-15,-5,7,10,-.4,0,Math.PI*2);ctx.ellipse(15,-5,7,10,.4,0,Math.PI*2);ctx.fill();
+}
+function frogSide(r,left){
+ const d=left?-1:1;ctx.save();ctx.scale(d,1);
+ // one large visible wing grows from the shoulder and trails backward
+ featherWing(-7,-8,-1,.96);
+ ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(0,6,23,30,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(9,-18,24,21,-.05,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#dff2c9';ctx.beginPath();ctx.ellipse(10,8,10,18,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=r.color;ctx.beginPath();ctx.ellipse(21,7,9,17,-.25,0,Math.PI*2);ctx.ellipse(-7,31,11,15,.3,0,Math.PI*2);ctx.ellipse(13,31,10,14,-.2,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(19,-24,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#142019';ctx.beginPath();ctx.arc(22,-24,4,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='#17352d';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(25,-8);ctx.quadraticCurveTo(31,-5,25,-1);ctx.stroke();ctx.restore();
+}
+function drawRacer(r){if(r.tongue){let t=r.tongue.target;ctx.strokeStyle='#e86a91';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(r.x,r.y+2);ctx.quadraticCurveTo((r.x+t.x)/2,(r.y+t.y)/2+18,t.x,t.y);ctx.stroke()}
+ ctx.save();ctx.translate(r.x,r.y);let a=norm(r.face),dir=Math.abs(a)<Math.PI/4?'right':Math.abs(a)>Math.PI*3/4?'left':a<0?'up':'down';
+ if(dir==='down')frogFront(r);else if(dir==='up')frogBack(r);else frogSide(r,dir==='left');
+ // flight flap pulse: extra feather tips, without rotating the whole frog
+ if(r.flight>0&&r.wing>0){ctx.globalAlpha=.42;ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(-43,-4,18,7,-.35,0,Math.PI*2);ctx.ellipse(43,-4,18,7,.35,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+ ctx.restore();ctx.fillStyle='#17352d';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(r.name,r.x,r.y-58)}
 function drawEffect(e){if(e.kind==='bubble'){ctx.fillStyle='#bcecffaa';ctx.strokeStyle='#4eaeeb';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,17,0,Math.PI*2);ctx.fill();ctx.stroke()}else{let len=e.kind==='laser'?640:120;ctx.strokeStyle=e.kind==='laser'?'#baf5ff':'#7bd7ff';ctx.lineWidth=e.kind==='laser'?7:15;ctx.globalAlpha=Math.max(.15,e.t/e.max);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(e.a)*len,e.y+Math.sin(e.a)*len);ctx.stroke();ctx.globalAlpha=1}}
 function drawMini(){let sx=185/world.w,sy=118/world.h,ox=18,oy=58;ctx.fillStyle='#102820c9';ctx.fillRect(ox,oy,185,118);ctx.strokeStyle='#d7c68b';ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(ox+path[0].x*sx,oy+path[0].y*sy);for(let i=1;i<path.length;i++)ctx.lineTo(ox+path[i].x*sx,oy+path[i].y*sy);ctx.closePath();ctx.stroke();for(const r of racers){ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(ox+r.x*sx,oy+r.y*sy,5,0,Math.PI*2);ctx.fill()}}
 function updateHud(r){ui.who.textContent='操作：'+(r.name==='Michael'?'ミカエル':'ガブリエル');ui.speed.textContent=Math.round(r.speed*.56)+' km/h';ui.a.innerHTML='A<small>'+(r.name==='Gabriel'?'水弾':'パンチ')+'</small>';ui.b.innerHTML='B<small>'+(r.name==='Gabriel'?'水レーザー':'泡弾')+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3)phase+=' '+Math.min(9.9,r.glideClock).toFixed(1)+'s';ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
