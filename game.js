@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.22';
+const VERSION='v2.23';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -39,8 +39,8 @@ let saveData={
   selectedCharacter:'Michael',
   michaelSkillA:'punch',
   michaelSkillB:'bubble',
-  kawazuSkillA:'airSwim',
-  kawazuSkillB:'wallKick',
+  kawazuSkillA:'burningWing',
+  kawazuSkillB:'highJump',
   unlockedSkills:['punch','bubble'],encountered:['Plain'],
   wins:0,
   arenaWins:0,
@@ -53,7 +53,8 @@ function loadSave(){
     if(raw) saveData={...saveData,...JSON.parse(raw)};
     saveData.encountered=saveData.encountered||['Plain'];
     saveData.unlockedSkills=saveData.unlockedSkills||['punch','bubble'];
-    saveData.kawazuSkillA=saveData.kawazuSkillA||'airSwim';saveData.kawazuSkillB=saveData.kawazuSkillB||'wallKick';
+    if(!saveData.kawazuSkillA||saveData.kawazuSkillA==='airSwim')saveData.kawazuSkillA='burningWing';
+    if(!saveData.kawazuSkillB||saveData.kawazuSkillB==='wallKick')saveData.kawazuSkillB='highJump';
     saveData.timeLagUnlocked=!!saveData.timeLagUnlocked;saveData.timeStopUnlocked=!!saveData.timeStopUnlocked;
     if(!saveData.timeStopUnlocked)saveData.unlockedSkills=saveData.unlockedSkills.filter(x=>x!=='timeStop');
     if(saveData.timeLagUnlocked&&!saveData.unlockedSkills.includes('timeLag'))saveData.unlockedSkills.push('timeLag');
@@ -104,14 +105,14 @@ function rebuildSkillSelects(){
  const a=document.querySelector('#skillASelect'),b=document.querySelector('#skillBSelect');if(!a||!b)return;
  const isKawazu=saveData.selectedCharacter==='Kawazu';
  let ids=isKawazu
-   ?['airSwim','wallKick','punch','bubble','normalHighJump',...(saveData.unlockedSkills||[]).filter(x=>!['punch','bubble','normalHighJump'].includes(x))]
+   ?['burningWing','highJump','airSwim','wallKick','punch','bubble','normalHighJump',...(saveData.unlockedSkills||[]).filter(x=>!['punch','bubble','normalHighJump','burningWing','highJump'].includes(x))]
    :['punch','bubble','normalHighJump',...(saveData.unlockedSkills||[]).filter(x=>!['punch','bubble','normalHighJump'].includes(x))];
  ids=[...new Set(ids)];
  const html=ids.map(id=>`<option value="${id}">${skillLabel(id)}</option>`).join('');
  a.innerHTML=html;b.innerHTML=html;
  let ka=isKawazu?'kawazuSkillA':'michaelSkillA',kb=isKawazu?'kawazuSkillB':'michaelSkillB';
- if(!ids.includes(saveData[ka]))saveData[ka]=isKawazu?'airSwim':'punch';
- if(!ids.includes(saveData[kb]))saveData[kb]=isKawazu?'wallKick':'bubble';
+ if(!ids.includes(saveData[ka]))saveData[ka]=isKawazu?'burningWing':'punch';
+ if(!ids.includes(saveData[kb]))saveData[kb]=isKawazu?'highJump':'bubble';
  if(saveData[ka]===saveData[kb])saveData[kb]=ids.find(x=>x!==saveData[ka])||saveData[kb];
  a.value=saveData[ka];b.value=saveData[kb];
  const heading=document.querySelector('#skillSetupTitle');
@@ -155,7 +156,7 @@ function showPlace(place){
   document.querySelector('#placeTitle').textContent=data[0];
   document.querySelector('#placeDesc').textContent=data[1];
   const actions=document.querySelector('#placeActions');actions.innerHTML='';
-  if(place==='practice'){const box=document.createElement('div');box.className='homeBox';box.innerHTML='<b>練習相手を選択</b><p class="panelNote">これまで大会で対戦した相手から選べます。</p>';for(const n of (saveData.encountered||['Plain'])){const q=document.createElement('button');q.className='menuBtn';q.textContent=CHARACTER_DATA[n]?.jp||n;q.onclick=()=>{tournament=null;startRaceRound(n,true)};box.appendChild(q)}actions.appendChild(box);}else if(place.startsWith('arena')||place==='master'||place==='kawazu'){
+  if(place==='practice'){const guide=document.createElement('button');guide.className='menuBtn';guide.textContent='📖 操作・加速システムの説明を見る';guide.onclick=()=>showTutorial('practice');actions.appendChild(guide);const box=document.createElement('div');box.className='homeBox';box.innerHTML='<b>練習相手を選択</b><p class="panelNote">これまで大会で対戦した相手から選べます。</p>';for(const n of (saveData.encountered||['Plain'])){const q=document.createElement('button');q.className='menuBtn';q.textContent=CHARACTER_DATA[n]?.jp||n;q.onclick=()=>{tournament=null;startRaceRound(n,true)};box.appendChild(q)}actions.appendChild(box);}else if(place.startsWith('arena')||place==='master'||place==='kawazu'){
     const b=document.createElement('button');b.className='menuBtn';b.textContent=place==='practice'?'練習を始める':(place==='master'?'ベルゼブブさんに挑戦':(place==='kawazu'?'カワズさんに挑戦':'2回戦大会に参加'));
     b.onclick=()=>startRace(place==='practice');
     actions.appendChild(b);
@@ -328,6 +329,14 @@ const ENDING_STORY=[
  {v:'🌊　🐸💨💨💨',t:'河津一郎の小さな緑の体の泳ぎは、この池のどのカエルよりも速かった。'},
  {v:'🐸🔴　🪽　✨',t:'河津一郎、いや――\n\nカワズさん参戦！'}
 ];
+let tutorialReturn='field';
+function showTutorial(returnTo='field'){
+ tutorialReturn=returnTo;appState='tutorial';hideAllScreens();
+ document.querySelector('#tutorialScreen')?.classList.remove('hidden');
+}
+function closeTutorial(){
+ if(tutorialReturn==='practice')showPlace('practice');else showField();
+}
 let storyMode='',storyIndex=0;
 function playStory(mode){
  storyMode=mode;storyIndex=0;appState='story';hideAllScreens();
@@ -344,15 +353,16 @@ function nextStory(){
  storyIndex++;
  if(storyIndex<arr.length){showStoryPage();return;}
  if(storyMode==='ending'){saveData.kawazuUnlocked=true;saveGame();showField();}
- else showField();
+ else showTutorial('field');
 }
 
 function setupMetaUi(){
   loadSave();
   document.querySelector('#storyNext')?.addEventListener('click',nextStory);
+  document.querySelector('#tutorialClose')?.addEventListener('click',closeTutorial);
   document.querySelector('#continueBtn')?.addEventListener('click',()=>{loadSave();showField();});
   document.querySelector('#newBtn')?.addEventListener('click',()=>{
-    saveData={started:true,selectedCharacter:'Michael',michaelSkillA:'punch',michaelSkillB:'bubble',kawazuSkillA:'airSwim',kawazuSkillB:'wallKick',unlockedSkills:['punch','bubble'],encountered:['Plain'],wins:0,arenaWins:0,tournamentWins:{},masterUnlocked:false,kawazuUnlocked:false,timeLagUnlocked:false,timeStopUnlocked:false};
+    saveData={started:true,selectedCharacter:'Michael',michaelSkillA:'punch',michaelSkillB:'bubble',kawazuSkillA:'burningWing',kawazuSkillB:'highJump',unlockedSkills:['punch','bubble'],encountered:['Plain'],wins:0,arenaWins:0,tournamentWins:{},masterUnlocked:false,kawazuUnlocked:false,timeLagUnlocked:false,timeStopUnlocked:false};
     saveGame();playStory('opening');
   });
   document.querySelector('#saveBtn')?.addEventListener('click',saveGame);
@@ -377,24 +387,27 @@ function $(s){return document.querySelector(s)}
 const world={w:6000,h:4400};
 const COURSE_SETS={
  arena1:[
+  {name:'木立の大回廊',theme:'wind',halfWidth:300,extraAnchors:[[1250,760],[1850,560],[2650,760],[3500,600],[4450,900],[4750,1600],[4300,2200],[3400,2500],[2450,2250],[1650,2650],[1050,3300],[1900,3650],[3000,3500],[4100,3650],[4850,3150],[5050,2450]],path:[[700,900],[1800,520],[3200,520],[4700,850],[5200,1650],[4750,2450],[5000,3300],[4100,3900],[2700,3750],[1500,3950],[650,3250],[850,2400],[600,1650]]},
   {name:'風の輪',theme:'wind',path:[[700,700],[2450,520],[4650,700],[5200,1450],[4700,2050],[3000,1950],[2550,2350],[3150,2800],[5050,2800],[5250,3550],[4300,3900],[1900,3800],[700,3150],[700,2050],[1900,1750],[800,1300]]},
-  {name:'三日月ヘアピン',theme:'wind',path:[[700,850],[1900,520],[3500,520],[5000,850],[5250,1550],[4550,2050],[3450,1750],[2850,2200],[3450,2850],[4900,2750],[5250,3250],[4450,3850],[2850,3950],[1450,3650],[650,3050],[650,2100],[1050,1500]]},
-  {name:'風車スラローム',theme:'wind',path:[[700,650],[1900,500],[3000,850],[4200,500],[5200,900],[4700,1450],[3600,1250],[3000,1750],[3650,2200],[5000,2050],[5250,2850],[4300,3300],[5000,3750],[3300,3950],[2100,3500],[900,3800],[550,2850],[1250,2400],[650,1850],[1700,1300]]}
+  {name:'空原オープン',theme:'wind',noWalls:true,path:[[750,750],[2800,500],[5000,900],[5250,2200],[4850,3500],[3000,3900],[1100,3500],[550,2300]]}
  ],
  arena2:[
+  {name:'水路ツインルート',theme:'water',branches:[[[2050,700],[2700,1250],[3350,1650],[4050,1250],[4550,900]],[[2050,700],[2350,1900],[3200,2450],[4100,2050],[4550,900]]],path:[[700,700],[2050,700],[4550,900],[5200,1600],[5000,3000],[4300,3800],[2600,3900],[900,3400],[600,2200]]},
   {name:'蓮の大回廊',theme:'water',path:[[650,850],[1700,500],[3300,500],[4850,850],[5300,1650],[4750,2300],[3550,2150],[3000,2650],[3800,3100],[5100,3000],[5250,3650],[3900,3950],[2200,3850],[850,3400],[550,2500],[950,1800],[2050,1650],[1550,1150]]},
-  {name:'水蛇Sライン',theme:'water',path:[[650,700],[2100,500],[4000,650],[5150,1100],[4550,1550],[3000,1400],[2500,1900],[3550,2200],[5000,2050],[5250,2700],[4300,3000],[2750,2850],[2200,3300],[3400,3800],[1850,3900],[700,3400],[1000,2800],[1900,2500],[1100,2100],[600,1450]]},
-  {name:'渦潮ツインヘアピン',theme:'water',path:[[700,700],[2200,500],[4000,550],[5200,1000],[5250,1850],[4550,2250],[3500,1950],[2850,2350],[3450,3000],[4850,2950],[5250,3350],[4400,3900],[2750,3900],[1400,3550],[600,2850],[650,1900],[1250,1350]]}
+  {name:'水上フリーライン',theme:'water',noWalls:true,path:[[700,650],[3000,500],[5200,1100],[5000,3300],[3200,3900],[1000,3550],[550,2000]]}
  ],
  arena3:[
+  {name:'はじめの森リング',theme:'forest',simple:true,path:[[900,850],[2800,550],[4700,850],[5150,2200],[4650,3500],[2800,3900],[950,3450],[550,2200]]},
   {name:'森の牙',theme:'forest',path:[[700,700],[1800,500],[3000,800],[4200,520],[5150,1050],[4550,1500],[3400,1350],[2850,1850],[3400,2300],[4900,2200],[5250,3000],[4500,3550],[3100,3300],[2550,3850],[1250,3700],[600,2950],[1050,2400],[1850,2500],[2200,1950],[1600,1500],[700,1550]]},
-  {name:'蜘蛛の針路',theme:'forest',path:[[650,650],[2350,500],[4550,650],[5200,1250],[4750,1800],[3650,1600],[3150,2050],[3700,2500],[5000,2450],[5250,3300],[4300,3900],[2750,3550],[1750,3950],[700,3450],[550,2600],[1200,2200],[700,1750],[1750,1250]]},
-  {name:'トンボ尾根',theme:'forest',path:[[700,800],[1750,500],[3200,600],[4550,500],[5250,1100],[5000,1900],[4300,2350],[5000,2950],[4750,3650],[3500,3950],[2400,3500],[1350,3900],[600,3350],[650,2500],[1300,2100],[750,1550]]}
+  {name:'外壁なし・トンボ原',theme:'forest',noWalls:true,path:[[750,700],[2500,500],[4800,700],[5250,1800],[4600,2600],[5100,3500],[3200,3900],[1500,3700],[600,2800],[900,1700]]}
  ],
- master:[{name:'魔王環状路',theme:'master',path:[[2800,500],[3800,520],[5100,900],[5300,1700],[4700,2250],[3600,1900],[2900,2350],[3550,3000],[5000,3000],[5200,3450],[4100,3950],[2600,3850],[1250,3500],[600,2800],[700,1850],[1350,1250],[700,700],[2100,480]]}],
- kawazu:[{name:'カワズ水脈',theme:'water',path:[[700,700],[2700,500],[5000,850],[5150,1800],[4200,2200],[2850,1900],[2400,2450],[3300,2900],[5100,2850],[5000,3650],[3400,3900],[1700,3600],[600,3000],[800,2050],[2100,1650],[700,1300]]}]
+ master:[
+  {name:'魔王環状路',theme:'master',path:[[2800,500],[3800,520],[5100,900],[5300,1700],[4700,2250],[3600,1900],[2900,2350],[3550,3000],[5000,3000],[5200,3450],[4100,3950],[2600,3850],[1250,3500],[600,2800],[700,1850],[1350,1250],[700,700],[2100,480]]},
+  {name:'魔王の二択',theme:'master',branches:[[[1800,650],[2400,1450],[3300,1750],[4200,1150]],[[1800,650],[2100,2500],[3300,3000],[4450,2350],[4200,1150]]],path:[[700,650],[1800,650],[4200,1150],[5200,1800],[5000,3400],[3500,3950],[1600,3700],[600,2600]]}
+ ],
+ kawazu:[{name:'カワズ水脈',theme:'water',noWalls:true,path:[[700,700],[2700,500],[5000,850],[5150,1800],[4200,2200],[2850,1900],[2400,2450],[3300,2900],[5100,2850],[5000,3650],[3400,3900],[1700,3600],[600,3000],[800,2050],[2100,1650],[700,1300]]}]
 };
-let activeCourse=COURSE_SETS.arena1[0],courseTheme=activeCourse.theme;
+let activeCourse=COURSE_SETS.arena1[0],courseTheme=activeCourse.theme,courseHalfWidth=activeCourse.halfWidth||195,courseNoWalls=!!activeCourse.noWalls,courseBranches=[];
 let path=activeCourse.path.map(([x,y])=>({x,y})),anchors=[],lilies=[],checkpoints=[];
 function rebuildCourseObjects(){
  anchors=[];
@@ -415,10 +428,11 @@ function rebuildCourseObjects(){
      if(Math.hypot(ax-path[0].x,ay-path[0].y)>360)anchors.push({x:ax,y:ay,corner:i});
    }
  }
+ if(activeCourse.extraAnchors)for(const [x,y] of activeCourse.extraAnchors)anchors.push({x,y,manual:true});
  lilies=[];for(let i=0;i<15;i++){let x=350+(i*977)%5300,y=300+(i*613)%3800;if(trackDistance(x,y)>330)lilies.push({x,y,r:48+(i%4)*10});}
  checkpoints=path.map((q,i)=>({x:q.x,y:q.y,r:240,i}));
 }
-function selectCourse(place,round=0){let set=COURSE_SETS[place]||COURSE_SETS.arena1;activeCourse=set[round%set.length];courseTheme=activeCourse.theme;path=activeCourse.path.map(([x,y])=>({x,y}));rebuildCourseObjects();}
+function selectCourse(place,round=0){let set=COURSE_SETS[place]||COURSE_SETS.arena1;activeCourse=set[round%set.length];courseTheme=activeCourse.theme;courseHalfWidth=activeCourse.halfWidth||195;courseNoWalls=!!activeCourse.noWalls;courseBranches=(activeCourse.branches||[]).map(br=>br.map(([x,y])=>({x,y})));path=activeCourse.path.map(([x,y])=>({x,y}));rebuildCourseObjects();}
 rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
@@ -479,7 +493,7 @@ r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrac
    r.courseWalk-=dt;let a=Math.atan2(hit.qy-r.y,hit.qx-r.x);r.face=a;r.flight=0;r.onGround=true;r.speed=105;
    r.x+=Math.cos(a)*105*dt;r.y+=Math.sin(a)*105*dt;
    if(hit.d<150){r.courseWalk=0;r.x=hit.qx;r.y=hit.qy;r.speed=0;if(!r.ai)msg('コース復帰！ もう一度ジャンプから');}
- }else if(r.highJump<=0&&hit.d>198){
+ }else if(!courseNoWalls&&r.highJump<=0&&hit.d>courseHalfWidth+3){
    // A Burning Climb can cross the grass. If it expires outside, walk back as before.
    if((r.wasHighJump||0)>0){
      r.courseWalk=6;r.flight=0;r.onGround=true;r.speed=105;r.tongue=null;
@@ -489,7 +503,7 @@ r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrac
      const look=path[(seg+2)%path.length],toLook=Math.atan2(look.y-r.y,look.x-r.x);
      // Move only from the penetrated wall edge to a safe position inside the corridor.
      let nx=(r.x-hit.qx)/(hit.d||1),ny=(r.y-hit.qy)/(hit.d||1);
-     const safeD=125;
+     const safeD=Math.max(105,courseHalfWidth-70);
      r.x=hit.qx+nx*safeD;r.y=hit.qy+ny*safeD;
      r.face=lerpAngle(r.face,toLook,r.ai?.92:.80);
      r.wallEscape=r.ai?.48:.42;
@@ -635,7 +649,7 @@ function updateEffects(dt){for(const e of effects){if(globalTimeStop>0&&e.owner!
  if(['bubble','rock','bewitch','poison','airball'].includes(e.kind)){e.x+=e.vx*edt;e.y+=e.vy*edt;let o=racers[1-e.owner.index],rad=e.kind==='rock'?23:21;if(Math.hypot(o.x-e.x,o.y-e.y)<o.r+rad){if(o.highJump>0){continue;}if(o.airBarrier>0&&e.kind!=='bewitch'){e.t=0;if(e.owner===racers[controlledIndex])msg('エアバリアに弾かれた！');continue;}if(e.kind==='bewitch'){o.confuse=2.2;if(e.owner===racers[controlledIndex])msg('惑いの瘴気ヒット！ 操作反転！');}else if(e.kind==='poison'){forceFall(o);if(e.owner===racers[controlledIndex])msg('毒液ヒット！ 相手が落下！');}else if(e.kind==='airball'){pushRival(o,Math.atan2(e.vy,e.vx),105);if(e.owner===racers[controlledIndex])msg('空気弾ヒット！');}else{pushRival(o,Math.atan2(e.vy,e.vx),e.kind==='rock'?175:70);if(e.owner===racers[controlledIndex])msg(e.kind==='rock'?'岩ヒット！ 大きく弾いた！':'泡弾ヒット！ 壁に押し出せ！');}e.t=0;}}
  if(e.kind==='poisonMist'){let o=racers[1-e.owner.index];if(Math.hypot(o.x-e.x,o.y-e.y)<70){if(o.highJump>0)continue;if(o.airBarrier>0)continue;forceFall(o);e.t=0;if(e.owner===racers[controlledIndex])msg('毒霧ヒット！ 相手が落下！');}}
  }effects=effects.filter(e=>e.t>0)}
-function trackInfo(px,py){let best={d:1e9,qx:0,qy:0,i:0,t:0};for(let i=0;i<path.length;i++){let a=path[i],b=path[(i+1)%path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);if(d<best.d)best={d,qx,qy,i,t}}return best}
+function trackInfo(px,py){let best={d:1e9,qx:0,qy:0,i:0,t:0,branch:false};const scan=(pts,closed,isBranch)=>{let lim=closed?pts.length:pts.length-1;for(let i=0;i<lim;i++){let a=pts[i],b=pts[(i+1)%pts.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy||1,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);if(d<best.d)best={d,qx,qy,i,t,branch:isBranch}}};scan(path,true,false);for(const br of courseBranches)scan(br,false,true);return best}
 function trackDistance(px,py){return trackInfo(px,py).d}
 function draw(){
  let me=racers[controlledIndex],timeFx=globalTimeStop>0?'stop':(globalTimeLag>0?'lag':'');
@@ -673,20 +687,23 @@ function drawWorld(){
  if(courseTheme==='master'){ctx.save();ctx.globalAlpha=.18;ctx.fillStyle='#c7a7ff';for(let i=0;i<14;i++){let x=300+(i*839)%5300,y=260+(i*541)%3800;ctx.beginPath();ctx.arc(x,y,35+(i%3)*14,0,Math.PI*2);ctx.fill();}ctx.restore();}
 
  ctx.lineCap='round';ctx.lineJoin='round';
- // thick outer stroke = tall guard grass. Inner stroke returns to water, leaving only grass walls at both sides.
- ctx.strokeStyle=pal.grass;ctx.lineWidth=460;strokeLoop();
- ctx.strokeStyle=pal.inner;ctx.lineWidth=390;strokeLoop();
- // Visible blade tips on both edges: the guard wall should read as tall grass, not a smooth green rail.
- drawGrassBlades();
- // little highlights on the flying corridor; no asphalt / dirt road line.
- ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=3;ctx.setLineDash([18,46]);strokeLoop();ctx.setLineDash([]);
+ const drawRoute=(pts,closed=true)=>{ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);if(closed)ctx.closePath();ctx.stroke();};
+ if(!courseNoWalls){
+   ctx.strokeStyle=pal.grass;ctx.lineWidth=courseHalfWidth*2+70;drawRoute(path,true);for(const br of courseBranches)drawRoute(br,false);
+   ctx.strokeStyle=pal.inner;ctx.lineWidth=courseHalfWidth*2;drawRoute(path,true);for(const br of courseBranches)drawRoute(br,false);
+   drawGrassBlades();
+ }else{
+   // Open course: no enclosing guard wall, only a translucent suggested racing line.
+   ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=courseHalfWidth*2;drawRoute(path,true);for(const br of courseBranches)drawRoute(br,false);
+ }
+ ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=3;ctx.setLineDash([18,46]);drawRoute(path,true);for(const br of courseBranches)drawRoute(br,false);ctx.setLineDash([]);
  for(const a of anchors)drawTree(a.x,a.y);
  // start gate across the water corridor
  ctx.save();ctx.translate(path[0].x,path[0].y);ctx.rotate(Math.atan2(path[1].y-path[0].y,path[1].x-path[0].x)+Math.PI/2);for(let i=-4;i<=4;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*20,-190,20,380)}ctx.restore();
 }
 function strokeLoop(){ctx.beginPath();ctx.moveTo(path[0].x,path[0].y);for(let i=1;i<path.length;i++)ctx.lineTo(path[i].x,path[i].y);ctx.closePath();ctx.stroke()}
 function drawGrassBlades(){
- const edge=201, blade=28, spacing=34;
+ const edge=courseHalfWidth+6, blade=28, spacing=34;
  ctx.fillStyle='#2f8a43';
  for(let i=0;i<path.length;i++){
   const a=path[i],b=path[(i+1)%path.length],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;

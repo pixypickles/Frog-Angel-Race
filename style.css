@@ -72,3 +72,9 @@ linear-gradient(135deg,#7fcf73,#59a967);overflow:hidden}
 .storyBox{background:#102820ed;border:3px solid #eaffdf;border-radius:22px;padding:22px 26px;min-height:180px;box-shadow:0 12px 40px #0008}
 #storyText{white-space:pre-line;font-size:19px;line-height:1.75;min-height:95px}
 #storyNext{min-height:45px;font-size:16px;margin:10px 0 0 auto;width:150px}
+
+.tutorialCard{max-width:980px;max-height:88vh;overflow:auto}
+.tutorialGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.tutorialGrid .homeBox{min-height:110px}
+.tutorialGrid p{margin:.5em 0 0;line-height:1.55}
+@media(max-width:700px){.tutorialGrid{grid-template-columns:1fr}.tutorialCard{max-height:92vh}}
