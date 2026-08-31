@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.6';
+const VERSION='v2.7';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -80,7 +80,7 @@ function updateFieldUi(){
   const n=saveData.selectedCharacter==='Michael'?'ミカエル':'ガブリエル';
   const el=document.querySelector('#fieldPlayer');if(el)el.textContent='操作：'+n;
 }
-const MICHAEL_ORIGINAL_SKILLS=[['burningWing','バーニングウィング'],['highJump','ハイジャンプ'],['timeLag','タイムラグ'],['timeStop','時間停止']];
+const MICHAEL_ORIGINAL_SKILLS=[['burningWing','バーニングウィング'],['highJump','バーニングクライム'],['timeLag','タイムラグ'],['timeStop','時間停止']];
 const LEARNABLE_SKILLS={
  Gabriel:[['waterBoost','水ブースト'],['waterLaser','水レーザー']],
  Raphael:[['airBarrier','エアバリア'],['airBoost','エアブースト']],
@@ -90,7 +90,7 @@ const LEARNABLE_SKILLS={
  Beelzebub:[['poisonShot','毒液'],['poisonBoost','ポイズンブースト']]
 };
 function skillLabel(id){
- const base={punch:'パンチ',bubble:'泡弾',burningWing:'バーニングウィング（ミカエルさん固有）',highJump:'ハイジャンプ（ミカエルさん固有）',timeLag:'タイムラグ（禁断・周囲50% / 6秒）',timeStop:'時間停止（禁断・1レース1回）'};if(base[id])return base[id];
+ const base={punch:'パンチ',bubble:'泡弾',burningWing:'バーニングウィング',highJump:'バーニングクライム',timeLag:'タイムラグ（禁断・周囲50% / 6秒）',timeStop:'時間停止（禁断・1レース1回）'};if(base[id])return base[id];
  for(const [who,list] of Object.entries(LEARNABLE_SKILLS)){let x=list.find(v=>v[0]===id);if(x)return x[1]+'（'+CHARACTER_DATA[who].jp+'）';}
  return id;
 }
@@ -201,10 +201,10 @@ function showRaceResult(win){
 }
 
 const OPENING_STORY=[
- {v:'🌆　🪷　🐸',t:'仕事帰りの疲れた河津一郎は、池を眺めていた。'},
- {v:'🐸　　👀　　🐸',t:'1匹のカエルが目に映る。'},
- {v:'🐸💭　　🐸',t:'「いいよなー、あいつらは気楽で。」'},
- {v:'🐸💭　🐸💨🐸',t:'「いや、あいつらはあいつらで、厳しい世界を生きてるのかもしれない。」'},
+ {v:'🪷　🌿　🐸',t:'河津一郎は、池を眺めていた。'},
+ {v:'🪷　🐸　　🐸',t:'池では、カエルたちが思い思いに過ごしている。'},
+ {v:'💭　🐸　🪷',t:'「いいよなー、あいつらは気楽で。」'},
+ {v:'💭　🐸💨🐸　🌿',t:'「いや、あいつらはあいつらで、厳しい世界を生きてるのかもしれない。」'},
  {v:'💭　🐸🪽　🏁　🐸🪽　💭',t:'河津一郎は妄想をはじめた。'}
 ];
 const ENDING_STORY=[
@@ -339,7 +339,7 @@ function pressJumpSilent(r){if(r.flight===0){r.flight=1;r.speed=Math.max(r.speed
 function aiSkills(r,dt){if(r.name!=='Gabriel')return;let t=path[r.cp%path.length],to=Math.atan2(t.y-r.y,t.x-r.x),bend=Math.abs(norm(to-r.face));if(bend>.56&&r.skillCdB<=0&&Math.random()<dt*3){waterSkill(r,true,true)}else if(bend>.3&&r.skillCdA<=0&&Math.random()<dt*2){waterBoost(r,true)}}
 function updateCheckpoint(r){let cp=checkpoints[r.cp%checkpoints.length];if(Math.hypot(r.x-cp.x,r.y-cp.y)<cp.r){r.cp++;if(r.cp>=checkpoints.length){r.lap++;if(r.lap>RACE_LAPS){r.finished=true;r.speed=0;if(!finished){finished=true;msg((r===racers[controlledIndex]?'YOU WIN! ':'')+r.name+' ゴール！');setTimeout(()=>showRaceResult(r===racers[controlledIndex]),1300);}}else{r.cp=0;if(r===racers[controlledIndex])msg('LAP '+r.lap+' / '+RACE_LAPS);}}}}
 function startTongue(r){if(r.finished)return;const TONGUE_ANCHOR_RANGE=330;let anchor=nearestAnchor(r,TONGUE_ANCHOR_RANGE);if(anchor){let cross=Math.sin(norm(Math.atan2(anchor.y-r.y,anchor.x-r.x)-r.face));r.tongue={kind:'anchor',target:anchor,started:performance.now(),side:cross>0?-1:1};msg('アンカーに舌！ 離すタイミングで脱出');return;}
- let other=racers[1-r.index],d=Math.hypot(other.x-r.x,other.y-r.y);if(d<((r.name==='Lilith'||r.name==='Beelzebub')?390:270)){if(other.highJump>0){msg('ハイジャンプ！ 舌が届かない');return;}
+ let other=racers[1-r.index],d=Math.hypot(other.x-r.x,other.y-r.y);if(d<((r.name==='Lilith'||r.name==='Beelzebub')?390:270)){if(other.highJump>0){msg('バーニングクライム！ 舌が届かない');return;}
  if(other.burningWing>0){r.hitSlow=.45;msg('熱い！ バーニングウィングで舌を弾かれた');return;}
  if(other.airBarrier>0){msg('エアバリア！ 舌を弾かれた');return;}r.tongue={kind:'rival',target:other,started:performance.now()};let behind=Math.cos(norm(r.face-other.face))>.35;if(!(other.name==='Uriel'&&behind))other.hitSlow=.55;tongueSlipstreamBoost(r);msg(other.name==='Uriel'&&behind?'舌ヒット！ ウリエルは減速しない':'舌ヒット！ スリップ加速！');return;}
  let near=nearestAnchor(r,560);if(near){msg('アンカーが遠い！ 外へ膨らみすぎて舌が届かない');}else msg('舌を伸ばしたが対象なし');}
@@ -352,7 +352,7 @@ function useMichaelSkill(r,id,slot){
  if(id==='punch'){r[cdKey]=1.35;let d=Math.hypot(o.x-r.x,o.y-r.y);if(d<90){pushRival(o,r.face,78);msg('パンチ！ 相手を横へ弾いた');}else msg('パンチ！');return true;}
  if(id==='bubble'){r[cdKey]=.9;let aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'bubble',x:r.x,y:r.y,vx:Math.cos(aim)*1250,vy:Math.sin(aim)*1250,owner:r,t:1.65});msg('泡弾！ 自動照準');return true;}
  if(id==='burningWing'){r[cdKey]=3;r.burningWing=1.25;r.speed=Math.min(maxSpeed+145,r.speed+150);r.boost=1;msg('バーニングウィング！');return true;}
- if(id==='highJump'){r[cdKey]=4.5;r.highJump=1.05;r.highJumpTotal=1.05;r.highJumpDir=r.face;r.tongue=null;r.flight=3;r.onGround=false;r.speed=Math.max(455,Math.min(r.speed,490));msg('ハイジャンプ！ 山なりに飛び越せ！');return true;}
+ if(id==='highJump'){r[cdKey]=4.5;r.highJump=1.05;r.highJumpTotal=1.05;r.highJumpDir=r.face;r.tongue=null;r.flight=3;r.onGround=false;r.speed=Math.max(455,Math.min(r.speed,490));msg('バーニングクライム！ 山なりに飛び越せ！');return true;}
  if(id==='timeLag'){r[cdKey]=8;globalTimeLag=6;msg('タイムラグ！ 6秒間、周囲の時間が半分に！');return true;}
  if(id==='timeStop'){if(r.timeStopUsed){msg('時間停止は1レースに一度だけ！');return true;}r.timeStopUsed=true;r[cdKey]=99;globalTimeStop=3;msg('禁断スキル――時間停止！ 3秒！');return true;}
  if(id==='waterBoost'){r[cdKey]=1.15;r.speed=Math.min(maxSpeed+65,r.speed+58);r.boost=Math.max(r.boost||0,.34);effects.push({kind:'waterBoost',x:r.x-Math.cos(r.face)*18,y:r.y-Math.sin(r.face)*18,a:r.face+Math.PI,t:.32,max:.32,owner:r});msg('後方放水ブースト！');return true;}
