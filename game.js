@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.14';
+const VERSION='v2.15';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -389,7 +389,7 @@ rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
-function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,courseWalk:0,timeStopUsed:false};}
+function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,courseWalk:0,timeStopUsed:false};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
 function reset(opponentName='Plain'){
  globalTimeStop=0;globalTimeLag=0;
@@ -401,7 +401,7 @@ function reset(opponentName='Plain'){
    makeRacer(opponentName,oc,1,p0.x+tx*85-nx*34,p0.y+ty*85-ny*34)
  );
  controlledIndex=0;racers[0].ai=false;racers[1].ai=true;racers[0].face=a;racers[1].face=a;
- racers[0].startLineLong=85;racers[1].startLineLong=85;
+ racers[0].startLineLong=85;racers[1].startLineLong=85;racers[0].lapPrevX=racers[0].x;racers[0].lapPrevY=racers[0].y;racers[1].lapPrevX=racers[1].x;racers[1].lapPrevY=racers[1].y;
  if(playerName==='Uriel')racers[0].power=1.2;if(opponentName==='Uriel')racers[1].power=1.2;
  finished=false;ui.status.textContent='ジャンプ3回で最高速！';
 }
@@ -466,34 +466,35 @@ function nearestTrackSegment(px,py){
  let best={i:0,t:0,d:1e9};for(let i=0;i<path.length;i++){let a=path[i],b=path[(i+1)%path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);if(d<best.d)best={i,t,d};}return best;
 }
 function updateCheckpoint(r){
-  // No route policing: if the course geometry permits a shortcut, it is legal.
-  // Lap counting uses only the start/finish gate and crossing direction.
+  // Shortcuts are legal. The only lap gate is the start/finish line.
+  // Use the racer's swept movement segment, so a fast tongue-turn cannot skip the line between frames.
   const p0=path[0],p1=path[1],dx=p1.x-p0.x,dy=p1.y-p0.y,len=Math.hypot(dx,dy)||1;
   const tx=dx/len,ty=dy/len,nx=-ty,ny=tx;
-  const rx=r.x-p0.x,ry=r.y-p0.y;
-  const longitudinal=rx*tx+ry*ty;
-  const lateral=rx*nx+ry*ny;
-  const prev=r.startLineLong;
-  r.startLineLong=longitudinal;
-  if(prev==null||Math.abs(lateral)>235)return;
-  // Forward: from the final-course side (negative) to the first-segment side (positive).
-  if(prev<=0&&longitudinal>0){
-    r.lap++;
-    if(r.lap>RACE_LAPS){
-      r.finished=true;r.speed=0;
-      if(!finished){
-        finished=true;
-        msg((r===racers[controlledIndex]?'YOU WIN! ':'')+(CHARACTER_DATA[r.name]?.jp||r.name)+' ゴール！');
-        setTimeout(()=>showRaceResult(r===racers[controlledIndex]),1300);
+  const x0=r.lapPrevX??r.x,y0=r.lapPrevY??r.y,x1=r.x,y1=r.y;
+  r.lapPrevX=x1;r.lapPrevY=y1;
+  const ax=x0-p0.x,ay=y0-p0.y,bx=x1-p0.x,by=y1-p0.y;
+  const long0=ax*tx+ay*ty,long1=bx*tx+by*ty;
+  // Interpolate where the movement crosses longitudinal=0, then test the lateral position.
+  if((long0<=0&&long1>0)||(long0>=0&&long1<0)){
+    const denom=long1-long0;
+    const u=Math.abs(denom)<1e-6?0:(-long0/denom);
+    const crossX=x0+(x1-x0)*u,crossY=y0+(y1-y0)*u;
+    const lateral=(crossX-p0.x)*nx+(crossY-p0.y)*ny;
+    // Wide enough to cover the visible chequered goal strip and tongue-anchor racing line.
+    if(Math.abs(lateral)<=430){
+      if(long0<=0&&long1>0){
+        r.lap++;
+        if(r.lap>RACE_LAPS){
+          r.finished=true;r.speed=0;
+          if(!finished){finished=true;msg((r===racers[controlledIndex]?'YOU WIN! ':'')+(CHARACTER_DATA[r.name]?.jp||r.name)+' ゴール！');setTimeout(()=>showRaceResult(r===racers[controlledIndex]),1300);}
+        }else if(r===racers[controlledIndex])msg('LAP '+r.lap+' / '+RACE_LAPS);
+      }else{
+        const before=r.lap;r.lap=Math.max(1,r.lap-1);
+        if(r===racers[controlledIndex]&&r.lap<before)msg('逆走でゴール通過：LAP -1 → '+r.lap+'/'+RACE_LAPS);
       }
-    }else if(r===racers[controlledIndex])msg('LAP '+r.lap+' / '+RACE_LAPS);
+    }
   }
-  // Reverse crossing cancels one previously-earned lap. Repeated back-and-forth cannot create progress.
-  else if(prev>=0&&longitudinal<0){
-    const before=r.lap;
-    r.lap=Math.max(1,r.lap-1);
-    if(r===racers[controlledIndex]&&r.lap<before)msg('逆走でゴール通過：LAP -1 → '+r.lap+'/'+RACE_LAPS);
-  }
+  r.startLineLong=long1;
 }
 function startTongue(r){if(r.finished)return;const TONGUE_ANCHOR_RANGE=330;let anchor=nearestAnchor(r,TONGUE_ANCHOR_RANGE);if(anchor){let cross=Math.sin(norm(Math.atan2(anchor.y-r.y,anchor.x-r.x)-r.face));r.tongue={kind:'anchor',target:anchor,started:performance.now(),side:cross>0?-1:1};msg('アンカーに舌！ 離すタイミングで脱出');return;}
  let other=racers[1-r.index],d=Math.hypot(other.x-r.x,other.y-r.y);if(d<((r.name==='Lilith'||r.name==='Beelzebub')?390:270)){if(other.highJump>0){msg('バーニングクライム！ 舌が届かない');return;}
