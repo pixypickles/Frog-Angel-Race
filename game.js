@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.26';
+const VERSION='v2.27';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -144,11 +144,11 @@ function startLearningRace(name,place){
 function showPlace(place){
   appState='place';currentPlace=place;hideAllScreens();document.querySelector('#fieldScreen')?.classList.remove('hidden');document.querySelector('#placePanel')?.classList.remove('hidden');
   const data={
-    arena1:['🏟️ 風の競技場','草原と池を抜ける基本コース。ヘアピンあり。'],
-    arena2:['🏟️ 水辺の競技場','池・蓮の葉・水面が多い高速コース。'],
-    arena3:['🏟️ 森の競技場','木々と連続ヘアピンが多いテクニカルコース。'],
-    arena4:['☁️ 天空の競技場','壁のない空中ラインや大きな高速カーブが中心。3回戦大会。'],
-    arena5:['🗿 遺跡の競技場','分岐・細道・広場を混ぜた変則コース。3回戦大会。'],
+    arena1:['🏟️ 風の競技場','第1戦は道幅の広い木立の大回廊。木を使う舌ターン中心。'],
+    arena2:['🏟️ 水辺の競技場','第1戦から二股の水路ツインルート。左右の選択が重要。'],
+    arena3:['🏟️ 森の競技場','第1戦は大きなカーブ中心の森リング。見通しのよい入門型。'],
+    arena4:['☁️ 天空の競技場','第1戦は分岐する天使のリボン。3回戦の高速大会。'],
+    arena5:['🗿 遺跡の競技場','第1戦は四角い遺跡スクエア。3回戦の変則大会。'],
     practice:['🎯 練習場','ジャンプ3段階、舌アンカー、スキルを自由に練習できます。'],
     forest:['🌲 森','トンボのアザゼルさん、クモのベリアルさんがいる森。'],
     pond:['🪷 池','ピラニアのリヴァイアさん、ザリガニのアスモデウスさんがいる池。'],
@@ -450,7 +450,20 @@ function rebuildCourseObjects(){
  lilies=[];for(let i=0;i<15;i++){let x=350+(i*977)%5300,y=300+(i*613)%3800;if(trackDistance(x,y)>330)lilies.push({x,y,r:48+(i%4)*10});}
  checkpoints=path.map((q,i)=>({x:q.x,y:q.y,r:240,i}));
 }
-function selectCourse(place,round=0){let set=COURSE_SETS[place]||COURSE_SETS.arena1;activeCourse=set[round%set.length];courseTheme=activeCourse.theme;courseHalfWidth=activeCourse.halfWidth||195;courseNoWalls=false;courseBranches=(activeCourse.branches||[]).map(br=>br.map(([x,y])=>({x,y})));path=activeCourse.path.map(([x,y])=>({x,y}));rebuildCourseObjects();}
+const COURSE_ORDER={
+ arena1:[0,1,3,2],
+ arena2:[0,3,1,2],
+ arena3:[0,3,1,2],
+ arena4:[1,2,0,3],
+ arena5:[0,1,3,2],
+ master:[0,1],
+ kawazu:[0]
+};
+function selectCourse(place,round=0){
+ let set=COURSE_SETS[place]||COURSE_SETS.arena1,order=COURSE_ORDER[place]||set.map((_,i)=>i),idx=order[round%order.length]%set.length;
+ activeCourse=set[idx];courseTheme=activeCourse.theme;courseHalfWidth=activeCourse.halfWidth||195;courseNoWalls=false;
+ courseBranches=(activeCourse.branches||[]).map(br=>br.map(([x,y])=>({x,y})));path=activeCourse.path.map(([x,y])=>({x,y}));rebuildCourseObjects();
+}
 rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
@@ -469,6 +482,8 @@ function reset(opponentName='Plain'){
  racers[0].startLineLong=150;racers[1].startLineLong=150;
  racers[0].lapPrevX=racers[0].x;racers[0].lapPrevY=racers[0].y;racers[1].lapPrevX=racers[1].x;racers[1].lapPrevY=racers[1].y;
  if(playerName==='Uriel')racers[0].power=1.2;if(opponentName==='Uriel')racers[1].power=1.2;
+ if(playerName==='Kawazu'){racers[0].burnWingUses=Infinity;racers[0].burnClimbUses=Infinity;racers[0].timeStopUsed=false;}
+ if(opponentName==='Kawazu'){racers[1].burnWingUses=Infinity;racers[1].burnClimbUses=Infinity;racers[1].timeStopUsed=false;}
  finished=false;ui.status.textContent='ジャンプ3回で最高速！';
 }
 function pressJump(r){if(r.finished)return;if(r.flight===0){r.flight=1;r.onGround=false;r.speed=Math.max(r.speed,285);r.wing=.2;r.jumpAge=0;r.flapAge=0;msg('ジャンプ！ もう一度で羽ばたき');}
