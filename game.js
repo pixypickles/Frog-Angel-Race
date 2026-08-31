@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.23';
+const VERSION='v2.24';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -26,8 +26,8 @@ function randomTournamentOpponent(exclude=[]){
  return pool[Math.floor(Math.random()*pool.length)]||'Gabriel';
 }
 function buildTournament(place){
- // Standard course tournament: two rounds. Round 1 teaches the baseline, round 2 is a personality matchup.
  if(place==='master')return ['Beelzebub'];if(place==='kawazu')return ['Kawazu'];
+ if(place==='arena4'||place==='arena5'){let a=randomTournamentOpponent(),b=randomTournamentOpponent([a]);return ['Plain',a,b];}
  return ['Plain',randomTournamentOpponent()];
 }
 
@@ -147,17 +147,31 @@ function showPlace(place){
     arena1:['🏟️ 風の競技場','草原と池を抜ける基本コース。ヘアピンあり。'],
     arena2:['🏟️ 水辺の競技場','池・蓮の葉・水面が多い高速コース。'],
     arena3:['🏟️ 森の競技場','木々と連続ヘアピンが多いテクニカルコース。'],
+    arena4:['☁️ 天空の競技場','壁のない空中ラインや大きな高速カーブが中心。3回戦大会。'],
+    arena5:['🗿 遺跡の競技場','分岐・細道・広場を混ぜた変則コース。3回戦大会。'],
     practice:['🎯 練習場','ジャンプ3段階、舌アンカー、スキルを自由に練習できます。'],
     forest:['🌲 森','トンボのアザゼルさん、クモのベリアルさんがいる森。'],
     pond:['🪷 池','ピラニアのリヴァイアさん、ザリガニのアスモデウスさんがいる池。'],
-    master:['👑 マスタークラス','ベルゼブブさんが待つ高難度クラス。'],
+    arena4:[
+  {name:'雲海グランリング',theme:'wind',noWalls:true,halfWidth:270,path:[[700,700],[2800,450],[5000,800],[5300,2200],[4850,3600],[3000,4000],[1000,3500],[500,2100]]},
+  {name:'天使のリボン',theme:'wind',branches:[[[1800,650],[2700,1200],[3500,1650],[4400,900]],[[1800,650],[2400,2400],[3500,2850],[4550,2200],[4400,900]]],path:[[650,650],[1800,650],[4400,900],[5200,1700],[5000,3400],[3500,3900],[1500,3650],[550,2500]]},
+  {name:'急降下スパイラル',theme:'wind',halfWidth:220,path:[[700,700],[2200,480],[4100,550],[5200,1200],[4700,1900],[3500,1600],[2800,2200],[3600,2750],[5000,2500],[5250,3400],[4100,3950],[2200,3700],[900,3200],[600,2200],[1400,1600]]},
+  {name:'青空フリー８',theme:'wind',noWalls:true,path:[[700,750],[2200,500],[3400,1500],[4900,650],[5250,1700],[3900,2300],[5100,3400],[3500,3950],[2500,2900],[900,3800],[550,2700],[1800,2100],[600,1400]]}
+ ],
+ arena5:[
+  {name:'遺跡スクエア',theme:'master',halfWidth:260,path:[[700,700],[4700,700],[5200,1200],[5200,3300],[4700,3800],[1000,3800],[550,3300],[550,1200]]},
+  {name:'石門ツインパス',theme:'master',branches:[[[1700,700],[2300,1300],[3200,1500],[4200,850]],[[1700,700],[2100,2600],[3200,3100],[4400,2500],[4200,850]]],path:[[650,700],[1700,700],[4200,850],[5200,1600],[5000,3400],[3500,3950],[1400,3650],[550,2500]]},
+  {name:'崩れた回廊',theme:'master',noWalls:true,path:[[700,650],[2600,500],[4700,850],[5200,1800],[4400,2400],[5100,3300],[3900,3900],[2500,3400],[1100,3900],[550,2900],[1200,2100],[600,1400]]},
+  {name:'古代迷走路',theme:'master',halfWidth:215,extraAnchors:[[1900,800],[3000,1100],[4300,850],[4450,1900],[3500,2350],[4600,3150],[3000,3500],[1600,3300],[1050,2300]],path:[[700,700],[1900,500],[3000,1050],[4300,500],[5100,1100],[4500,1850],[3300,1500],[2700,2200],[3500,2700],[4900,2400],[5200,3300],[4000,3900],[2600,3500],[1300,3900],[600,3000],[1100,2300],[600,1500]]}
+ ],
+ master:['👑 マスタークラス','ベルゼブブさんが待つ高難度クラス。'],
     kawazu:['🐸 カワズさん','クリア後に現れる謎の高速カエル。']
   }[place];
   document.querySelector('#placeTitle').textContent=data[0];
   document.querySelector('#placeDesc').textContent=data[1];
   const actions=document.querySelector('#placeActions');actions.innerHTML='';
   if(place==='practice'){const guide=document.createElement('button');guide.className='menuBtn';guide.textContent='📖 操作・加速システムの説明を見る';guide.onclick=()=>showTutorial('practice');actions.appendChild(guide);const box=document.createElement('div');box.className='homeBox';box.innerHTML='<b>練習相手を選択</b><p class="panelNote">これまで大会で対戦した相手から選べます。</p>';for(const n of (saveData.encountered||['Plain'])){const q=document.createElement('button');q.className='menuBtn';q.textContent=CHARACTER_DATA[n]?.jp||n;q.onclick=()=>{tournament=null;startRaceRound(n,true)};box.appendChild(q)}actions.appendChild(box);}else if(place.startsWith('arena')||place==='master'||place==='kawazu'){
-    const b=document.createElement('button');b.className='menuBtn';b.textContent=place==='practice'?'練習を始める':(place==='master'?'ベルゼブブさんに挑戦':(place==='kawazu'?'カワズさんに挑戦':'2回戦大会に参加'));
+    const b=document.createElement('button');b.className='menuBtn';b.textContent=place==='practice'?'練習を始める':(place==='master'?'ベルゼブブさんに挑戦':(place==='kawazu'?'カワズさんに挑戦':((place==='arena4'||place==='arena5')?'3回戦大会に参加':'2回戦大会に参加')));
     b.onclick=()=>startRace(place==='practice');
     actions.appendChild(b);
   }else{
@@ -310,7 +324,7 @@ function showRaceResult(win){
    saveData.tournamentWins=saveData.tournamentWins||{};
    saveData.tournamentWins[tournament.place]=(saveData.tournamentWins[tournament.place]||0)+1;
    const cleared=Object.keys(saveData.tournamentWins).filter(k=>k.startsWith('arena')&&saveData.tournamentWins[k]>0).length;
-   if(cleared>=3)saveData.masterUnlocked=true;
+   if(cleared>=5)saveData.masterUnlocked=true;
    saveGame();let wasMaster=tournament.place==='master';tournament=null;if(wasMaster&&!saveData.endingSeen){saveData.endingSeen=true;saveGame();setTimeout(()=>playStory('ending'),450);}else setTimeout(showField,450);
  }
 }
@@ -389,17 +403,20 @@ const COURSE_SETS={
  arena1:[
   {name:'木立の大回廊',theme:'wind',halfWidth:300,extraAnchors:[[1250,760],[1850,560],[2650,760],[3500,600],[4450,900],[4750,1600],[4300,2200],[3400,2500],[2450,2250],[1650,2650],[1050,3300],[1900,3650],[3000,3500],[4100,3650],[4850,3150],[5050,2450]],path:[[700,900],[1800,520],[3200,520],[4700,850],[5200,1650],[4750,2450],[5000,3300],[4100,3900],[2700,3750],[1500,3950],[650,3250],[850,2400],[600,1650]]},
   {name:'風の輪',theme:'wind',path:[[700,700],[2450,520],[4650,700],[5200,1450],[4700,2050],[3000,1950],[2550,2350],[3150,2800],[5050,2800],[5250,3550],[4300,3900],[1900,3800],[700,3150],[700,2050],[1900,1750],[800,1300]]},
-  {name:'空原オープン',theme:'wind',noWalls:true,path:[[750,750],[2800,500],[5000,900],[5250,2200],[4850,3500],[3000,3900],[1100,3500],[550,2300]]}
+  {name:'空原オープン',theme:'wind',noWalls:true,path:[[750,750],[2800,500],[5000,900],[5250,2200],[4850,3500],[3000,3900],[1100,3500],[550,2300]]},
+  {name:'風車スラローム',theme:'wind',halfWidth:230,path:[[700,700],[1800,520],[3000,900],[4200,520],[5150,1050],[4500,1650],[3300,1350],[2400,1850],[3300,2350],[4700,2200],[5200,3100],[4200,3850],[2600,3600],[1200,3900],[600,3000],[1050,2200],[650,1450]]}
  ],
  arena2:[
   {name:'水路ツインルート',theme:'water',branches:[[[2050,700],[2700,1250],[3350,1650],[4050,1250],[4550,900]],[[2050,700],[2350,1900],[3200,2450],[4100,2050],[4550,900]]],path:[[700,700],[2050,700],[4550,900],[5200,1600],[5000,3000],[4300,3800],[2600,3900],[900,3400],[600,2200]]},
   {name:'蓮の大回廊',theme:'water',path:[[650,850],[1700,500],[3300,500],[4850,850],[5300,1650],[4750,2300],[3550,2150],[3000,2650],[3800,3100],[5100,3000],[5250,3650],[3900,3950],[2200,3850],[850,3400],[550,2500],[950,1800],[2050,1650],[1550,1150]]},
-  {name:'水上フリーライン',theme:'water',noWalls:true,path:[[700,650],[3000,500],[5200,1100],[5000,3300],[3200,3900],[1000,3550],[550,2000]]}
+  {name:'水上フリーライン',theme:'water',noWalls:true,path:[[700,650],[3000,500],[5200,1100],[5000,3300],[3200,3900],[1000,3550],[550,2000]]},
+  {name:'蓮花ショートカット',theme:'water',halfWidth:255,path:[[700,800],[2500,520],[4800,800],[5150,1700],[4300,2300],[5100,3000],[4500,3800],[2800,3500],[1500,3950],[600,3100],[1100,2450],[600,1700]]}
  ],
  arena3:[
   {name:'はじめの森リング',theme:'forest',simple:true,path:[[900,850],[2800,550],[4700,850],[5150,2200],[4650,3500],[2800,3900],[950,3450],[550,2200]]},
   {name:'森の牙',theme:'forest',path:[[700,700],[1800,500],[3000,800],[4200,520],[5150,1050],[4550,1500],[3400,1350],[2850,1850],[3400,2300],[4900,2200],[5250,3000],[4500,3550],[3100,3300],[2550,3850],[1250,3700],[600,2950],[1050,2400],[1850,2500],[2200,1950],[1600,1500],[700,1550]]},
-  {name:'外壁なし・トンボ原',theme:'forest',noWalls:true,path:[[750,700],[2500,500],[4800,700],[5250,1800],[4600,2600],[5100,3500],[3200,3900],[1500,3700],[600,2800],[900,1700]]}
+  {name:'外壁なし・トンボ原',theme:'forest',noWalls:true,path:[[750,700],[2500,500],[4800,700],[5250,1800],[4600,2600],[5100,3500],[3200,3900],[1500,3700],[600,2800],[900,1700]]},
+  {name:'巨木の８の字',theme:'forest',halfWidth:250,extraAnchors:[[1850,900],[3000,1350],[4200,900],[4200,3100],[3000,2700],[1750,3200]],path:[[700,800],[1900,500],[3100,1300],[4300,500],[5200,1100],[4300,2100],[5200,3200],[4200,3900],[3000,3000],[1800,3900],[650,3200],[1600,2200],[650,1400]]}
  ],
  master:[
   {name:'魔王環状路',theme:'master',path:[[2800,500],[3800,520],[5100,900],[5300,1700],[4700,2250],[3600,1900],[2900,2350],[3550,3000],[5000,3000],[5200,3450],[4100,3950],[2600,3850],[1250,3500],[600,2800],[700,1850],[1350,1250],[700,700],[2100,480]]},
