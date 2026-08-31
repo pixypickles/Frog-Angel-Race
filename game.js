@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.15';
+const VERSION='v2.16';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -178,11 +178,11 @@ function buildObjectsForPath(pp){
   return {anchors:aa,lilies:ll};
 }
 function startShootingSkillEvent(place,skillId){
-  const forest=place==='forest',enemyNames=forest?['Azazel','Belial']:['Leviathan','Asmodeus'],enemyName=enemyNames[0];
+  const forest=place==='forest',enemyName=forest?'Azazel':'Leviathan';
   const pp=makeShootingCourse(place),objs=buildObjectsForPath(pp);
   shootingEvent={
     place,skillId,title:skillId==='burningWing'?'バーニングウィング':'バーニングクライム',
-    enemyNames,enemyName,hits:0,time:18,enemyClock:.7,shots:[],enemyShots:[],ended:false,
+    enemyName,hits:0,time:18,enemyClock:.7,shots:[],enemyShots:[],ended:false,
     path:pp,anchors:objs.anchors,lilies:objs.lilies,theme:forest?'forest':'water',
     player:makeRacer('Michael',CHARACTER_DATA.Michael.color,0,1500,2200),
     enemy:makeRacer(enemyName,CHARACTER_DATA[enemyName].color,1,4450,2200)
@@ -208,7 +208,7 @@ function updateShooting(dt){
   r.x=Math.max(350,Math.min(world.w-350,r.x));r.y=Math.max(350,Math.min(world.h-350,r.y));
   let t=performance.now()/1000;o.x=4050+Math.cos(t*.85)*900;o.y=2200+Math.sin(t*1.15)*1200;o.face=Math.atan2(r.y-o.y,r.x-o.x);
   q.enemyClock-=dt;if(q.enemyClock<=0){q.enemyClock=.9+Math.random()*.55;let ax=Math.atan2(r.y-o.y,r.x-o.x);q.enemyShots.push({kind:'bubble',x:o.x,y:o.y,vx:Math.cos(ax)*780,vy:Math.sin(ax)*780,owner:o,t:2.2});}
-  for(let i=q.shots.length-1;i>=0;i--){let e=q.shots[i];e.x+=e.vx*dt;e.y+=e.vy*dt;e.t-=dt;if(Math.hypot(e.x-o.x,e.y-o.y)<120){q.shots.splice(i,1);q.hits++;if(q.hits===3&&q.enemyNames?.[1]){q.enemyName=q.enemyNames[1];o.name=q.enemyName;o.color=CHARACTER_DATA[q.enemyName]?.color||o.color;msg((CHARACTER_DATA[q.enemyName]?.jp||q.enemyName)+' 交代！');}if(q.hits>=6){endShootingEvent(true);return;}}else if(e.t<=0)q.shots.splice(i,1);}
+  for(let i=q.shots.length-1;i>=0;i--){let e=q.shots[i];e.x+=e.vx*dt;e.y+=e.vy*dt;e.t-=dt;if(Math.hypot(e.x-o.x,e.y-o.y)<120){q.shots.splice(i,1);q.hits++;if(q.hits>=6){endShootingEvent(true);return;}}else if(e.t<=0)q.shots.splice(i,1);}
   for(let i=q.enemyShots.length-1;i>=0;i--){let e=q.enemyShots[i];e.x+=e.vx*dt;e.y+=e.vy*dt;e.t-=dt;if(Math.hypot(e.x-r.x,e.y-r.y)<110){q.enemyShots.splice(i,1);q.time=Math.max(0,q.time-.8);}else if(e.t<=0)q.enemyShots.splice(i,1);}
 }
 function drawEventCreature(r,name){
@@ -389,7 +389,7 @@ rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
-function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,courseWalk:0,timeStopUsed:false};}
+function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,courseWalk:0,timeStopUsed:false};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
 function reset(opponentName='Plain'){
  globalTimeStop=0;globalTimeLag=0;
@@ -420,7 +420,7 @@ function updateRacer(r,dt){
   r.tongueBoostFx=Math.max(0,(r.tongueBoostFx||0)-dt);
   r.tongueBoostTimer=Math.max(0,(r.tongueBoostTimer||0)-dt);
   if(r.tongueBoostTimer>0)r.speed=Math.min(maxSpeed+130,r.speed+360*dt);
-r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.highJump=Math.max(0,(r.highJump||0)-dt);r.normalHighJump=Math.max(0,(r.normalHighJump||0)-dt);r.confuse=Math.max(0,(r.confuse||0)-dt);r.burningWing=Math.max(0,(r.burningWing||0)-dt);if(r.charging)r.charge=Math.min(1.8,(r.charge||0)+dt);if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
+r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrace||0)-dt);r.highJump=Math.max(0,(r.highJump||0)-dt);r.normalHighJump=Math.max(0,(r.normalHighJump||0)-dt);r.confuse=Math.max(0,(r.confuse||0)-dt);r.burningWing=Math.max(0,(r.burningWing||0)-dt);if(r.charging)r.charge=Math.min(1.8,(r.charge||0)+dt);if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
  const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),turn=(turnGround*(1-ratio)+turnFast*ratio)*dt*(r.name==='Raphael'?1.22:1)*(r.highJump>0?.28:1);
  if(Math.abs(diff)<turn)r.face=want;else r.face+=Math.sign(diff)*turn;
  // AI flight rhythm
@@ -441,17 +441,27 @@ r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.highJump=Math.max(0,(r.highJump|
    r.x+=Math.cos(a)*105*dt;r.y+=Math.sin(a)*105*dt;
    if(hit.d<150){r.courseWalk=0;r.x=hit.qx;r.y=hit.qy;r.speed=0;if(!r.ai)msg('コース復帰！ もう一度ジャンプから');}
  }else if(r.highJump<=0&&hit.d>198){
-   // A high-jump can cross the grass. If it expires outside, the racer must walk back.
-   if((r.wasHighJump||0)>0){r.courseWalk=6;r.flight=0;r.onGround=true;r.speed=105;r.tongue=null;if(!r.ai)msg('コースアウト！ 歩いて復帰…');}
-   else{
-     let seg=nearestTrackSegment(hit.qx,hit.qy),a=path[seg.i],b=path[(seg.i+1)%path.length],ta=Math.atan2(b.y-a.y,b.x-a.x);
-     if(r.ai){
-       // CPU gets a deterministic recovery line instead of reflecting into the same wall forever.
-       r.x=hit.qx;r.y=hit.qy;r.face=ta;r.speed=Math.max(285,Math.min(r.speed*.62,390));r.bump=.12;
+   // A Burning Climb can cross the grass. If it expires outside, walk back as before.
+   if((r.wasHighJump||0)>0){
+     r.courseWalk=6;r.flight=0;r.onGround=true;r.speed=105;r.tongue=null;
+     if(!r.ai)msg('コースアウト！ 歩いて復帰…');
+   }else{
+     const seg=hit.i??nearestTrackSegment(hit.qx,hit.qy).i;
+     const a=path[seg],b=path[(seg+1)%path.length],ta=Math.atan2(b.y-a.y,b.x-a.x);
+     let tangent1=ta,tangent2=norm(ta+Math.PI);
+     let chosen=Math.abs(norm(tangent1-r.face))<=Math.abs(norm(tangent2-r.face))?tangent1:tangent2;
+     // Correct only the amount that actually penetrated the wall. Do NOT snap to the centerline.
+     let nx=(r.x-hit.qx)/(hit.d||1),ny=(r.y-hit.qy)/(hit.d||1);
+     const safeD=r.ai?172:176;
+     r.x=hit.qx+nx*safeD;r.y=hit.qy+ny*safeD;
+     r.face=lerpAngle(r.face,chosen,r.ai?.88:.72);
+     if(r.wallGrace<=0){
+       r.speed=r.ai?Math.max(255,Math.min(r.speed*.68,390)):Math.max(150,r.speed*.52);
+       r.wallGrace=r.ai?.34:.30;r.bump=.10;
+       if(!r.ai)msg('ガード草に接触！ 減速');
      }else{
-       // Player wall contact scrubs speed and guides along the wall; it no longer launches them far backwards.
-       let tangent1=ta,tangent2=norm(ta+Math.PI),chosen=Math.abs(norm(tangent1-r.face))<Math.abs(norm(tangent2-r.face))?tangent1:tangent2;
-       r.x=hit.qx;r.y=hit.qy;r.face=lerpAngle(r.face,chosen,.68);r.speed=Math.max(145,r.speed*.48);r.bump=.18;msg('ガード草に接触！ 減速');
+       // During the brief grace window, slide along the wall instead of taking another bounce.
+       r.speed=Math.max(r.ai?245:145,Math.min(r.speed,r.ai?390:330));
      }
    }
  }
@@ -480,8 +490,9 @@ function updateCheckpoint(r){
     const u=Math.abs(denom)<1e-6?0:(-long0/denom);
     const crossX=x0+(x1-x0)*u,crossY=y0+(y1-y0)*u;
     const lateral=(crossX-p0.x)*nx+(crossY-p0.y)*ny;
-    // Wide enough to cover the visible chequered goal strip and tongue-anchor racing line.
-    if(Math.abs(lateral)<=430){
+    // The finish sits beside a very tight tongue corner. Keep this gate intentionally broad:
+    // if the racer physically gets around that corner and crosses the finish plane, it counts.
+    if(Math.abs(lateral)<=900){
       if(long0<=0&&long1>0){
         r.lap++;
         if(r.lap>RACE_LAPS){
@@ -581,7 +592,7 @@ function updateEffects(dt){for(const e of effects){if(globalTimeStop>0&&e.owner!
  if(['bubble','rock','bewitch','poison','airball'].includes(e.kind)){e.x+=e.vx*edt;e.y+=e.vy*edt;let o=racers[1-e.owner.index],rad=e.kind==='rock'?23:21;if(Math.hypot(o.x-e.x,o.y-e.y)<o.r+rad){if(o.highJump>0){continue;}if(o.airBarrier>0&&e.kind!=='bewitch'){e.t=0;if(e.owner===racers[controlledIndex])msg('エアバリアに弾かれた！');continue;}if(e.kind==='bewitch'){o.confuse=2.2;if(e.owner===racers[controlledIndex])msg('惑いの瘴気ヒット！ 操作反転！');}else if(e.kind==='poison'){forceFall(o);if(e.owner===racers[controlledIndex])msg('毒液ヒット！ 相手が落下！');}else if(e.kind==='airball'){pushRival(o,Math.atan2(e.vy,e.vx),105);if(e.owner===racers[controlledIndex])msg('空気弾ヒット！');}else{pushRival(o,Math.atan2(e.vy,e.vx),e.kind==='rock'?175:70);if(e.owner===racers[controlledIndex])msg(e.kind==='rock'?'岩ヒット！ 大きく弾いた！':'泡弾ヒット！ 壁に押し出せ！');}e.t=0;}}
  if(e.kind==='poisonMist'){let o=racers[1-e.owner.index];if(Math.hypot(o.x-e.x,o.y-e.y)<70){if(o.highJump>0)continue;if(o.airBarrier>0)continue;forceFall(o);e.t=0;if(e.owner===racers[controlledIndex])msg('毒霧ヒット！ 相手が落下！');}}
  }effects=effects.filter(e=>e.t>0)}
-function trackInfo(px,py){let best={d:1e9,qx:0,qy:0};for(let i=0;i<path.length;i++){let a=path[i],b=path[(i+1)%path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);if(d<best.d)best={d,qx,qy}}return best}
+function trackInfo(px,py){let best={d:1e9,qx:0,qy:0,i:0,t:0};for(let i=0;i<path.length;i++){let a=path[i],b=path[(i+1)%path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);if(d<best.d)best={d,qx,qy,i,t}}return best}
 function trackDistance(px,py){return trackInfo(px,py).d}
 function draw(){
  let me=racers[controlledIndex],timeFx=globalTimeStop>0?'stop':(globalTimeLag>0?'lag':'');
