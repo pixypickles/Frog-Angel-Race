@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.17';
+const VERSION='v2.18';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -460,11 +460,15 @@ r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrac
      r.face=lerpAngle(r.face,toLook,r.ai?.92:.80);
      r.wallEscape=r.ai?.48:.42;
      if(r.wallGrace<=0){
-       r.speed=r.ai?Math.max(270,Math.min(r.speed*.66,395)):Math.max(155,r.speed*.50);
-       r.wallGrace=r.ai?.40:.36;r.bump=.08;
-       if(!r.ai)msg('ガード草に接触！ コースへ戻る');
+       // A hard wall hit kills the airborne momentum. These frogs settle to the ground once speed is lost.
+       r.speed=r.ai?135:70;
+       r.flight=0;r.onGround=true;r.glideClock=0;r.glideGrace=0;r.landAge=.28;r.tongue=null;
+       r.wallGrace=r.ai?.44:.40;r.bump=.08;
+       if(!r.ai)msg('ガード草に激突！ 勢いを失って着地');
      }else{
-       r.speed=Math.max(r.ai?255:150,Math.min(r.speed,r.ai?395:325));
+       // While escaping the acute corner, stay slow and grounded instead of rebounding.
+       r.speed=Math.min(r.speed,r.ai?150:85);
+       r.flight=0;r.onGround=true;
      }
    }
  }
