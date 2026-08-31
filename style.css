@@ -12,3 +12,52 @@ button small{display:block;font-size:10px;font-weight:600;opacity:.9}
 #versionBadge b{color:#fff7a8;margin-right:7px}
 #versionBadge small{font-size:9px;opacity:.82}
 @media(max-width:850px){#versionBadge{left:8px;top:45px;font-size:9px;padding:4px 6px;max-width:260px}#versionBadge small{font-size:7px}}
+
+
+.hidden{display:none!important}
+.screenLayer{position:absolute;inset:0;z-index:20}
+#titleScreen{display:grid;place-items:center;background:
+radial-gradient(circle at 50% 25%,#dffff0 0,#91d894 38%,#3f8b62 70%,#173a31 100%)}
+.titleCard{width:min(86vw,580px);padding:34px 28px 30px;text-align:center;background:#102820e8;border:3px solid #e8ffe8aa;border-radius:28px;box-shadow:0 18px 70px #0008}
+.titleFrog{font-size:54px}.titleCard h1{font-size:42px;margin:3px 0;color:#fff7a8;letter-spacing:2px}
+.titleSub{font-size:21px;font-weight:800;margin-bottom:6px}.titleVersion{font-size:13px;opacity:.8;margin-bottom:22px}
+.menuBtn{display:block;width:min(90%,360px);height:auto;min-height:58px;margin:12px auto;border-radius:18px;font-size:20px;padding:12px 18px;background:#3b785eee}
+.titleHint{font-size:12px;opacity:.75;margin-top:18px}
+
+#fieldScreen{background:linear-gradient(#92d5e6 0 24%,#6eba72 24% 100%);overflow:hidden}
+#fieldTop{position:absolute;left:18px;right:18px;top:14px;height:44px;padding:0 14px;display:flex;gap:18px;align-items:center;background:#102820df;border-radius:16px;z-index:3}
+#fieldTop #saveBtn{margin-left:auto}
+.smallUiBtn{border-radius:12px;padding:8px 12px;height:auto;width:auto;background:#315e54}
+#fieldMap{position:absolute;inset:72px 16px 18px;border:3px solid #d8ffd999;border-radius:24px;background:
+radial-gradient(circle at 72% 70%,#6ab7ca 0 8%,transparent 8.4%),
+radial-gradient(circle at 78% 70%,#6ab7ca 0 12%,transparent 12.4%),
+linear-gradient(135deg,#7fcf73,#59a967);overflow:hidden}
+.mapSpot{position:absolute;width:150px;height:92px;border-radius:24px;background:#173c32e6;z-index:2;font-size:26px}
+.mapSpot b,.mapSpot small{display:block}.mapSpot b{font-size:14px}.mapSpot small{font-size:9px;opacity:.8}
+.mapSpot.home{left:9%;top:56%}.mapSpot.a1{left:31%;top:16%}.mapSpot.a2{left:56%;top:17%}.mapSpot.a3{left:75%;top:39%}
+.mapSpot.practice{left:26%;top:66%}.mapSpot.forest{left:55%;top:63%}.mapSpot.pond{left:76%;top:69%}
+.mapPath{position:absolute;height:14px;background:#d9bd79;border-radius:20px;transform-origin:left center;opacity:.85}
+.mapPath.p1{left:19%;top:58%;width:250px;transform:rotate(-45deg)}
+.mapPath.p2{left:42%;top:29%;width:235px;transform:rotate(2deg)}
+.mapPath.p3{left:67%;top:29%;width:190px;transform:rotate(31deg)}
+.mapPath.p4{left:19%;top:64%;width:300px;transform:rotate(13deg)}
+.mapPath.p5{left:48%;top:69%;width:340px;transform:rotate(3deg)}
+
+.panelLayer{display:grid;place-items:center;background:#102820b8}
+.panelCard{width:min(88vw,760px);max-height:86vh;overflow:auto;padding:26px;background:#eaffee;color:#17352d;border-radius:24px;border:4px solid #4b8f65;box-shadow:0 20px 60px #0008}
+.panelCard h2{margin-top:0;text-align:center}.homeCols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.homeBox{background:#fff;border:2px solid #84b995;border-radius:18px;padding:16px}
+.charBtn{width:100%;height:auto;min-height:66px;margin:8px 0;border-radius:16px;background:#4f806b}
+.charBtn.selected{outline:4px solid #f6cf56}.charBtn small{font-size:10px}
+.homeBox label{display:block;font-weight:800;margin:12px 0}.homeBox select{width:100%;padding:9px;border-radius:10px}
+.panelNote{font-size:11px;opacity:.7}.panelCard .menuBtn{background:#40765f}
+
+#raceUi{position:absolute;inset:0;z-index:10;pointer-events:none}
+#raceUi #stick,#raceUi #actions,#raceUi #swap,#raceUi #quitRace{pointer-events:auto}
+#quitRace{position:absolute;right:24px;top:108px;z-index:8}
+#versionBadge{z-index:40}
+@media(max-width:850px){
+ .titleCard h1{font-size:28px}.titleFrog{font-size:38px}
+ .mapSpot{width:105px;height:70px;font-size:20px}.mapSpot b{font-size:11px}.mapSpot small{font-size:7px}
+ .homeCols{grid-template-columns:1fr}.panelCard{padding:16px}
+}
