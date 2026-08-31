@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v1.9';
+const VERSION='v2.0';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -35,7 +35,7 @@ let saveData={
   selectedCharacter:'Michael',
   michaelSkillA:'punch',
   michaelSkillB:'bubble',
-  unlockedSkills:['punch','bubble','dash','feather'],
+  unlockedSkills:['punch','bubble'],encountered:['Plain'],
   wins:0,
   arenaWins:0,
   tournamentWins:{},masterUnlocked:false,kawazuUnlocked:false
@@ -45,6 +45,8 @@ function loadSave(){
   try{
     const raw=localStorage.getItem('angelFrogRaceSave');
     if(raw) saveData={...saveData,...JSON.parse(raw)};
+    saveData.encountered=saveData.encountered||['Plain'];
+    saveData.unlockedSkills=saveData.unlockedSkills||['punch','bubble'];
   }catch(e){}
 }
 function saveGame(){
@@ -63,13 +65,45 @@ function showField(){
   appState='field';hideAllScreens();document.querySelector('#fieldScreen')?.classList.remove('hidden');
   document.querySelector('#versionBadge')?.classList.remove('hidden');
   updateFieldUi();
+  let kb=document.querySelector('.mapSpot.kawazu');
+  if(saveData.kawazuUnlocked&&!kb){
+    kb=document.createElement('button');kb.className='mapSpot kawazu';kb.dataset.place='kawazu';kb.innerHTML='🐸<b>カワズさん</b><small>クリア後</small>';
+    kb.addEventListener('click',()=>showPlace('kawazu'));document.querySelector('#fieldMap')?.appendChild(kb);
+  }
 }
 function updateFieldUi(){
   const n=saveData.selectedCharacter==='Michael'?'ミカエル':'ガブリエル';
   const el=document.querySelector('#fieldPlayer');if(el)el.textContent='操作：'+n;
 }
+const LEARNABLE_SKILLS={
+ Gabriel:[['waterBoost','水ブースト','A'],['waterLaser','水レーザー','B']],
+ Raphael:[['airBarrier','エアバリア','A'],['airBoost','エアブースト','B']],
+ Uriel:[['tackle','タックル','A'],['rockFall','ロックフォール','B']],
+ Lucifer:[['smashDown','叩き落とし','A'],['chargeBoost','チャージブースト','B']],
+ Lilith:[['kick','キック','A'],['bewitch','惑いの瘴気','B']],
+ Beelzebub:[['poisonShot','毒液','A'],['poisonBoost','ポイズンブースト','B']]
+};
+function rebuildSkillSelects(){
+ const a=document.querySelector('#skillASelect'),b=document.querySelector('#skillBSelect');if(!a||!b)return;
+ const optsA=[['punch','パンチ']],optsB=[['bubble','泡弾']];
+ for(const [who,list] of Object.entries(LEARNABLE_SKILLS))for(const [id,label,slot] of list)if(saveData.unlockedSkills.includes(id))(slot==='A'?optsA:optsB).push([id,label+'（'+CHARACTER_DATA[who].jp+'）']);
+ a.innerHTML=optsA.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');
+ b.innerHTML=optsB.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');
+ if(!optsA.some(x=>x[0]===saveData.michaelSkillA))saveData.michaelSkillA='punch';
+ if(!optsB.some(x=>x[0]===saveData.michaelSkillB))saveData.michaelSkillB='bubble';
+ a.value=saveData.michaelSkillA;b.value=saveData.michaelSkillB;
+}
+function learnFromOpponent(name){
+ const list=LEARNABLE_SKILLS[name];if(!list)return false;let learned=[];
+ for(const [id,label] of list)if(!saveData.unlockedSkills.includes(id)){saveData.unlockedSkills.push(id);learned.push(label);}
+ if(learned.length){saveGame();return learned;}return false;
+}
+
 function showHome(){
   appState='home';hideAllScreens();document.querySelector('#fieldScreen')?.classList.remove('hidden');document.querySelector('#homePanel')?.classList.remove('hidden');
+  document.querySelector('#kawazuCharBtn')?.classList.toggle('hidden',!saveData.kawazuUnlocked);
+  if(!saveData.kawazuUnlocked&&saveData.selectedCharacter==='Kawazu')saveData.selectedCharacter='Michael';
+  rebuildSkillSelects();
   document.querySelectorAll('.charBtn').forEach(b=>b.classList.toggle('selected',b.dataset.char===saveData.selectedCharacter));
   const a=document.querySelector('#skillASelect'),b=document.querySelector('#skillBSelect');
   if(a)a.value=saveData.michaelSkillA;if(b)b.value=saveData.michaelSkillB;
@@ -89,16 +123,14 @@ function showPlace(place){
   document.querySelector('#placeTitle').textContent=data[0];
   document.querySelector('#placeDesc').textContent=data[1];
   const actions=document.querySelector('#placeActions');actions.innerHTML='';
-  if(place.startsWith('arena')||place==='practice'||place==='master'){
+  if(place==='practice'){const box=document.createElement('div');box.className='homeBox';box.innerHTML='<b>練習相手を選択</b><p class="panelNote">これまで大会で対戦した相手から選べます。</p>';for(const n of (saveData.encountered||['Plain'])){const q=document.createElement('button');q.className='menuBtn';q.textContent=CHARACTER_DATA[n]?.jp||n;q.onclick=()=>{tournament=null;startRaceRound(n,true)};box.appendChild(q)}actions.appendChild(box);}else if(place.startsWith('arena')||place==='master'||place==='kawazu'){
     const b=document.createElement('button');b.className='menuBtn';b.textContent=place==='practice'?'練習を始める':(place==='master'?'ベルゼブブさんに挑戦':(place==='kawazu'?'カワズさんに挑戦':'2回戦大会に参加'));
     b.onclick=()=>startRace(place==='practice');
     actions.appendChild(b);
   }else{
     const p=document.createElement('div');p.className='homeBox';
-    p.innerHTML=place==='forest'
-      ?'<b>森イベント</b><p>現在はエリア入口まで実装。レース勝利後にイベントを発生させる土台として使用します。</p><p>予定：アザゼル／ベリアル → 新スキル獲得</p>'
-      :'<b>池イベント</b><p>現在はエリア入口まで実装。レース勝利後にイベントを発生させる土台として使用します。</p><p>予定：リヴィア／アスモデウス → 新スキル獲得</p>';
-    actions.appendChild(p);
+    p.innerHTML='<b>'+(place==='forest'?'森':'池')+'の交流イベント</b><p>対戦したことのある相手から、その相手のスキルをミカエルさんが教わります。</p>';
+    let any=false;for(const n of (saveData.encountered||[])){if(!LEARNABLE_SKILLS[n])continue;any=true;const q=document.createElement('button');q.className='menuBtn';let list=LEARNABLE_SKILLS[n],done=list.every(x=>saveData.unlockedSkills.includes(x[0]));q.textContent=(CHARACTER_DATA[n]?.jp||n)+(done?'（習得済み）':'から教わる');q.disabled=done;q.onclick=()=>{let got=learnFromOpponent(n);q.textContent=got?(got.join('・')+'を習得！'):'習得済み';q.disabled=true;};p.appendChild(q)}if(!any)p.innerHTML+='<p>まだスキルを教えてくれる相手と対戦していません。</p>';actions.appendChild(p);
   }
 }
 function applySelectedCharacter(){
@@ -118,6 +150,7 @@ function startRace(practice=false){
 function startRaceRound(opponent,practice=false){
   appState='race';hideAllScreens();document.querySelector('#raceUi')?.classList.remove('hidden');
   reset(opponent);applyMichaelSkills();finished=false;
+  saveData.encountered=saveData.encountered||['Plain'];if(!saveData.encountered.includes(opponent)){saveData.encountered.push(opponent);saveGame();}
   racers.forEach(r=>{r.lap=1;r.cp=1;r.finished=false;r.speed=0;});
   msg(practice?'練習開始！':'大会 '+(tournament.round+1)+'回戦 / '+tournament.opponents.length+'　VS '+(CHARACTER_DATA[opponent]?.jp||opponent));
 }
@@ -133,24 +166,26 @@ function showRaceResult(win){
    saveData.tournamentWins=saveData.tournamentWins||{};
    saveData.tournamentWins[tournament.place]=(saveData.tournamentWins[tournament.place]||0)+1;
    const cleared=Object.keys(saveData.tournamentWins).filter(k=>k.startsWith('arena')&&saveData.tournamentWins[k]>0).length;
-   if(cleared>=3)saveData.masterUnlocked=true;if(tournament.place==='master')saveData.kawazuUnlocked=true;
+   if(cleared>=3)saveData.masterUnlocked=true;
    saveGame();let wasMaster=tournament.place==='master';tournament=null;if(wasMaster&&!saveData.endingSeen){saveData.endingSeen=true;saveGame();setTimeout(()=>playStory('ending'),450);}else setTimeout(showField,450);
  }
 }
 
 const OPENING_STORY=[
- {v:'🌆　🧑‍💼　🪷🐸',t:'仕事帰りの疲れた河津一郎は、池を眺めていた。'},
- {v:'🧑‍💼　　👀　　🐸',t:'1匹のカエルが目に映る。'},
- {v:'🧑‍💼💭　　🐸',t:'「いいよなー、あいつらは気楽で。」'},
- {v:'🧑‍💼💭　🐸💨🐸',t:'「いや、あいつらはあいつらで、厳しい世界を生きてるのかもしれない。」'},
+ {v:'🌆　🪷　🐸',t:'仕事帰りの疲れた河津一郎は、池を眺めていた。'},
+ {v:'🐸　　👀　　🐸',t:'1匹のカエルが目に映る。'},
+ {v:'🐸💭　　🐸',t:'「いいよなー、あいつらは気楽で。」'},
+ {v:'🐸💭　🐸💨🐸',t:'「いや、あいつらはあいつらで、厳しい世界を生きてるのかもしれない。」'},
  {v:'💭　🐸🪽　🏁　🐸🪽　💭',t:'河津一郎は妄想をはじめた。'}
 ];
 const ENDING_STORY=[
- {v:'🌇　🧑‍💼　🪷🐸',t:'長いレースの妄想を終え、河津一郎はもう一度、池を見た。'},
- {v:'🧑‍💼✨　　🪷',t:'「おれも負けてられないな。」'},
- {v:'🧑‍💼　➡️　🌊',t:'河津一郎は池へと飛び込んだ。'},
+ {v:'🌇　🐸　🪷',t:'長いレースの妄想を終え、河津一郎はもう一度、池を見た。'},
+ {v:'🐸✨　　🪷',t:'「おれも負けてられないな。」'},
+ {v:'🐸　➡️　🌊',t:'河津一郎は池へと飛び込んだ。'},
  {v:'🌊　🐸💨💨💨',t:'河津一郎の小さな緑の体の泳ぎは、この池のどのカエルよりも速かった。'},
- {v:'🐸🔴　🪽　✨',t:'河津一郎、いや――\n\nカワズさん参戦！'}
+ {v:'🐸🔴　🪽　✨',t:'河津一郎、いや――
+
+カワズさん参戦！'}
 ];
 let storyMode='',storyIndex=0;
 function playStory(mode){
@@ -176,7 +211,7 @@ function setupMetaUi(){
   document.querySelector('#storyNext')?.addEventListener('click',nextStory);
   document.querySelector('#continueBtn')?.addEventListener('click',()=>{loadSave();showField();});
   document.querySelector('#newBtn')?.addEventListener('click',()=>{
-    saveData={started:true,selectedCharacter:'Michael',michaelSkillA:'punch',michaelSkillB:'bubble',unlockedSkills:['punch','bubble','dash','feather'],wins:0,arenaWins:0,tournamentWins:{},masterUnlocked:false,kawazuUnlocked:false};
+    saveData={started:true,selectedCharacter:'Michael',michaelSkillA:'punch',michaelSkillB:'bubble',unlockedSkills:['punch','bubble'],encountered:['Plain'],wins:0,arenaWins:0,tournamentWins:{},masterUnlocked:false,kawazuUnlocked:false};
     saveGame();playStory('opening');
   });
   document.querySelector('#saveBtn')?.addEventListener('click',saveGame);
@@ -185,7 +220,7 @@ function setupMetaUi(){
   }));
   document.querySelectorAll('.backFieldBtn').forEach(b=>b.addEventListener('click',showField));
   document.querySelectorAll('.charBtn').forEach(b=>b.addEventListener('click',()=>{
-    saveData.selectedCharacter=b.dataset.char;
+    if(b.dataset.char==='Kawazu'&&!saveData.kawazuUnlocked)return;saveData.selectedCharacter=b.dataset.char;
     document.querySelectorAll('.charBtn').forEach(x=>x.classList.toggle('selected',x===b));
     saveGame();updateFieldUi();
   }));
@@ -284,6 +319,13 @@ function useA(r){if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-
  if(r.name==='Lucifer'){r.skillCdA=2.1;let o=racers[1-r.index],d=Math.hypot(o.x-r.x,o.y-r.y);if(d<105){o.flight=0;o.onGround=true;o.glideClock=0;o.speed=Math.min(o.speed,300);o.landAge=.28;msg('叩き落とし！ 相手を地上へ！')}else msg('叩き落とし！');return;}
  if(r.name==='Lilith'){r.skillCdA=1.8;let o=racers[1-r.index],dx=o.x-r.x,dy=o.y-r.y,d=Math.hypot(dx,dy),behind=Math.cos(norm(Math.atan2(dy,dx)-r.face))<-.15;if(d<135&&behind){pushRival(o,r.face+Math.PI,105);o.hitSlow=.55;r.speed=Math.min(maxSpeed+85,r.speed+95);r.boost=.4;msg('キック！ 蹴って加速！')}else msg('キック！ 後ろの相手を狙う');return;}
  if(r.name==='Uriel'){r.skillCdA=2.4;let inp=desiredInput(r),side=Math.sign(Math.sin(norm(Math.atan2(inp.y,inp.x)-r.face))||1),a=r.face+side*Math.PI/2;r.x+=Math.cos(a)*82;r.y+=Math.sin(a)*82;let o=racers[1-r.index];if(Math.hypot(o.x-r.x,o.y-r.y)<105)pushRival(o,a,145);msg('タックル！ 横へ強く踏み込む');return;}
+ if(r.name==='Michael'&&r.customSkillA!=='punch'){let id=r.customSkillA;
+ if(id==='waterBoost'){waterBoost(r,false);return;}if(id==='airBarrier'){r.skillCdA=4.2;r.airBarrier=2;msg('エアバリア！');return;}
+ if(id==='tackle'){r.skillCdA=2.4;let inp=desiredInput(r),side=Math.sign(Math.sin(norm(Math.atan2(inp.y,inp.x)-r.face))||1),a=r.face+side*Math.PI/2;r.x+=Math.cos(a)*82;r.y+=Math.sin(a)*82;msg('タックル！');return;}
+ if(id==='smashDown'){r.skillCdA=2.1;let o=racers[1-r.index];if(Math.hypot(o.x-r.x,o.y-r.y)<105)forceFall(o);msg('叩き落とし！');return;}
+ if(id==='kick'){r.skillCdA=1.8;r.speed=Math.min(maxSpeed+85,r.speed+80);msg('キック！');return;}
+ if(id==='poisonShot'){r.skillCdA=1.45;let o=racers[1-r.index],aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'poison',x:r.x,y:r.y,vx:Math.cos(aim)*980,vy:Math.sin(aim)*980,owner:r,t:1.65,age:0});msg('毒液！');return;}
+ }
  if(r.customSkillA==='dash'&&r.name==='Michael'){r.skillCdA=2.6;r.speed=Math.min(maxSpeed+105,r.speed+105);r.boost=.45;msg('天使ダッシュ！');return;}
  r.skillCdA=1.35;let o=racers[1-r.index],d=Math.hypot(o.x-r.x,o.y-r.y);if(d<90){pushRival(o,r.face,78*(r.power||1));msg('パンチ！ 相手を横へ弾いた');}else msg('パンチ！');
 }
@@ -295,6 +337,12 @@ function useB(r){if(r.skillCdB>0)return;if(r.name==='Beelzebub'){let o=racers[1-
  if(r.name==='Lucifer'){startChargeBoost(r);return;}
  if(r.name==='Lilith'){r.skillCdB=2.0;let o=racers[1-r.index],aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'bewitch',x:r.x,y:r.y,vx:Math.cos(aim)*900,vy:Math.sin(aim)*900,owner:r,t:1.55,age:0});msg('惑いの瘴気！');return;}
  if(r.name==='Uriel'){r.skillCdB=2.1;let o=racers[1-r.index],aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'rock',x:r.x,y:r.y,vx:Math.cos(aim)*760,vy:Math.sin(aim)*760,owner:r,t:1.4,age:0});msg('ロックフォール！');return;}
+ if(r.name==='Michael'&&r.customSkillB!=='bubble'){let id=r.customSkillB;
+ if(id==='waterLaser'){waterSkill(r,true,false);return;}if(id==='airBoost'){r.skillCdB=1.2;r.speed=Math.min(maxSpeed+150,r.speed+150);r.boost=.7;msg('エアブースト！');return;}
+ if(id==='rockFall'){r.skillCdB=2.1;let o=racers[1-r.index],aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'rock',x:r.x,y:r.y,vx:Math.cos(aim)*760,vy:Math.sin(aim)*760,owner:r,t:1.4,age:0});msg('ロックフォール！');return;}
+ if(id==='chargeBoost'){startChargeBoost(r);return;}if(id==='bewitch'){r.skillCdB=2;let o=racers[1-r.index],aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'bewitch',x:r.x,y:r.y,vx:Math.cos(aim)*900,vy:Math.sin(aim)*900,owner:r,t:1.55,age:0});msg('惑いの瘴気！');return;}
+ if(id==='poisonBoost'){r.skillCdB=2.5;r.speed=Math.min(maxSpeed+155,r.speed+150);r.boost=.72;effects.push({kind:'poisonMist',x:r.x-Math.cos(r.face)*35,y:r.y-Math.sin(r.face)*35,owner:r,t:4,max:4});msg('ポイズンブースト！');return;}
+ }
  if(r.customSkillB==='feather'&&r.name==='Michael'){r.skillCdB=3.0;r.speed=Math.min(maxSpeed+120,r.speed+125);r.boost=.55;msg('羽根ブースト！');return;}
  r.skillCdB=.9;let o=racers[1-r.index],aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'bubble',x:r.x,y:r.y,vx:Math.cos(aim)*1250,vy:Math.sin(aim)*1250,owner:r,t:1.65});msg('泡弾！ 自動照準');
 }

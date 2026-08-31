@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#173a31"><title>天使カエル・レース Prototype v1.9</title><link rel="stylesheet" href="style.css"></head>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#173a31"><title>天使カエル・レース Prototype v2.0</title><link rel="stylesheet" href="style.css"></head>
 
 <body>
 <main id="app">
@@ -10,7 +10,7 @@
       <div class="titleFrog">🐸🪽</div>
       <h1>ANGEL FROG RACE</h1>
       <div class="titleSub">天使カエル・レース</div>
-      <div class="titleVersion">Prototype v1.9</div>
+      <div class="titleVersion">Prototype v2.0</div>
       <button id="continueBtn" class="menuBtn">続きから</button>
       <button id="newBtn" class="menuBtn">はじめから</button>
       <div class="titleHint">フィールドを歩いて、競技場・森・池へ</div>
@@ -43,7 +43,6 @@
       <button class="mapSpot forest" data-place="forest">🌲<b>森</b><small>イベント</small></button>
       <button class="mapSpot pond" data-place="pond">🪷<b>池</b><small>イベント</small></button>
       <button class="mapSpot master" data-place="master">👑<b>マスタークラス</b><small>ベルゼブブさん</small></button>
-      <button class="mapSpot kawazu" data-place="kawazu">🐸<b>カワズさん</b><small>クリア後</small></button>
       <div class="mapPath p1"></div><div class="mapPath p2"></div><div class="mapPath p3"></div>
       <div class="mapPath p4"></div><div class="mapPath p5"></div>
     </div>
@@ -56,8 +55,9 @@
         <div class="homeBox">
           <h3>操作キャラクター</h3>
           <div id="charSelect">
-            <button class="charBtn" data-char="Michael">ミカエル<small>標準・スキル変更可</small></button>
-            <button class="charBtn" data-char="Gabriel">ガブリエル<small>初心者向け・水スキル固定</small></button>
+            <button class="charBtn" data-char="Michael">ミカエルさん<small>標準・スキル変更可</small></button>
+            <button class="charBtn" data-char="Gabriel">ガブリエルさん<small>初心者向け・水スキル固定</small></button>
+            <button id="kawazuCharBtn" class="charBtn hidden" data-char="Kawazu">カワズさん<small>クリア後・高速タイプ</small></button>
           </div>
         </div>
         <div class="homeBox">
@@ -65,16 +65,16 @@
           <label>A
             <select id="skillASelect">
               <option value="punch">パンチ</option>
-              <option value="dash">天使ダッシュ（仮）</option>
+              
             </select>
           </label>
           <label>B
             <select id="skillBSelect">
               <option value="bubble">泡弾</option>
-              <option value="feather">羽根ブースト（仮）</option>
+              
             </select>
           </label>
-          <p class="panelNote">※追加スキルは森・池イベントで獲得予定。現状は仮スキルも選択できます。</p>
+          <p class="panelNote">対戦した相手のイベントでスキルを習得できます。ミカエルさん固有スキルも今後追加予定。</p>
         </div>
       </div>
       <button class="backFieldBtn menuBtn">フィールドへ戻る</button>
@@ -104,7 +104,7 @@
     <div id="help">左スティック：旋回　ジャンプ×3：最高速滑空　舌：コーナー木を最優先／ライバルにも命中</div>
   </div>
 
-  <div id="versionBadge"><b>v1.9</b><small>v1.8 ベルゼブブ・カワズ / v1.7 大会 / v1.6 キャラ追加</small></div>
+  <div id="versionBadge"><b>v2.0</b><small>v1.9 ストーリー / v1.8 ボス / v1.7 大会</small></div>
 </main>
 <script src="game.js"></script>
 </body></html>
