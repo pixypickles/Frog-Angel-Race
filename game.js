@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.1';
+const VERSION='v2.2';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -75,24 +75,29 @@ function updateFieldUi(){
   const n=saveData.selectedCharacter==='Michael'?'ミカエル':'ガブリエル';
   const el=document.querySelector('#fieldPlayer');if(el)el.textContent='操作：'+n;
 }
-const MICHAEL_ORIGINAL_SKILLS=[['burningWing','バーニングウィング','A']];
+const MICHAEL_ORIGINAL_SKILLS=[['burningWing','バーニングウィング']];
 const LEARNABLE_SKILLS={
- Gabriel:[['waterBoost','水ブースト','A'],['waterLaser','水レーザー','B']],
- Raphael:[['airBarrier','エアバリア','A'],['airBoost','エアブースト','B']],
- Uriel:[['tackle','タックル','A'],['rockFall','ロックフォール','B']],
- Lucifer:[['smashDown','叩き落とし','A'],['chargeBoost','チャージブースト','B']],
- Lilith:[['kick','キック','A'],['bewitch','惑いの瘴気','B']],
- Beelzebub:[['poisonShot','毒液','A'],['poisonBoost','ポイズンブースト','B']]
+ Gabriel:[['waterBoost','水ブースト'],['waterLaser','水レーザー']],
+ Raphael:[['airBarrier','エアバリア'],['airBoost','エアブースト']],
+ Uriel:[['tackle','タックル'],['rockFall','ロックフォール']],
+ Lucifer:[['smashDown','叩き落とし'],['chargeBoost','チャージブースト']],
+ Lilith:[['kick','キック'],['bewitch','惑いの瘴気']],
+ Beelzebub:[['poisonShot','毒液'],['poisonBoost','ポイズンブースト']]
 };
+function skillLabel(id){
+ const base={punch:'パンチ',bubble:'泡弾',burningWing:'バーニングウィング（ミカエルさん固有）'};if(base[id])return base[id];
+ for(const [who,list] of Object.entries(LEARNABLE_SKILLS)){let x=list.find(v=>v[0]===id);if(x)return x[1]+'（'+CHARACTER_DATA[who].jp+'）';}
+ return id;
+}
 function rebuildSkillSelects(){
  const a=document.querySelector('#skillASelect'),b=document.querySelector('#skillBSelect');if(!a||!b)return;
- const optsA=[['punch','パンチ']],optsB=[['bubble','泡弾']];
- if(saveData.unlockedSkills.includes('burningWing'))optsA.push(['burningWing','バーニングウィング（ミカエルさん固有）']);
- for(const [who,list] of Object.entries(LEARNABLE_SKILLS))for(const [id,label,slot] of list)if(saveData.unlockedSkills.includes(id))(slot==='A'?optsA:optsB).push([id,label+'（'+CHARACTER_DATA[who].jp+'）']);
- a.innerHTML=optsA.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');
- b.innerHTML=optsB.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');
- if(!optsA.some(x=>x[0]===saveData.michaelSkillA))saveData.michaelSkillA='punch';
- if(!optsB.some(x=>x[0]===saveData.michaelSkillB))saveData.michaelSkillB='bubble';
+ let ids=['punch','bubble',...(saveData.unlockedSkills||[]).filter(x=>!['punch','bubble'].includes(x))];
+ ids=[...new Set(ids)];
+ const html=ids.map(id=>`<option value="${id}">${skillLabel(id)}</option>`).join('');
+ a.innerHTML=html;b.innerHTML=html;
+ if(!ids.includes(saveData.michaelSkillA))saveData.michaelSkillA='punch';
+ if(!ids.includes(saveData.michaelSkillB))saveData.michaelSkillB='bubble';
+ if(saveData.michaelSkillA===saveData.michaelSkillB)saveData.michaelSkillB=saveData.michaelSkillA==='bubble'?'punch':'bubble';
  a.value=saveData.michaelSkillA;b.value=saveData.michaelSkillB;
 }
 function learnFromOpponent(name){
@@ -226,8 +231,8 @@ function setupMetaUi(){
     document.querySelectorAll('.charBtn').forEach(x=>x.classList.toggle('selected',x===b));
     saveGame();updateFieldUi();
   }));
-  document.querySelector('#skillASelect')?.addEventListener('change',e=>{saveData.michaelSkillA=e.target.value;saveGame();});
-  document.querySelector('#skillBSelect')?.addEventListener('change',e=>{saveData.michaelSkillB=e.target.value;saveGame();});
+  document.querySelector('#skillASelect')?.addEventListener('change',e=>{let old=saveData.michaelSkillA;if(e.target.value===saveData.michaelSkillB)saveData.michaelSkillB=old;saveData.michaelSkillA=e.target.value;saveGame();rebuildSkillSelects();});
+  document.querySelector('#skillBSelect')?.addEventListener('change',e=>{let old=saveData.michaelSkillB;if(e.target.value===saveData.michaelSkillA)saveData.michaelSkillA=old;saveData.michaelSkillB=e.target.value;saveGame();rebuildSkillSelects();});
   document.querySelector('#quitRace')?.addEventListener('click',showField);
   showTitle();
 }
@@ -313,7 +318,27 @@ function startTongue(r){if(r.finished)return;const TONGUE_ANCHOR_RANGE=330;let a
 function endTongue(r){if(!r.tongue)return;if(r.tongue.kind==='anchor'){let held=(performance.now()-r.tongue.started)/1000;if(held<.35)msg('舌を離すのが早い！ 外へ膨らむ');else if(held>.98){r.speed*=.82;msg('離すのが遅い！ 木に引かれて減速');}else{r.boost=.18;msg('ナイス舌ターン！');}}r.tongue=null;}
 function nearestAnchor(r,range){let best=null,bd=1e9;for(const a of anchors){let d=Math.hypot(a.x-r.x,a.y-r.y),front=Math.cos(norm(Math.atan2(a.y-r.y,a.x-r.x)-r.face));if(d<range&&d<bd&&front>-.25){best=a;bd=d}}return best;}
 function forceFall(o){forceFall(o);}
-function useA(r){if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
+function useMichaelSkill(r,id,slot){
+ let cdKey=slot==='A'?'skillCdA':'skillCdB';if(r[cdKey]>0)return true;
+ let o=racers[1-r.index];
+ if(id==='punch'){r[cdKey]=1.35;let d=Math.hypot(o.x-r.x,o.y-r.y);if(d<90){pushRival(o,r.face,78);msg('パンチ！ 相手を横へ弾いた');}else msg('パンチ！');return true;}
+ if(id==='bubble'){r[cdKey]=.9;let aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'bubble',x:r.x,y:r.y,vx:Math.cos(aim)*1250,vy:Math.sin(aim)*1250,owner:r,t:1.65});msg('泡弾！ 自動照準');return true;}
+ if(id==='burningWing'){r[cdKey]=3;r.burningWing=1.25;r.speed=Math.min(maxSpeed+145,r.speed+150);r.boost=1;msg('バーニングウィング！');return true;}
+ if(id==='waterBoost'){r[cdKey]=1.15;r.speed=Math.min(maxSpeed+65,r.speed+58);r.boost=Math.max(r.boost||0,.34);effects.push({kind:'waterBoost',x:r.x-Math.cos(r.face)*18,y:r.y-Math.sin(r.face)*18,a:r.face+Math.PI,t:.32,max:.32,owner:r});msg('後方放水ブースト！');return true;}
+ if(id==='waterLaser'){r[cdKey]=2.25;let inp=desiredInput(r),desired=Math.atan2(inp.y,inp.x),side=Math.sign(norm(desired-r.face)||1),recoil=r.face+side*Math.PI/2;r.face=norm(r.face+side*.62);r.x+=Math.cos(recoil)*48;r.y+=Math.sin(recoil)*48;r.speed=Math.min(maxSpeed+20,r.speed+36);effects.push({kind:'laser',x:r.x,y:r.y,a:recoil+Math.PI,t:.23,max:.23,owner:r});msg('水レーザー反動！');return true;}
+ if(id==='airBarrier'){r[cdKey]=4.2;r.airBarrier=2;msg('エアバリア！');return true;}
+ if(id==='airBoost'){r[cdKey]=1.2;r.speed=Math.min(maxSpeed+150,r.speed+150);r.boost=.7;msg('エアブースト！');return true;}
+ if(id==='tackle'){r[cdKey]=2.4;let inp=desiredInput(r),side=Math.sign(Math.sin(norm(Math.atan2(inp.y,inp.x)-r.face))||1),a=r.face+side*Math.PI/2;r.x+=Math.cos(a)*82;r.y+=Math.sin(a)*82;if(Math.hypot(o.x-r.x,o.y-r.y)<105)pushRival(o,a,145);msg('タックル！');return true;}
+ if(id==='rockFall'){r[cdKey]=2.1;let aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'rock',x:r.x,y:r.y,vx:Math.cos(aim)*760,vy:Math.sin(aim)*760,owner:r,t:1.4,age:0});msg('ロックフォール！');return true;}
+ if(id==='smashDown'){r[cdKey]=2.1;if(Math.hypot(o.x-r.x,o.y-r.y)<105){forceFall(o);msg('叩き落とし！')}else msg('叩き落とし！');return true;}
+ if(id==='chargeBoost'){startChargeBoost(r);return true;}
+ if(id==='kick'){r[cdKey]=1.8;let dx=o.x-r.x,dy=o.y-r.y,d=Math.hypot(dx,dy),behind=Math.cos(norm(Math.atan2(dy,dx)-r.face))<-.15;if(d<135&&behind){pushRival(o,r.face+Math.PI,105);o.hitSlow=.55;r.speed=Math.min(maxSpeed+85,r.speed+95);r.boost=.4;msg('キック！')}else msg('キック！');return true;}
+ if(id==='bewitch'){r[cdKey]=2;let aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'bewitch',x:r.x,y:r.y,vx:Math.cos(aim)*900,vy:Math.sin(aim)*900,owner:r,t:1.55,age:0});msg('惑いの瘴気！');return true;}
+ if(id==='poisonShot'){r[cdKey]=1.45;let aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'poison',x:r.x,y:r.y,vx:Math.cos(aim)*980,vy:Math.sin(aim)*980,owner:r,t:1.65,age:0});msg('毒液！');return true;}
+ if(id==='poisonBoost'){r[cdKey]=2.5;r.speed=Math.min(maxSpeed+155,r.speed+150);r.boost=.72;effects.push({kind:'poisonMist',x:r.x-Math.cos(r.face)*35,y:r.y-Math.sin(r.face)*35,owner:r,t:4,max:4});msg('ポイズンブースト！');return true;}
+ return false;
+}
+function useA(r){if(r.name==='Michael'){useMichaelSkill(r,r.customSkillA||'punch','A');return;}if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
  if(r.name==='Gabriel'){waterBoost(r,false);return;}
  if(r.name==='Beelzebub'){r.skillCdA=1.45;let o=racers[1-r.index],aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'poison',x:r.x,y:r.y,vx:Math.cos(aim)*980,vy:Math.sin(aim)*980,owner:r,t:1.65,age:0});msg('毒液！');return;}
  if(r.name==='Kawazu'){r.skillCdA=1.15;r.speed=Math.min(maxSpeed+155,r.speed+105);r.boost=.42;effects.push({kind:'airball',x:r.x-Math.cos(r.face)*20,y:r.y-Math.sin(r.face)*20,vx:-Math.cos(r.face)*850,vy:-Math.sin(r.face)*850,owner:r,t:.9,age:0});msg('エアースイム！');return;}
@@ -331,7 +356,7 @@ function useA(r){if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-
  if(r.customSkillA==='dash'&&r.name==='Michael'){r.skillCdA=2.6;r.speed=Math.min(maxSpeed+105,r.speed+105);r.boost=.45;msg('天使ダッシュ！');return;}
  r.skillCdA=1.35;let o=racers[1-r.index],d=Math.hypot(o.x-r.x,o.y-r.y);if(d<90){pushRival(o,r.face,78*(r.power||1));msg('パンチ！ 相手を横へ弾いた');}else msg('パンチ！');
 }
-function useB(r){if(r.skillCdB>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
+function useB(r){if(r.name==='Michael'){useMichaelSkill(r,r.customSkillB||'bubble','B');return;}if(r.skillCdB>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
  if(r.name==='Gabriel'){waterSkill(r,true,false);return;}
  if(r.name==='Beelzebub'){r.skillCdB=2.5;r.speed=Math.min(maxSpeed+155,r.speed+150);r.boost=.72;let bx=r.x-Math.cos(r.face)*35,by=r.y-Math.sin(r.face)*35;effects.push({kind:'poisonMist',x:bx,y:by,owner:r,t:4.0,max:4.0});msg('ポイズンブースト！');return;}
  if(r.name==='Kawazu'){r.skillCdB=1.25;let ti=trackInfo(r.x,r.y);if(ti.d>165){let a=Math.atan2(r.y-ti.qy,r.x-ti.qx)+Math.PI;r.face=norm(a);r.x=ti.qx+Math.cos(a)*150;r.y=ti.qy+Math.sin(a)*150;r.speed=Math.min(maxSpeed+145,r.speed+90);r.boost=.35;msg('壁キック！')}else{let o=racers[1-r.index],dx=o.x-r.x,dy=o.y-r.y,d=Math.hypot(dx,dy),behind=Math.cos(norm(Math.atan2(dy,dx)-r.face))<-.15;if(d<135&&behind){pushRival(o,r.face+Math.PI,105);r.speed=Math.min(maxSpeed+90,r.speed+70);}msg('エアキック！')}return;}
@@ -543,7 +568,7 @@ function drawRacer(r){
 }
 function drawEffect(e){if(e.kind==='poisonMist'){ctx.save();ctx.globalAlpha=.18+.25*(e.t/e.max);ctx.fillStyle='#9b4bd1';for(let i=0;i<8;i++){let a=i*.9+(e.age||0)*.35,rr=20+(i%3)*17;ctx.beginPath();ctx.arc(e.x+Math.cos(a)*rr,e.y+Math.sin(a)*rr,24+(i%2)*12,0,Math.PI*2);ctx.fill();}ctx.restore();}else if(e.kind==='poison'){ctx.fillStyle='#9e49d6';ctx.strokeStyle='#d6a4ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,18,0,Math.PI*2);ctx.fill();ctx.stroke();}else if(e.kind==='airball'){ctx.save();ctx.globalAlpha=.6;ctx.strokeStyle='#e9ffff';ctx.lineWidth=5;ctx.beginPath();ctx.arc(e.x,e.y,16,0,Math.PI*2);ctx.stroke();ctx.restore();}else if(e.kind==='bewitch'){ctx.save();ctx.translate(e.x,e.y);ctx.globalAlpha=.75;ctx.fillStyle='#f04478';for(let i=0;i<4;i++){let a=(e.age||0)*5+i*Math.PI/2;ctx.beginPath();ctx.arc(Math.cos(a)*12,Math.sin(a)*12,8,0,Math.PI*2);ctx.fill();}ctx.restore();}else if(e.kind==='rock'){let h=Math.sin(Math.min(1,(e.age||0)/1.1)*Math.PI)*38;ctx.save();ctx.translate(e.x,e.y-h);ctx.rotate((e.age||0)*7);ctx.fillStyle='#8a765e';ctx.strokeStyle='#493f34';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-20,-11);ctx.lineTo(-5,-23);ctx.lineTo(18,-14);ctx.lineTo(22,8);ctx.lineTo(4,20);ctx.lineTo(-18,13);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}else if(e.kind==='bubble'){ctx.fillStyle='#bcecffaa';ctx.strokeStyle='#4eaeeb';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,17,0,Math.PI*2);ctx.fill();ctx.stroke()}else{let len=e.kind==='laser'?640:(e.kind==='waterBoost'?175:120);ctx.strokeStyle=e.kind==='laser'?'#baf5ff':'#7bd7ff';ctx.lineWidth=e.kind==='laser'?7:(e.kind==='waterBoost'?20:15);ctx.globalAlpha=Math.max(.15,e.t/e.max);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(e.a)*len,e.y+Math.sin(e.a)*len);ctx.stroke();ctx.globalAlpha=1}}
 function drawMini(){let sx=185/world.w,sy=118/world.h,ox=18,oy=58;ctx.fillStyle='#102820c9';ctx.fillRect(ox,oy,185,118);ctx.strokeStyle='#2f713c';ctx.lineWidth=17;ctx.beginPath();ctx.moveTo(ox+path[0].x*sx,oy+path[0].y*sy);for(let i=1;i<path.length;i++)ctx.lineTo(ox+path[i].x*sx,oy+path[i].y*sy);ctx.closePath();ctx.stroke();ctx.strokeStyle='#78d1df';ctx.lineWidth=10;ctx.stroke();for(const r of racers){ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(ox+r.x*sx,oy+r.y*sy,5,0,Math.PI*2);ctx.fill()}}
-function updateHud(r){ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){al='エアースイム';bl='壁キック'}else if(r.name==='Michael'){al=r.customSkillA==='burningWing'?'バーニングウィング':'パンチ';bl=r.customSkillB==='feather'?'羽根ブースト':'泡弾'}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
+function updateHud(r){ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){al='エアースイム';bl='壁キック'}else if(r.name==='Michael'){al=skillLabel(r.customSkillA||'punch');bl=skillLabel(r.customSkillB||'bubble')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
 function msg(t){ui.status.textContent=t;clearTimeout(msg.timer);msg.timer=setTimeout(()=>ui.status.textContent='ジャンプ3回＋舌ターンで最速を狙え！',2200)}
 function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;if(appState==='race'){for(const r of racers)updateRacer(r,dt);updateEffects(dt);draw();}else{ctx.clearRect(0,0,W,H);}requestAnimationFrame(loop)}
 function norm(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a}function approach(a,b,d){return a<b?Math.min(b,a+d):Math.max(b,a-d)}function lerpAngle(a,b,t){return a+norm(b-a)*t}
