@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.8';
+const VERSION='v2.9';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -165,16 +165,31 @@ function showPlace(place){
 function startShootingSkillEvent(place,skillId){
  const actions=document.querySelector('#placeActions');actions.innerHTML='';
  const box=document.createElement('div');box.className='homeBox';
- const title=skillId==='burningWing'?'バーニングウィング':'バーニングクライム';
- box.innerHTML='<b>'+(place==='forest'?'森':'池')+'のシューティング</b><p class="panelNote">動く的を6体撃ち落とせ！　制限時間12秒</p>';
- const arena=document.createElement('div');arena.style.cssText='position:relative;height:260px;overflow:hidden;border-radius:18px;background:'+(place==='forest'?'linear-gradient(#bfe6b0,#4f9b58)':'linear-gradient(#bcecff,#55b8d0)')+';border:3px solid rgba(255,255,255,.7);';
- const hud=document.createElement('div');hud.style.cssText='font-weight:900;margin:8px 0';let hits=0,left=12,ended=false;hud.textContent='HIT 0/6　TIME 12.0';
- const target=document.createElement('button');target.textContent=place==='forest'?'🪰':'🐟';target.style.cssText='position:absolute;width:58px;height:58px;border:0;border-radius:50%;font-size:34px;background:rgba(255,255,255,.72);touch-action:manipulation;';
- let vx=190,vy=145,x=40,y=50,last=performance.now();
- function finish(ok){if(ended)return;ended=true;if(ok){if(!saveData.unlockedSkills.includes(skillId))saveData.unlockedSkills.push(skillId);saveGame();rebuildSkillSelects();hud.textContent=title+' 習得！';target.remove();setTimeout(()=>showPlace(place),700);}else{hud.textContent='時間切れ！ もう一度挑戦できます。';target.remove();const retry=document.createElement('button');retry.className='menuBtn';retry.textContent='再挑戦';retry.onclick=()=>startShootingSkillEvent(place,skillId);box.appendChild(retry);}}
- target.onclick=e=>{e.preventDefault();hits++;x=20+Math.random()*Math.max(40,arena.clientWidth-90);y=20+Math.random()*170;vx=(150+Math.random()*120)*(Math.random()<.5?-1:1);vy=(100+Math.random()*110)*(Math.random()<.5?-1:1);if(hits>=6)finish(true);};
- arena.appendChild(target);box.appendChild(hud);box.appendChild(arena);actions.appendChild(box);
- function tick(now){if(ended)return;let dt=Math.min(.04,(now-last)/1000);last=now;left-=dt;if(left<=0){finish(false);return;}x+=vx*dt;y+=vy*dt;let mw=Math.max(70,arena.clientWidth-62),mh=198;if(x<4){x=4;vx=Math.abs(vx)}if(x>mw){x=mw;vx=-Math.abs(vx)}if(y<4){y=4;vy=Math.abs(vy)}if(y>mh){y=mh;vy=-Math.abs(vy)}target.style.transform=`translate(${x}px,${y}px)`;hud.textContent=`HIT ${hits}/6　TIME ${left.toFixed(1)}`;requestAnimationFrame(tick)}requestAnimationFrame(tick);
+ const forest=place==='forest',title=skillId==='burningWing'?'バーニングウィング':'バーニングクライム';
+ box.innerHTML='<b>'+(forest?'森：アザゼルさん＆ベリアルさん':'池：リヴァイアさん＆アスモデウスさん')+'</b><p class="panelNote">'+(forest?'アザゼルさんの空中弾を避けながら、ベリアルさんの糸玉を撃ち落とせ！':'リヴァイアさんの突進を避けながら、アスモデウスさんの泡を撃ち落とせ！')+'　6 HIT / 15秒</p>';
+ const arena=document.createElement('div');arena.style.cssText='position:relative;height:300px;overflow:hidden;border-radius:18px;background:'+(forest?'linear-gradient(#bfe6b0 0 45%,#4f9b58 45% 100%)':'linear-gradient(#bcecff 0 35%,#55b8d0 35% 100%)')+';border:3px solid rgba(255,255,255,.7);user-select:none;touch-action:manipulation;';
+ // Player is always visible; tap/click the arena to fire toward the pointer.
+ const player=document.createElement('div');player.textContent='🐸🪽';player.style.cssText='position:absolute;left:36px;top:128px;font-size:38px;z-index:4;filter:drop-shadow(0 3px 2px #0005)';
+ const boss1=document.createElement('div');boss1.textContent=forest?'🪰':'🐟';boss1.style.cssText='position:absolute;right:30px;top:38px;font-size:48px;z-index:3';
+ const boss2=document.createElement('div');boss2.textContent=forest?'🕷️':'🦞';boss2.style.cssText='position:absolute;right:38px;bottom:28px;font-size:50px;z-index:3';
+ const name1=document.createElement('div');name1.textContent=forest?'アザゼルさん':'リヴァイアさん';name1.style.cssText='position:absolute;right:8px;top:4px;font-weight:900;font-size:12px';
+ const name2=document.createElement('div');name2.textContent=forest?'ベリアルさん':'アスモデウスさん';name2.style.cssText='position:absolute;right:5px;bottom:3px;font-weight:900;font-size:12px';
+ const target=document.createElement('button');target.textContent=forest?'🕸️':'🫧';target.style.cssText='position:absolute;width:54px;height:54px;border:0;border-radius:50%;font-size:31px;background:rgba(255,255,255,.65);z-index:2;';
+ const hud=document.createElement('div');hud.style.cssText='font-weight:900;margin:8px 0';let hits=0,left=15,ended=false,px=36,py=128,tx=250,ty=100,vx=-170,vy=115,last=performance.now(),shots=[],hazards=[],hazardClock=.7;
+ hud.textContent='HIT 0/6　TIME 15.0';
+ arena.append(player,boss1,boss2,name1,name2,target);box.append(hud,arena);actions.appendChild(box);
+ function finish(ok){if(ended)return;ended=true;if(ok){if(!saveData.unlockedSkills.includes(skillId))saveData.unlockedSkills.push(skillId);saveGame();rebuildSkillSelects();hud.textContent=title+' 習得！';setTimeout(()=>showPlace(place),850);}else{hud.textContent='時間切れ！';const retry=document.createElement('button');retry.className='menuBtn';retry.textContent='再挑戦';retry.onclick=()=>startShootingSkillEvent(place,skillId);box.appendChild(retry);}}
+ function fire(ex,ey){if(ended)return;let rect=arena.getBoundingClientRect(),gx=ex-rect.left,gy=ey-rect.top,dx=gx-(px+30),dy=gy-(py+20),d=Math.hypot(dx,dy)||1;let q=document.createElement('div');q.textContent='✨';q.style.cssText='position:absolute;font-size:20px;z-index:5;pointer-events:none';arena.appendChild(q);shots.push({x:px+30,y:py+20,vx:dx/d*520,vy:dy/d*520,el:q});}
+ arena.addEventListener('pointerdown',e=>fire(e.clientX,e.clientY));
+ function tick(now){if(ended)return;let dt=Math.min(.04,(now-last)/1000);last=now;left-=dt;if(left<=0){finish(false);return;}
+   // player gently tracks vertical pointer/keys; remains visible as the shooter
+   let keydy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);py=Math.max(35,Math.min(225,py+keydy*190*dt));player.style.top=py+'px';
+   tx+=vx*dt;ty+=vy*dt;let mw=Math.max(180,arena.clientWidth-180);if(tx<150){tx=150;vx=Math.abs(vx)}if(tx>mw){tx=mw;vx=-Math.abs(vx)}if(ty<45){ty=45;vy=Math.abs(vy)}if(ty>210){ty=210;vy=-Math.abs(vy)}target.style.transform=`translate(${tx}px,${ty}px)`;
+   for(let i=shots.length-1;i>=0;i--){let q=shots[i];q.x+=q.vx*dt;q.y+=q.vy*dt;q.el.style.transform=`translate(${q.x}px,${q.y}px)`;if(Math.hypot(q.x-(tx+27),q.y-(ty+27))<34){hits++;q.el.remove();shots.splice(i,1);tx=170+Math.random()*Math.max(50,arena.clientWidth-350);ty=45+Math.random()*160;if(hits>=6){finish(true);return;}}else if(q.x>arena.clientWidth||q.y<0||q.y>300){q.el.remove();shots.splice(i,1);}}
+   hazardClock-=dt;if(hazardClock<=0){hazardClock=.8+Math.random()*.55;let h=document.createElement('div');h.textContent=forest?'🔸':'💧';h.style.cssText='position:absolute;font-size:23px;z-index:3;pointer-events:none';arena.appendChild(h);hazards.push({x:arena.clientWidth-75,y:forest?65:215,vx:-250,vy:(py-(forest?65:215))*0.45,el:h});}
+   for(let i=hazards.length-1;i>=0;i--){let q=hazards[i];q.x+=q.vx*dt;q.y+=q.vy*dt;q.el.style.transform=`translate(${q.x}px,${q.y}px)`;if(Math.hypot(q.x-(px+25),q.y-(py+20))<28){left=Math.max(0,left-1.2);q.el.remove();hazards.splice(i,1);hud.textContent='被弾！ 時間 -1.2秒';}else if(q.x<0){q.el.remove();hazards.splice(i,1);}}
+   hud.textContent=`HIT ${hits}/6　TIME ${left.toFixed(1)}`;requestAnimationFrame(tick);
+ }requestAnimationFrame(tick);
 }
 function applySelectedCharacter(){
   controlledIndex=saveData.selectedCharacter==='Michael'?0:1;
@@ -192,10 +207,10 @@ function startRace(practice=false){
 }
 function startRaceRound(opponent,practice=false){
   appState='race';hideAllScreens();document.querySelector('#raceUi')?.classList.remove('hidden');
-  reset(opponent);applyMichaelSkills();finished=false;
+  selectCourse(tournament?.place||'arena1',tournament?.round||0);reset(opponent);applyMichaelSkills();finished=false;
   saveData.encountered=saveData.encountered||['Plain'];if(!saveData.encountered.includes(opponent)){saveData.encountered.push(opponent);saveGame();}
   racers.forEach(r=>{r.lap=1;r.cp=1;r.finished=false;r.speed=0;});
-  msg(practice?'練習開始！':'大会 '+(tournament.round+1)+'回戦 / '+tournament.opponents.length+'　VS '+(CHARACTER_DATA[opponent]?.jp||opponent));
+  msg(practice?('練習開始！ '+activeCourse.name):('大会 '+(tournament.round+1)+'回戦 / '+tournament.opponents.length+'　'+activeCourse.name+'　VS '+(CHARACTER_DATA[opponent]?.jp||opponent)));
 }
 function showRaceResult(win){
  if(!tournament){showField();return;}
@@ -275,29 +290,34 @@ const C=document.querySelector('#game'),ctx=C.getContext('2d'),W=C.width,H=C.hei
 const ui={who:$('#who'),speed:$('#speed'),lap:$('#lap'),status:$('#status'),jump:$('#jump'),tongue:$('#tongue'),a:$('#skillA'),b:$('#skillB'),stick:$('#stick')};
 function $(s){return document.querySelector(s)}
 const world={w:6000,h:4400};
-// A long pond circuit with real hairpins and S-bends. The camera only sees a small section at once.
-const path=[
- {x:700,y:700},{x:2500,y:500},{x:4700,y:700},{x:5200,y:1400},
- {x:4800,y:1900},{x:3150,y:1900},{x:2650,y:2300},{x:3150,y:2700},
- {x:5000,y:2700},{x:5350,y:3400},{x:4550,y:3900},{x:2200,y:3900},
- {x:900,y:3450},{x:600,y:2700},{x:900,y:2200},{x:1850,y:2200},
- {x:2250,y:1750},{x:1800,y:1300},{x:800,y:1300}
-];
-// Every major corner has an inside post/tree for tongue cornering, including both hairpins.
-const anchors=[
- {x:2500,y:760},{x:4560,y:990},{x:4850,y:1450},{x:4540,y:1660},
- {x:3180,y:2160},{x:2860,y:2300},{x:3180,y:2440},{x:4820,y:2960},
- {x:4920,y:3370},{x:4490,y:3620},{x:2230,y:3630},{x:1110,y:3280},
- {x:860,y:2700},{x:1090,y:2400},{x:1850,y:1940},{x:1970,y:1740},
- {x:1760,y:1560},{x:920,y:1560}
-];
-const lilies=[
- {x:420,y:420,r:76},{x:1100,y:420,r:54},{x:3600,y:360,r:70},{x:5450,y:750,r:82},
- {x:5600,y:1900,r:62},{x:4050,y:1450,r:58},{x:2400,y:1450,r:74},{x:1500,y:1800,r:54},
- {x:3900,y:2350,r:88},{x:5600,y:2950,r:66},{x:3900,y:3450,r:64},{x:2850,y:4250,r:82},
- {x:1450,y:4100,r:58},{x:400,y:3450,r:72},{x:350,y:2200,r:56},{x:1200,y:2700,r:70}
-];
-const checkpoints=path.map((p,i)=>({x:p.x,y:p.y,r:240,i}));
+const COURSE_SETS={
+ arena1:[
+  {name:'風の輪',theme:'wind',path:[[700,700],[2450,520],[4650,700],[5200,1450],[4700,2050],[3000,1950],[2550,2350],[3150,2800],[5050,2800],[5250,3550],[4300,3900],[1900,3800],[700,3150],[700,2050],[1900,1750],[800,1300]]},
+  {name:'三日月ヘアピン',theme:'wind',path:[[700,800],[2200,520],[4300,620],[5150,1200],[4700,1650],[3200,1550],[2750,1950],[3250,2350],[4850,2250],[5300,3000],[4650,3650],[3000,3900],[1350,3600],[650,2950],[1150,2450],[2300,2500],[2500,2050],[1900,1650],[750,1600]]},
+  {name:'風車スラローム',theme:'wind',path:[[700,650],[1900,500],[3000,850],[4200,500],[5200,900],[4700,1450],[3600,1250],[3000,1750],[3650,2200],[5000,2050],[5250,2850],[4300,3300],[5000,3750],[3300,3950],[2100,3500],[900,3800],[550,2850],[1250,2400],[650,1850],[1700,1300]]}
+ ],
+ arena2:[
+  {name:'蓮の大回廊',theme:'water',path:[[650,850],[1700,500],[3300,500],[4850,850],[5300,1650],[4750,2300],[3550,2150],[3000,2650],[3800,3100],[5100,3000],[5250,3650],[3900,3950],[2200,3850],[850,3400],[550,2500],[950,1800],[2050,1650],[1550,1150]]},
+  {name:'水蛇Sライン',theme:'water',path:[[650,700],[2100,500],[4000,650],[5150,1100],[4550,1550],[3000,1400],[2500,1900],[3550,2200],[5000,2050],[5250,2700],[4300,3000],[2750,2850],[2200,3300],[3400,3800],[1850,3900],[700,3400],[1000,2800],[1900,2500],[1100,2100],[600,1450]]},
+  {name:'渦潮ツインヘアピン',theme:'water',path:[[700,650],[2800,500],[5000,800],[5200,1550],[4300,1850],[3000,1700],[2600,2150],[3050,2500],[4400,2350],[5100,2750],[4750,3300],[3400,3150],[2900,3500],[3500,3900],[1900,3900],[650,3300],[600,2300],[1600,2000],[2200,1550],[1500,1200],[700,1400]]}
+ ],
+ arena3:[
+  {name:'森の牙',theme:'forest',path:[[700,700],[1800,500],[3000,800],[4200,520],[5150,1050],[4550,1500],[3400,1350],[2850,1850],[3400,2300],[4900,2200],[5250,3000],[4500,3550],[3100,3300],[2550,3850],[1250,3700],[600,2950],[1050,2400],[1850,2500],[2200,1950],[1600,1500],[700,1550]]},
+  {name:'蜘蛛の針路',theme:'forest',path:[[650,650],[2350,500],[4550,650],[5200,1250],[4750,1800],[3650,1600],[3150,2050],[3700,2500],[5000,2450],[5250,3300],[4300,3900],[2750,3550],[1750,3950],[700,3450],[550,2600],[1200,2200],[700,1750],[1750,1250]]},
+  {name:'トンボ尾根',theme:'forest',path:[[700,800],[1600,500],[2800,700],[3900,500],[5100,850],[4800,1450],[3800,1750],[4550,2100],[5200,2700],[4600,3150],[3550,2900],[3000,3400],[4100,3900],[2500,3900],[1500,3450],[600,3700],[550,2700],[1350,2350],[700,1900],[1700,1500]]}
+ ],
+ master:[{name:'魔王環状路',theme:'master',path:[[700,700],[2300,480],[4700,650],[5300,1350],[4550,1750],[3000,1550],[2500,2050],[3300,2450],[5100,2350],[5300,3150],[4400,3800],[2800,3450],[1700,3950],[650,3300],[900,2600],[1900,2350],[2300,1750],[1600,1250],[700,1450]]}],
+ kawazu:[{name:'カワズ水脈',theme:'water',path:[[700,700],[2700,500],[5000,850],[5150,1800],[4200,2200],[2850,1900],[2400,2450],[3300,2900],[5100,2850],[5000,3650],[3400,3900],[1700,3600],[600,3000],[800,2050],[2100,1650],[700,1300]]}]
+};
+let activeCourse=COURSE_SETS.arena1[0],courseTheme=activeCourse.theme;
+let path=activeCourse.path.map(([x,y])=>({x,y})),anchors=[],lilies=[],checkpoints=[];
+function rebuildCourseObjects(){
+ anchors=[];for(let i=1;i<path.length;i++){let a=path[i-1],b=path[i],c=path[(i+1)%path.length],v1={x:a.x-b.x,y:a.y-b.y},v2={x:c.x-b.x,y:c.y-b.y},l1=Math.hypot(v1.x,v1.y)||1,l2=Math.hypot(v2.x,v2.y)||1;let bx=v1.x/l1+v2.x/l2,by=v1.y/l1+v2.y/l2,bl=Math.hypot(bx,by)||1;anchors.push({x:b.x+bx/bl*250,y:b.y+by/bl*250});}
+ lilies=[];for(let i=0;i<15;i++){let x=350+(i*977)%5300,y=300+(i*613)%3800;if(trackDistance(x,y)>330)lilies.push({x,y,r:48+(i%4)*10});}
+ checkpoints=path.map((q,i)=>({x:q.x,y:q.y,r:240,i}));
+}
+function selectCourse(place,round=0){let set=COURSE_SETS[place]||COURSE_SETS.arena1;activeCourse=set[round%set.length];courseTheme=activeCourse.theme;path=activeCourse.path.map(([x,y])=>({x,y}));rebuildCourseObjects();}
+rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
@@ -465,14 +485,18 @@ function drawTimeEffectOverlay(mode){
 }
 function drawWorld(){
  // The race is airborne: below the racers is a pond, not a road surface.
- ctx.fillStyle='#69cbe0';ctx.fillRect(0,0,world.w,world.h);
+ const pal=courseTheme==='wind'?{water:'#9edee8',grass:'#55995b',inner:'#b7e4e7'}:courseTheme==='forest'?{water:'#77b8a5',grass:'#245f38',inner:'#86c3ae'}:courseTheme==='master'?{water:'#77758d',grass:'#403d52',inner:'#8b879d'}:{water:'#58bdd5',grass:'#397e48',inner:'#70c8d9'};ctx.fillStyle=pal.water;ctx.fillRect(0,0,world.w,world.h);
  // soft water patches make different sections feel like pond / puddle zones
  for(let y=240;y<world.h;y+=620){for(let x=260;x<world.w;x+=760){let n=((x*13+y*7)%190)-95;ctx.fillStyle='rgba(255,255,255,.055)';ctx.beginPath();ctx.ellipse(x+n,y-n*.35,170,72,.18,0,Math.PI*2);ctx.fill();}}
  for(const l of lilies)drawLily(l.x,l.y,l.r);
+ if(courseTheme==='wind'){ctx.save();ctx.globalAlpha=.22;ctx.strokeStyle='#ffffff';ctx.lineWidth=10;for(let i=0;i<12;i++){let x=300+(i*487)%5400,y=250+(i*811)%3900;ctx.beginPath();ctx.arc(x,y,55,0,Math.PI*1.5);ctx.stroke();}ctx.restore();}
+ if(courseTheme==='forest'){ctx.save();for(let i=0;i<20;i++){let x=220+(i*701)%5550,y=180+(i*997)%4000;if(trackDistance(x,y)>330){ctx.fillStyle='#174b2b';ctx.beginPath();ctx.arc(x,y,42,0,Math.PI*2);ctx.fill();}}ctx.restore();}
+ if(courseTheme==='master'){ctx.save();ctx.globalAlpha=.18;ctx.fillStyle='#c7a7ff';for(let i=0;i<14;i++){let x=300+(i*839)%5300,y=260+(i*541)%3800;ctx.beginPath();ctx.arc(x,y,35+(i%3)*14,0,Math.PI*2);ctx.fill();}ctx.restore();}
+
  ctx.lineCap='round';ctx.lineJoin='round';
  // thick outer stroke = tall guard grass. Inner stroke returns to water, leaving only grass walls at both sides.
- ctx.strokeStyle='#2f713c';ctx.lineWidth=500;strokeLoop();
- ctx.strokeStyle='#78d1df';ctx.lineWidth=390;strokeLoop();
+ ctx.strokeStyle=pal.grass;ctx.lineWidth=500;strokeLoop();
+ ctx.strokeStyle=pal.inner;ctx.lineWidth=390;strokeLoop();
  // Visible blade tips on both edges: the guard wall should read as tall grass, not a smooth green rail.
  drawGrassBlades();
  // little highlights on the flying corridor; no asphalt / dirt road line.
