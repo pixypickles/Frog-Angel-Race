@@ -63,3 +63,12 @@ linear-gradient(135deg,#7fcf73,#59a967);overflow:hidden}
 }
 
 .mapSpot.master{left:45%;top:42%;background:#202729e8;border-color:#b5ff48;color:#d8ff72}
+
+.mapSpot.kawazu{left:63%;top:48%;background:#356e45e8;border-color:#e34f5b}.mapSpot.kawazu small{color:#ffd3d6}
+
+#storyScreen{display:grid;place-items:center;background:linear-gradient(#f0a56f 0 36%,#496d70 36% 53%,#276a55 53% 100%)}
+.storyScene{width:min(92vw,850px);height:min(82vh,570px);display:flex;flex-direction:column;justify-content:flex-end}
+.storyVisual{flex:1;display:grid;place-items:center;font-size:70px;text-shadow:0 6px 12px #0005;letter-spacing:18px}
+.storyBox{background:#102820ed;border:3px solid #eaffdf;border-radius:22px;padding:22px 26px;min-height:180px;box-shadow:0 12px 40px #0008}
+#storyText{white-space:pre-line;font-size:19px;line-height:1.75;min-height:95px}
+#storyNext{min-height:45px;font-size:16px;margin:10px 0 0 auto;width:150px}
