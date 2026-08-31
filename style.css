@@ -8,3 +8,7 @@ button small{display:block;font-size:10px;font-weight:600;opacity:.9}
 #skillA{grid-column:1;grid-row:2;background:#5c69cfee}
 #skillB{grid-column:2;grid-row:2;background:#287fb9ee}
 #swap{position:absolute;right:24px;top:64px;border-radius:16px;padding:10px 16px;background:#7154a5dd}#help{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;width:min(62vw,790px);padding:7px 12px;text-align:center;background:#102820bb;border-radius:12px;font-size:11px;line-height:1.45;pointer-events:none}@media(max-width:850px){#stick{width:118px;height:118px;left:3vw;bottom:clamp(145px,19vh,205px)}#stick i{width:48px;height:48px;left:32px;top:32px}#actions{right:10px;bottom:clamp(145px,19vh,205px);grid-template-columns:76px 76px;grid-template-rows:76px 76px;gap:7px 8px}#actions button{width:76px!important;height:76px!important;font-size:15px}#actions button small{font-size:8px}#help{display:none}#topHud{font-size:11px;gap:7px;padding:6px 9px}#swap{top:48px;font-size:10px;padding:7px 10px}}
+#versionBadge{position:absolute;left:18px;top:58px;z-index:8;background:#102820d9;border:1px solid #d8f6db77;border-radius:10px;padding:6px 9px;pointer-events:none;font-size:11px;line-height:1.2}
+#versionBadge b{color:#fff7a8;margin-right:7px}
+#versionBadge small{font-size:9px;opacity:.82}
+@media(max-width:850px){#versionBadge{left:8px;top:45px;font-size:9px;padding:4px 6px;max-width:260px}#versionBadge small{font-size:7px}}
