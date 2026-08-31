@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.24';
+const VERSION='v2.25';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -67,7 +67,7 @@ function saveGame(){
   const st=document.querySelector('#status'); if(st) st.textContent='セーブしました';
 }
 function hideAllScreens(){
-  ['#titleScreen','#storyScreen','#fieldScreen','#homePanel','#placePanel','#raceUi'].forEach(id=>document.querySelector(id)?.classList.add('hidden'));
+  ['#titleScreen','#storyScreen','#tutorialScreen','#fieldScreen','#homePanel','#placePanel','#raceUi'].forEach(id=>document.querySelector(id)?.classList.add('hidden'));
 }
 function showTitle(){
   appState='title';hideAllScreens();document.querySelector('#titleScreen')?.classList.remove('hidden');
@@ -349,6 +349,7 @@ function showTutorial(returnTo='field'){
  document.querySelector('#tutorialScreen')?.classList.remove('hidden');
 }
 function closeTutorial(){
+ document.querySelector('#tutorialScreen')?.classList.add('hidden');
  if(tutorialReturn==='practice')showPlace('practice');else showField();
 }
 let storyMode='',storyIndex=0;
