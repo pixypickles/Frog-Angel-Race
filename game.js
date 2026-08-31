@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.9';
+const VERSION='v2.10';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -164,31 +164,49 @@ function showPlace(place){
 }
 function startShootingSkillEvent(place,skillId){
  const actions=document.querySelector('#placeActions');actions.innerHTML='';
- const box=document.createElement('div');box.className='homeBox';
  const forest=place==='forest',title=skillId==='burningWing'?'バーニングウィング':'バーニングクライム';
- box.innerHTML='<b>'+(forest?'森：アザゼルさん＆ベリアルさん':'池：リヴァイアさん＆アスモデウスさん')+'</b><p class="panelNote">'+(forest?'アザゼルさんの空中弾を避けながら、ベリアルさんの糸玉を撃ち落とせ！':'リヴァイアさんの突進を避けながら、アスモデウスさんの泡を撃ち落とせ！')+'　6 HIT / 15秒</p>';
- const arena=document.createElement('div');arena.style.cssText='position:relative;height:300px;overflow:hidden;border-radius:18px;background:'+(forest?'linear-gradient(#bfe6b0 0 45%,#4f9b58 45% 100%)':'linear-gradient(#bcecff 0 35%,#55b8d0 35% 100%)')+';border:3px solid rgba(255,255,255,.7);user-select:none;touch-action:manipulation;';
- // Player is always visible; tap/click the arena to fire toward the pointer.
- const player=document.createElement('div');player.textContent='🐸🪽';player.style.cssText='position:absolute;left:36px;top:128px;font-size:38px;z-index:4;filter:drop-shadow(0 3px 2px #0005)';
- const boss1=document.createElement('div');boss1.textContent=forest?'🪰':'🐟';boss1.style.cssText='position:absolute;right:30px;top:38px;font-size:48px;z-index:3';
- const boss2=document.createElement('div');boss2.textContent=forest?'🕷️':'🦞';boss2.style.cssText='position:absolute;right:38px;bottom:28px;font-size:50px;z-index:3';
- const name1=document.createElement('div');name1.textContent=forest?'アザゼルさん':'リヴァイアさん';name1.style.cssText='position:absolute;right:8px;top:4px;font-weight:900;font-size:12px';
- const name2=document.createElement('div');name2.textContent=forest?'ベリアルさん':'アスモデウスさん';name2.style.cssText='position:absolute;right:5px;bottom:3px;font-weight:900;font-size:12px';
- const target=document.createElement('button');target.textContent=forest?'🕸️':'🫧';target.style.cssText='position:absolute;width:54px;height:54px;border:0;border-radius:50%;font-size:31px;background:rgba(255,255,255,.65);z-index:2;';
- const hud=document.createElement('div');hud.style.cssText='font-weight:900;margin:8px 0';let hits=0,left=15,ended=false,px=36,py=128,tx=250,ty=100,vx=-170,vy=115,last=performance.now(),shots=[],hazards=[],hazardClock=.7;
- hud.textContent='HIT 0/6　TIME 15.0';
- arena.append(player,boss1,boss2,name1,name2,target);box.append(hud,arena);actions.appendChild(box);
- function finish(ok){if(ended)return;ended=true;if(ok){if(!saveData.unlockedSkills.includes(skillId))saveData.unlockedSkills.push(skillId);saveGame();rebuildSkillSelects();hud.textContent=title+' 習得！';setTimeout(()=>showPlace(place),850);}else{hud.textContent='時間切れ！';const retry=document.createElement('button');retry.className='menuBtn';retry.textContent='再挑戦';retry.onclick=()=>startShootingSkillEvent(place,skillId);box.appendChild(retry);}}
- function fire(ex,ey){if(ended)return;let rect=arena.getBoundingClientRect(),gx=ex-rect.left,gy=ey-rect.top,dx=gx-(px+30),dy=gy-(py+20),d=Math.hypot(dx,dy)||1;let q=document.createElement('div');q.textContent='✨';q.style.cssText='position:absolute;font-size:20px;z-index:5;pointer-events:none';arena.appendChild(q);shots.push({x:px+30,y:py+20,vx:dx/d*520,vy:dy/d*520,el:q});}
- arena.addEventListener('pointerdown',e=>fire(e.clientX,e.clientY));
+ const box=document.createElement('div');box.className='homeBox';
+ box.innerHTML='<b>'+(forest?'森の空中射撃訓練':'池の空中射撃訓練')+'</b><p class="panelNote">レースと同じカエルで飛び回り、泡弾を当てよう。左側をドラッグで移動、右側をタップ／クリックで泡弾。6 HIT / 18秒</p>';
+ const cv=document.createElement('canvas');cv.width=720;cv.height=360;cv.style.cssText='width:100%;max-width:720px;aspect-ratio:2/1;border-radius:18px;border:3px solid rgba(255,255,255,.7);touch-action:none;background:#68c7da;';
+ const hud=document.createElement('div');hud.style.cssText='font-weight:900;margin:8px 0';hud.textContent='HIT 0/6　TIME 18.0';
+ box.append(hud,cv);actions.appendChild(box);
+ const c=cv.getContext('2d'),W=720,H=360,player={x:155,y:180,face:0},enemy={x:540,y:180,vx:95,vy:75},shots=[],enemyShots=[];
+ let hits=0,left=18,ended=false,last=performance.now(),drag=false,joyX=0,joyY=0,enemyClock=.8;
+ function pos(e){let r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+ cv.addEventListener('pointerdown',e=>{let q=pos(e);if(q.x<W*.48){drag=true;cv.setPointerCapture(e.pointerId);joyX=q.x-player.x;joyY=q.y-player.y;}else fire(q.x,q.y)});
+ cv.addEventListener('pointermove',e=>{if(!drag)return;let q=pos(e);joyX=q.x-player.x;joyY=q.y-player.y});
+ cv.addEventListener('pointerup',()=>{drag=false;joyX=joyY=0});
+ function fire(x,y){let dx=x-player.x,dy=y-player.y,d=Math.hypot(dx,dy)||1;player.face=Math.atan2(dy,dx);shots.push({x:player.x,y:player.y,vx:dx/d*620,vy:dy/d*620,r:9});}
+ function finish(ok){if(ended)return;ended=true;if(ok){if(!saveData.unlockedSkills.includes(skillId))saveData.unlockedSkills.push(skillId);saveGame();rebuildSkillSelects();hud.textContent=title+' 習得！';setTimeout(()=>showPlace(place),900);}else{hud.textContent='時間切れ！';let q=document.createElement('button');q.className='menuBtn';q.textContent='再挑戦';q.onclick=()=>startShootingSkillEvent(place,skillId);box.appendChild(q)}}
+ function frog(x,y,face,isEnemy=false){
+   c.save();c.translate(x,y);c.rotate(face);c.fillStyle=isEnemy?(forest?'#6d4b86':'#d05b48'):'#49a94f';c.strokeStyle='#17352d';c.lineWidth=2;
+   // race-style broad wings + frog body, miniaturized
+   c.fillStyle=isEnemy?'#eee7f5':'#fff2b6';for(const side of [-1,1]){c.beginPath();c.moveTo(-5,side*12);c.quadraticCurveTo(-27,side*38,-5,side*49);c.quadraticCurveTo(5,side*34,5,side*15);c.fill();c.stroke();}
+   c.fillStyle=isEnemy?(forest?'#76518e':'#d05b48'):'#49a94f';c.beginPath();c.ellipse(0,0,22,16,0,0,Math.PI*2);c.fill();c.stroke();c.beginPath();c.arc(13,-10,8,0,Math.PI*2);c.arc(13,10,8,0,Math.PI*2);c.fill();c.stroke();
+   c.fillStyle='#fff';c.beginPath();c.arc(16,-11,3,0,Math.PI*2);c.arc(16,11,3,0,Math.PI*2);c.fill();c.restore();
+ }
+ function drawStage(){
+   c.fillStyle=forest?'#77b89a':'#69cbe0';c.fillRect(0,0,W,H);
+   if(forest){c.fillStyle='#2e7542';for(let i=0;i<13;i++){let x=(i*71)%W,y=(i*103)%H;c.beginPath();c.arc(x,y,18+(i%3)*7,0,Math.PI*2);c.fill();}}
+   else{c.fillStyle='#4aa74c';for(let i=0;i<8;i++){let x=50+(i*91)%620,y=45+(i*67)%270;c.beginPath();c.arc(x,y,17+(i%2)*6,0,Math.PI*2);c.fill();}}
+   // compact race arena: donut for pond, rectangular loop for forest
+   c.lineCap='round';c.lineJoin='round';c.strokeStyle='#2f713c';c.lineWidth=76;c.beginPath();
+   if(forest){c.moveTo(95,70);c.lineTo(625,70);c.lineTo(625,290);c.lineTo(95,290);c.closePath();}
+   else{c.ellipse(360,180,265,112,0,0,Math.PI*2);}
+   c.stroke();c.strokeStyle=forest?'#8ac9ae':'#7bd0df';c.lineWidth=54;c.stroke();
+ }
  function tick(now){if(ended)return;let dt=Math.min(.04,(now-last)/1000);last=now;left-=dt;if(left<=0){finish(false);return;}
-   // player gently tracks vertical pointer/keys; remains visible as the shooter
-   let keydy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);py=Math.max(35,Math.min(225,py+keydy*190*dt));player.style.top=py+'px';
-   tx+=vx*dt;ty+=vy*dt;let mw=Math.max(180,arena.clientWidth-180);if(tx<150){tx=150;vx=Math.abs(vx)}if(tx>mw){tx=mw;vx=-Math.abs(vx)}if(ty<45){ty=45;vy=Math.abs(vy)}if(ty>210){ty=210;vy=-Math.abs(vy)}target.style.transform=`translate(${tx}px,${ty}px)`;
-   for(let i=shots.length-1;i>=0;i--){let q=shots[i];q.x+=q.vx*dt;q.y+=q.vy*dt;q.el.style.transform=`translate(${q.x}px,${q.y}px)`;if(Math.hypot(q.x-(tx+27),q.y-(ty+27))<34){hits++;q.el.remove();shots.splice(i,1);tx=170+Math.random()*Math.max(50,arena.clientWidth-350);ty=45+Math.random()*160;if(hits>=6){finish(true);return;}}else if(q.x>arena.clientWidth||q.y<0||q.y>300){q.el.remove();shots.splice(i,1);}}
-   hazardClock-=dt;if(hazardClock<=0){hazardClock=.8+Math.random()*.55;let h=document.createElement('div');h.textContent=forest?'🔸':'💧';h.style.cssText='position:absolute;font-size:23px;z-index:3;pointer-events:none';arena.appendChild(h);hazards.push({x:arena.clientWidth-75,y:forest?65:215,vx:-250,vy:(py-(forest?65:215))*0.45,el:h});}
-   for(let i=hazards.length-1;i>=0;i--){let q=hazards[i];q.x+=q.vx*dt;q.y+=q.vy*dt;q.el.style.transform=`translate(${q.x}px,${q.y}px)`;if(Math.hypot(q.x-(px+25),q.y-(py+20))<28){left=Math.max(0,left-1.2);q.el.remove();hazards.splice(i,1);hud.textContent='被弾！ 時間 -1.2秒';}else if(q.x<0){q.el.remove();hazards.splice(i,1);}}
-   hud.textContent=`HIT ${hits}/6　TIME ${left.toFixed(1)}`;requestAnimationFrame(tick);
+   let kmx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),kmy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0),dx=drag?joyX:kmx,dy=drag?joyY:kmy,d=Math.hypot(dx,dy);
+   if(d>8){dx/=d;dy/=d;player.x+=dx*215*dt;player.y+=dy*215*dt;player.face=Math.atan2(dy,dx)}
+   player.x=Math.max(35,Math.min(W-35,player.x));player.y=Math.max(35,Math.min(H-35,player.y));
+   enemy.x+=enemy.vx*dt;enemy.y+=enemy.vy*dt;if(enemy.x<400||enemy.x>665)enemy.vx*=-1;if(enemy.y<65||enemy.y>295)enemy.vy*=-1;
+   enemyClock-=dt;if(enemyClock<=0){enemyClock=.9+Math.random()*.5;let ex=player.x-enemy.x,ey=player.y-enemy.y,ed=Math.hypot(ex,ey)||1;enemyShots.push({x:enemy.x,y:enemy.y,vx:ex/ed*260,vy:ey/ed*260,r:8})}
+   for(let i=shots.length-1;i>=0;i--){let q=shots[i];q.x+=q.vx*dt;q.y+=q.vy*dt;if(Math.hypot(q.x-enemy.x,q.y-enemy.y)<28){shots.splice(i,1);hits++;enemy.x=440+Math.random()*190;enemy.y=80+Math.random()*200;if(hits>=6){finish(true);return}}else if(q.x<0||q.x>W||q.y<0||q.y>H)shots.splice(i,1)}
+   for(let i=enemyShots.length-1;i>=0;i--){let q=enemyShots[i];q.x+=q.vx*dt;q.y+=q.vy*dt;if(Math.hypot(q.x-player.x,q.y-player.y)<24){enemyShots.splice(i,1);left=Math.max(0,left-.8)}else if(q.x<0||q.x>W||q.y<0||q.y>H)enemyShots.splice(i,1)}
+   drawStage();for(const q of shots){c.fillStyle='#bcecff';c.strokeStyle='#4eaeeb';c.lineWidth=2;c.beginPath();c.arc(q.x,q.y,q.r,0,Math.PI*2);c.fill();c.stroke()}for(const q of enemyShots){c.fillStyle=forest?'#e6b7ff':'#ff9b83';c.beginPath();c.arc(q.x,q.y,q.r,0,Math.PI*2);c.fill()}
+   frog(player.x,player.y,player.face,false);frog(enemy.x,enemy.y,Math.atan2(player.y-enemy.y,player.x-enemy.x),true);
+   c.fillStyle='#17352d';c.font='bold 13px sans-serif';c.textAlign='center';c.fillText('ミカエルさん',player.x,player.y-30);c.fillText(forest?'アザゼルさん / ベリアルさん':'リヴァイアさん / アスモデウスさん',enemy.x,enemy.y-31);
+   hud.textContent=`HIT ${hits}/6　TIME ${left.toFixed(1)}`;requestAnimationFrame(tick)
  }requestAnimationFrame(tick);
 }
 function applySelectedCharacter(){
