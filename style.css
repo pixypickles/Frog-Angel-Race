@@ -61,3 +61,5 @@ linear-gradient(135deg,#7fcf73,#59a967);overflow:hidden}
  .mapSpot{width:105px;height:70px;font-size:20px}.mapSpot b{font-size:11px}.mapSpot small{font-size:7px}
  .homeCols{grid-template-columns:1fr}.panelCard{padding:16px}
 }
+
+.mapSpot.master{left:45%;top:42%;background:#202729e8;border-color:#b5ff48;color:#d8ff72}
