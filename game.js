@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.7';
+const VERSION='v2.8';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -51,7 +51,6 @@ function loadSave(){
     if(!saveData.timeStopUnlocked)saveData.unlockedSkills=saveData.unlockedSkills.filter(x=>x!=='timeStop');
     if(saveData.timeLagUnlocked&&!saveData.unlockedSkills.includes('timeLag'))saveData.unlockedSkills.push('timeLag');
     if(saveData.timeStopUnlocked&&!saveData.unlockedSkills.includes('timeStop'))saveData.unlockedSkills.push('timeStop');
-    if(!saveData.unlockedSkills.includes('highJump'))saveData.unlockedSkills.push('highJump');
   }catch(e){}
 }
 function saveGame(){
@@ -158,9 +157,24 @@ function showPlace(place){
       else sep.textContent='タイムラグ習得済み。カワズさんなら、池のさらに奥へ行けそうだ。';
       p.appendChild(sep);
     }
-    if(place==='forest'&&!saveData.unlockedSkills.includes('burningWing')){const q=document.createElement('button');q.className='menuBtn';q.textContent='森の特訓：バーニングウィングを習得';q.onclick=()=>{saveData.unlockedSkills.push('burningWing');saveGame();q.textContent='バーニングウィング習得！';q.disabled=true;};p.appendChild(q);}
+    if(place==='forest'&&!saveData.unlockedSkills.includes('burningWing')){const q=document.createElement('button');q.className='menuBtn';q.textContent='森のシューティングイベント：バーニングウィング';q.onclick=()=>startShootingSkillEvent('forest','burningWing');p.appendChild(q);}
+    if(place==='pond'&&!saveData.unlockedSkills.includes('highJump')){const q=document.createElement('button');q.className='menuBtn';q.textContent='池のシューティングイベント：バーニングクライム';q.onclick=()=>startShootingSkillEvent('pond','highJump');p.appendChild(q);}
     actions.appendChild(p);
   }
+}
+function startShootingSkillEvent(place,skillId){
+ const actions=document.querySelector('#placeActions');actions.innerHTML='';
+ const box=document.createElement('div');box.className='homeBox';
+ const title=skillId==='burningWing'?'バーニングウィング':'バーニングクライム';
+ box.innerHTML='<b>'+(place==='forest'?'森':'池')+'のシューティング</b><p class="panelNote">動く的を6体撃ち落とせ！　制限時間12秒</p>';
+ const arena=document.createElement('div');arena.style.cssText='position:relative;height:260px;overflow:hidden;border-radius:18px;background:'+(place==='forest'?'linear-gradient(#bfe6b0,#4f9b58)':'linear-gradient(#bcecff,#55b8d0)')+';border:3px solid rgba(255,255,255,.7);';
+ const hud=document.createElement('div');hud.style.cssText='font-weight:900;margin:8px 0';let hits=0,left=12,ended=false;hud.textContent='HIT 0/6　TIME 12.0';
+ const target=document.createElement('button');target.textContent=place==='forest'?'🪰':'🐟';target.style.cssText='position:absolute;width:58px;height:58px;border:0;border-radius:50%;font-size:34px;background:rgba(255,255,255,.72);touch-action:manipulation;';
+ let vx=190,vy=145,x=40,y=50,last=performance.now();
+ function finish(ok){if(ended)return;ended=true;if(ok){if(!saveData.unlockedSkills.includes(skillId))saveData.unlockedSkills.push(skillId);saveGame();rebuildSkillSelects();hud.textContent=title+' 習得！';target.remove();setTimeout(()=>showPlace(place),700);}else{hud.textContent='時間切れ！ もう一度挑戦できます。';target.remove();const retry=document.createElement('button');retry.className='menuBtn';retry.textContent='再挑戦';retry.onclick=()=>startShootingSkillEvent(place,skillId);box.appendChild(retry);}}
+ target.onclick=e=>{e.preventDefault();hits++;x=20+Math.random()*Math.max(40,arena.clientWidth-90);y=20+Math.random()*170;vx=(150+Math.random()*120)*(Math.random()<.5?-1:1);vy=(100+Math.random()*110)*(Math.random()<.5?-1:1);if(hits>=6)finish(true);};
+ arena.appendChild(target);box.appendChild(hud);box.appendChild(arena);actions.appendChild(box);
+ function tick(now){if(ended)return;let dt=Math.min(.04,(now-last)/1000);last=now;left-=dt;if(left<=0){finish(false);return;}x+=vx*dt;y+=vy*dt;let mw=Math.max(70,arena.clientWidth-62),mh=198;if(x<4){x=4;vx=Math.abs(vx)}if(x>mw){x=mw;vx=-Math.abs(vx)}if(y<4){y=4;vy=Math.abs(vy)}if(y>mh){y=mh;vy=-Math.abs(vy)}target.style.transform=`translate(${x}px,${y}px)`;hud.textContent=`HIT ${hits}/6　TIME ${left.toFixed(1)}`;requestAnimationFrame(tick)}requestAnimationFrame(tick);
 }
 function applySelectedCharacter(){
   controlledIndex=saveData.selectedCharacter==='Michael'?0:1;
@@ -238,7 +252,7 @@ function setupMetaUi(){
   document.querySelector('#storyNext')?.addEventListener('click',nextStory);
   document.querySelector('#continueBtn')?.addEventListener('click',()=>{loadSave();showField();});
   document.querySelector('#newBtn')?.addEventListener('click',()=>{
-    saveData={started:true,selectedCharacter:'Michael',michaelSkillA:'punch',michaelSkillB:'bubble',unlockedSkills:['punch','bubble','highJump'],encountered:['Plain'],wins:0,arenaWins:0,tournamentWins:{},masterUnlocked:false,kawazuUnlocked:false,timeLagUnlocked:false,timeStopUnlocked:false};
+    saveData={started:true,selectedCharacter:'Michael',michaelSkillA:'punch',michaelSkillB:'bubble',unlockedSkills:['punch','bubble'],encountered:['Plain'],wins:0,arenaWins:0,tournamentWins:{},masterUnlocked:false,kawazuUnlocked:false,timeLagUnlocked:false,timeStopUnlocked:false};
     saveGame();playStory('opening');
   });
   document.querySelector('#saveBtn')?.addEventListener('click',saveGame);
@@ -492,11 +506,11 @@ function drawGrassBlades(){
 }
 function drawLily(x,y,r){ctx.save();ctx.translate(x,y);ctx.fillStyle='#4aa74c';ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.lineTo(0,0);ctx.arc(0,0,r,-.48,.48,true);ctx.closePath();ctx.fill();ctx.fillStyle='#8cd45d';ctx.beginPath();ctx.arc(-r*.22,-r*.18,r*.22,0,Math.PI*2);ctx.fill();if(r>65){ctx.fillStyle='#f5bfd4';for(let i=0;i<6;i++){let a=i*Math.PI/3;ctx.beginPath();ctx.ellipse(Math.cos(a)*r*.18,Math.sin(a)*r*.18,r*.16,r*.07,a,0,Math.PI*2);ctx.fill()}ctx.fillStyle='#ffd86b';ctx.beginPath();ctx.arc(0,0,r*.08,0,Math.PI*2);ctx.fill()}ctx.restore()}
 function drawTree(x,y){ctx.fillStyle='#714624';ctx.fillRect(x-10,y-8,20,72);ctx.fillStyle='#247b3c';ctx.beginPath();ctx.arc(x,y-20,34,0,Math.PI*2);ctx.fill();ctx.fillStyle='#8bd85d';ctx.beginPath();ctx.arc(x-10,y-30,14,0,Math.PI*2);ctx.fill()}
-let currentWingSpecial=false,currentWingRed=false;
+let currentWingSpecial=false,currentWingRed=false,currentWingBurning=false;
 function angelWing(x,y,side,scale=1,tilt=0){
  // One connected angel-wing silhouette. Broad at the shoulder, tapered into layered feather tips.
  ctx.save();ctx.translate(x,y);ctx.scale(side*scale,scale);ctx.rotate(tilt);
- ctx.fillStyle=currentWingRed?'#d74c57':(currentWingSpecial?'#fff9d8':'#fffdf5');ctx.strokeStyle=currentWingRed?'#7e2530':(currentWingSpecial?'#e4b94f':'#c9d9dc');ctx.lineWidth=2.2;ctx.lineJoin='round';
+ ctx.fillStyle=currentWingBurning?'#f05a24':(currentWingRed?'#d74c57':(currentWingSpecial?'#fff9d8':'#fffdf5'));ctx.strokeStyle=currentWingBurning?'#9e241b':(currentWingRed?'#7e2530':(currentWingSpecial?'#e4b94f':'#c9d9dc'));ctx.lineWidth=2.2;ctx.lineJoin='round';
  ctx.beginPath();
  ctx.moveTo(0,2);
  ctx.bezierCurveTo(12,-17,32,-27,55,-25);
@@ -511,7 +525,7 @@ function angelWing(x,y,side,scale=1,tilt=0){
  ctx.bezierCurveTo(8,31,3,18,0,2);
  ctx.closePath();ctx.fill();ctx.stroke();
  // restrained feather separators: keep the wing reading as one mass, not insect wings
- ctx.strokeStyle=currentWingRed?'#f19a9f':(currentWingSpecial?'#fff0a6':'#e2ecee');ctx.lineWidth=1.8;
+ ctx.strokeStyle=currentWingBurning?'#ffb13b':(currentWingRed?'#f19a9f':(currentWingSpecial?'#fff0a6':'#e2ecee'));ctx.lineWidth=1.8;
  for(const pts of [[[9,3],[33,-13],[55,-16]],[[10,9],[34,1],[59,1]],[[10,15],[31,13],[55,18]],[[9,21],[25,25],[41,31]]]){
   ctx.beginPath();ctx.moveTo(...pts[0]);ctx.quadraticCurveTo(...pts[1],...pts[2]);ctx.stroke();
  }
@@ -613,7 +627,7 @@ function drawRacer(r){
  if(r.flight===2){let flap=Math.sin(now*18);ctx.scale(1+.035*flap,1-.025*flap);}
  // Glide: slight forward pitch / streamlined squash.
  if(r.flight===3){ctx.transform(1,0,-Math.sin(r.face)*.045,1,0,0);}
- currentWingSpecial=r.name==='Michael';currentWingRed=r.name==='Kawazu';if(dir==='down')frogFront(r);else if(dir==='up')frogBack(r);else frogSide(r,dir==='left');if(r.name==='Kawazu'){ctx.save();if(dir==='down'){ctx.fillStyle='#f5eee1';ctx.beginPath();ctx.ellipse(0,13,9,15,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d8232e';ctx.beginPath();ctx.arc(-12,-39,5,0,Math.PI*2);ctx.arc(12,-39,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#2975a8';ctx.fillRect(-18,5,5,23);ctx.fillRect(13,5,5,23);ctx.fillStyle='#f28a28';ctx.beginPath();ctx.arc(-12,40,7,0,Math.PI*2);ctx.arc(12,40,7,0,Math.PI*2);ctx.fill();}ctx.restore();}
+ currentWingSpecial=r.name==='Michael';currentWingRed=r.name==='Kawazu';currentWingBurning=r.burningWing>0||r.highJump>0;if(dir==='down')frogFront(r);else if(dir==='up')frogBack(r);else frogSide(r,dir==='left');currentWingBurning=false;if(r.name==='Kawazu'){ctx.save();if(dir==='down'){ctx.fillStyle='#f5eee1';ctx.beginPath();ctx.ellipse(0,13,9,15,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d8232e';ctx.beginPath();ctx.arc(-12,-39,5,0,Math.PI*2);ctx.arc(12,-39,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#2975a8';ctx.fillRect(-18,5,5,23);ctx.fillRect(13,5,5,23);ctx.fillStyle='#f28a28';ctx.beginPath();ctx.arc(-12,40,7,0,Math.PI*2);ctx.arc(12,40,7,0,Math.PI*2);ctx.fill();}ctx.restore();}
  // Wing-flap speed lines on stage 2 and on successful maintenance taps.
  if(r.flight===2 || r.wing>0){ctx.save();ctx.globalAlpha=.28;ctx.strokeStyle='#ffffff';ctx.lineWidth=4;for(const side of [-1,1]){for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(side*(35+i*5),-12+i*8);ctx.lineTo(side*(52+i*7),-17+i*8);ctx.stroke()}}ctx.restore();}
  // Glide-maintenance warning: starts before the ideal window, becomes fast near expiry.
