@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.25';
+const VERSION='v2.26';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -425,7 +425,7 @@ const COURSE_SETS={
  ],
  kawazu:[{name:'カワズ水脈',theme:'water',noWalls:true,path:[[700,700],[2700,500],[5000,850],[5150,1800],[4200,2200],[2850,1900],[2400,2450],[3300,2900],[5100,2850],[5000,3650],[3400,3900],[1700,3600],[600,3000],[800,2050],[2100,1650],[700,1300]]}]
 };
-let activeCourse=COURSE_SETS.arena1[0],courseTheme=activeCourse.theme,courseHalfWidth=activeCourse.halfWidth||195,courseNoWalls=!!activeCourse.noWalls,courseBranches=[];
+let activeCourse=COURSE_SETS.arena1[0],courseTheme=activeCourse.theme,courseHalfWidth=activeCourse.halfWidth||195,courseNoWalls=false,courseBranches=[];
 let path=activeCourse.path.map(([x,y])=>({x,y})),anchors=[],lilies=[],checkpoints=[];
 function rebuildCourseObjects(){
  anchors=[];
@@ -450,7 +450,7 @@ function rebuildCourseObjects(){
  lilies=[];for(let i=0;i<15;i++){let x=350+(i*977)%5300,y=300+(i*613)%3800;if(trackDistance(x,y)>330)lilies.push({x,y,r:48+(i%4)*10});}
  checkpoints=path.map((q,i)=>({x:q.x,y:q.y,r:240,i}));
 }
-function selectCourse(place,round=0){let set=COURSE_SETS[place]||COURSE_SETS.arena1;activeCourse=set[round%set.length];courseTheme=activeCourse.theme;courseHalfWidth=activeCourse.halfWidth||195;courseNoWalls=!!activeCourse.noWalls;courseBranches=(activeCourse.branches||[]).map(br=>br.map(([x,y])=>({x,y})));path=activeCourse.path.map(([x,y])=>({x,y}));rebuildCourseObjects();}
+function selectCourse(place,round=0){let set=COURSE_SETS[place]||COURSE_SETS.arena1;activeCourse=set[round%set.length];courseTheme=activeCourse.theme;courseHalfWidth=activeCourse.halfWidth||195;courseNoWalls=false;courseBranches=(activeCourse.branches||[]).map(br=>br.map(([x,y])=>({x,y})));path=activeCourse.path.map(([x,y])=>({x,y}));rebuildCourseObjects();}
 rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
@@ -460,14 +460,14 @@ const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,
 function reset(opponentName='Plain'){
  globalTimeStop=0;globalTimeLag=0;
  let playerName=saveData.selectedCharacter||'Michael',pc=CHARACTER_DATA[playerName]?.color||'#49a94f',oc=CHARACTER_DATA[opponentName]?.color||'#78a83c';
- let p0=path[0],p1=path[1],a=Math.atan2(p1.y-p0.y,p1.x-p0.x),tx=Math.cos(a),ty=Math.sin(a),nx=-ty,ny=tx;
- // Start just beyond the line. A lap is counted only after circling back and crossing it forward.
+ const g=finishGate(),p0=g.p0,tx=g.tx,ty=g.ty,nx=g.nx,ny=g.ny,a=Math.atan2(ty,tx);
  racers.splice(0,2,
    makeRacer(playerName,pc,0,p0.x+tx*150+nx*34,p0.y+ty*150+ny*34),
    makeRacer(opponentName,oc,1,p0.x+tx*150-nx*34,p0.y+ty*150-ny*34)
  );
  controlledIndex=0;racers[0].ai=false;racers[1].ai=true;racers[0].face=a;racers[1].face=a;
- racers[0].startLineLong=150;racers[1].startLineLong=150;racers[0].lapPrevX=racers[0].x;racers[0].lapPrevY=racers[0].y;racers[1].lapPrevX=racers[1].x;racers[1].lapPrevY=racers[1].y;
+ racers[0].startLineLong=150;racers[1].startLineLong=150;
+ racers[0].lapPrevX=racers[0].x;racers[0].lapPrevY=racers[0].y;racers[1].lapPrevX=racers[1].x;racers[1].lapPrevY=racers[1].y;
  if(playerName==='Uriel')racers[0].power=1.2;if(opponentName==='Uriel')racers[1].power=1.2;
  finished=false;ui.status.textContent='ジャンプ3回で最高速！';
 }
@@ -511,7 +511,7 @@ r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrac
    r.courseWalk-=dt;let a=Math.atan2(hit.qy-r.y,hit.qx-r.x);r.face=a;r.flight=0;r.onGround=true;r.speed=105;
    r.x+=Math.cos(a)*105*dt;r.y+=Math.sin(a)*105*dt;
    if(hit.d<150){r.courseWalk=0;r.x=hit.qx;r.y=hit.qy;r.speed=0;if(!r.ai)msg('コース復帰！ もう一度ジャンプから');}
- }else if(!courseNoWalls&&r.highJump<=0&&hit.d>courseHalfWidth+3){
+ }else if(r.highJump<=0&&hit.d>courseHalfWidth+3){
    // A Burning Climb can cross the grass. If it expires outside, walk back as before.
    if((r.wasHighJump||0)>0){
      r.courseWalk=6;r.flight=0;r.onGround=true;r.speed=105;r.tongue=null;
@@ -548,24 +548,29 @@ function aiSkills(r,dt){if(r.name!=='Gabriel')return;let ns=nearestTrackSegment(
 function nearestTrackSegment(px,py){
  let best={i:0,t:0,d:1e9};for(let i=0;i<path.length;i++){let a=path[i],b=path[(i+1)%path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);if(d<best.d)best={i,t,d};}return best;
 }
+function finishGate(){
+ const p0=path[0],prev=path[(path.length-1+path.length)%path.length],next=path[1];
+ let inx=p0.x-prev.x,iny=p0.y-prev.y,outx=next.x-p0.x,outy=next.y-p0.y;
+ let il=Math.hypot(inx,iny)||1,ol=Math.hypot(outx,outy)||1;inx/=il;iny/=il;outx/=ol;outy/=ol;
+ let tx=inx+outx,ty=iny+outy,tl=Math.hypot(tx,ty);
+ if(tl<.2){tx=outx;ty=outy;tl=1}
+ tx/=tl;ty/=tl;return {p0,tx,ty,nx:-ty,ny:tx};
+}
 function updateCheckpoint(r){
-  // Shortcuts are legal. The only lap gate is the start/finish line.
-  // Use the racer's swept movement segment, so a fast tongue-turn cannot skip the line between frames.
-  const p0=path[0],p1=path[1],dx=p1.x-p0.x,dy=p1.y-p0.y,len=Math.hypot(dx,dy)||1;
-  const tx=dx/len,ty=dy/len,nx=-ty,ny=tx;
+  // Shortcuts are legal. Only crossing the visible start/finish gate matters.
+  // Gate direction uses BOTH the incoming and outgoing course segments, so arbitrary/new course
+  // shapes still count correctly even when path[0] is not aligned with path[1].
+  const g=finishGate(),p0=g.p0,tx=g.tx,ty=g.ty,nx=g.nx,ny=g.ny;
   const x0=r.lapPrevX??r.x,y0=r.lapPrevY??r.y,x1=r.x,y1=r.y;
   r.lapPrevX=x1;r.lapPrevY=y1;
   const ax=x0-p0.x,ay=y0-p0.y,bx=x1-p0.x,by=y1-p0.y;
   const long0=ax*tx+ay*ty,long1=bx*tx+by*ty;
-  // Interpolate where the movement crosses longitudinal=0, then test the lateral position.
   if((long0<=0&&long1>0)||(long0>=0&&long1<0)){
-    const denom=long1-long0;
-    const u=Math.abs(denom)<1e-6?0:(-long0/denom);
+    const denom=long1-long0,u=Math.abs(denom)<1e-6?0:(-long0/denom);
     const crossX=x0+(x1-x0)*u,crossY=y0+(y1-y0)*u;
     const lateral=(crossX-p0.x)*nx+(crossY-p0.y)*ny;
-    // The finish sits beside a very tight tongue corner. Keep this gate intentionally broad:
-    // if the racer physically gets around that corner and crosses the finish plane, it counts.
-    if(Math.abs(lateral)<=1500){
+    const gateHalf=Math.max(520,courseHalfWidth+260);
+    if(Math.abs(lateral)<=gateHalf){
       if(long0<=0&&long1>0){
         r.lap++;
         if(r.lap>RACE_LAPS){
@@ -706,18 +711,15 @@ function drawWorld(){
 
  ctx.lineCap='round';ctx.lineJoin='round';
  const drawRoute=(pts,closed=true)=>{ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);if(closed)ctx.closePath();ctx.stroke();};
- if(!courseNoWalls){
-   ctx.strokeStyle=pal.grass;ctx.lineWidth=courseHalfWidth*2+70;drawRoute(path,true);for(const br of courseBranches)drawRoute(br,false);
-   ctx.strokeStyle=pal.inner;ctx.lineWidth=courseHalfWidth*2;drawRoute(path,true);for(const br of courseBranches)drawRoute(br,false);
-   drawGrassBlades();
- }else{
-   // Open course: no enclosing guard wall, only a translucent suggested racing line.
-   ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=courseHalfWidth*2;drawRoute(path,true);for(const br of courseBranches)drawRoute(br,false);
- }
+ // Every race corridor has a visible inner frame. Courses that were "open" are framed again
+ // because losing the inside boundary makes the route unreadable and creates accidental cuts.
+ ctx.strokeStyle=pal.grass;ctx.lineWidth=courseHalfWidth*2+70;drawRoute(path,true);for(const br of courseBranches)drawRoute(br,false);
+ ctx.strokeStyle=pal.inner;ctx.lineWidth=courseHalfWidth*2;drawRoute(path,true);for(const br of courseBranches)drawRoute(br,false);
+ drawGrassBlades();
  ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=3;ctx.setLineDash([18,46]);drawRoute(path,true);for(const br of courseBranches)drawRoute(br,false);ctx.setLineDash([]);
  for(const a of anchors)drawTree(a.x,a.y);
  // start gate across the water corridor
- ctx.save();ctx.translate(path[0].x,path[0].y);ctx.rotate(Math.atan2(path[1].y-path[0].y,path[1].x-path[0].x)+Math.PI/2);for(let i=-4;i<=4;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*20,-190,20,380)}ctx.restore();
+ {const g=finishGate();ctx.save();ctx.translate(g.p0.x,g.p0.y);ctx.rotate(Math.atan2(g.ty,g.tx)+Math.PI/2);let gh=Math.max(190,courseHalfWidth+55);for(let i=-4;i<=4;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*20,-gh,20,gh*2)}ctx.restore();}
 }
 function strokeLoop(){ctx.beginPath();ctx.moveTo(path[0].x,path[0].y);for(let i=1;i<path.length;i++)ctx.lineTo(path[i].x,path[i].y);ctx.closePath();ctx.stroke()}
 function drawGrassBlades(){
