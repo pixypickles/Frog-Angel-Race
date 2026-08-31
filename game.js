@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.20';
+const VERSION='v2.21';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -39,6 +39,8 @@ let saveData={
   selectedCharacter:'Michael',
   michaelSkillA:'punch',
   michaelSkillB:'bubble',
+  kawazuSkillA:'airSwim',
+  kawazuSkillB:'wallKick',
   unlockedSkills:['punch','bubble'],encountered:['Plain'],
   wins:0,
   arenaWins:0,
@@ -51,6 +53,7 @@ function loadSave(){
     if(raw) saveData={...saveData,...JSON.parse(raw)};
     saveData.encountered=saveData.encountered||['Plain'];
     saveData.unlockedSkills=saveData.unlockedSkills||['punch','bubble'];
+    saveData.kawazuSkillA=saveData.kawazuSkillA||'airSwim';saveData.kawazuSkillB=saveData.kawazuSkillB||'wallKick';
     saveData.timeLagUnlocked=!!saveData.timeLagUnlocked;saveData.timeStopUnlocked=!!saveData.timeStopUnlocked;
     if(!saveData.timeStopUnlocked)saveData.unlockedSkills=saveData.unlockedSkills.filter(x=>x!=='timeStop');
     if(saveData.timeLagUnlocked&&!saveData.unlockedSkills.includes('timeLag'))saveData.unlockedSkills.push('timeLag');
@@ -80,7 +83,7 @@ function showField(){
   }
 }
 function updateFieldUi(){
-  const n=saveData.selectedCharacter==='Michael'?'ミカエル':'ガブリエル';
+  const n=CHARACTER_DATA[saveData.selectedCharacter]?.jp?.replace('さん','')||saveData.selectedCharacter;
   const el=document.querySelector('#fieldPlayer');if(el)el.textContent='操作：'+n;
 }
 const MICHAEL_ORIGINAL_SKILLS=[['normalHighJump','ハイジャンプ'],['burningWing','バーニングウィング'],['highJump','バーニングクライム'],['timeLag','タイムラグ'],['timeStop','時間停止']];
@@ -93,20 +96,28 @@ const LEARNABLE_SKILLS={
  Beelzebub:[['poisonShot','毒液'],['poisonBoost','ポイズンブースト']]
 };
 function skillLabel(id){
- const base={punch:'パンチ',bubble:'泡弾',normalHighJump:'ハイジャンプ',burningWing:'バーニングウィング',highJump:'バーニングクライム',timeLag:'タイムラグ（禁断・周囲50% / 6秒）',timeStop:'時間停止（禁断・1レース1回）'};if(base[id])return base[id];
+ const base={punch:'パンチ',bubble:'泡弾',airSwim:'エアースイム',wallKick:'壁キック',normalHighJump:'ハイジャンプ',burningWing:'バーニングウィング',highJump:'バーニングクライム',timeLag:'タイムラグ（禁断・周囲50% / 6秒）',timeStop:'時間停止（禁断・1レース1回）'};if(base[id])return base[id];
  for(const [who,list] of Object.entries(LEARNABLE_SKILLS)){let x=list.find(v=>v[0]===id);if(x)return x[1]+'（'+CHARACTER_DATA[who].jp+'）';}
  return id;
 }
 function rebuildSkillSelects(){
  const a=document.querySelector('#skillASelect'),b=document.querySelector('#skillBSelect');if(!a||!b)return;
- let ids=['punch','bubble','normalHighJump',...(saveData.unlockedSkills||[]).filter(x=>!['punch','bubble','normalHighJump'].includes(x))];
+ const isKawazu=saveData.selectedCharacter==='Kawazu';
+ let ids=isKawazu
+   ?['airSwim','wallKick','punch','bubble','normalHighJump',...(saveData.unlockedSkills||[]).filter(x=>!['punch','bubble','normalHighJump'].includes(x))]
+   :['punch','bubble','normalHighJump',...(saveData.unlockedSkills||[]).filter(x=>!['punch','bubble','normalHighJump'].includes(x))];
  ids=[...new Set(ids)];
  const html=ids.map(id=>`<option value="${id}">${skillLabel(id)}</option>`).join('');
  a.innerHTML=html;b.innerHTML=html;
- if(!ids.includes(saveData.michaelSkillA))saveData.michaelSkillA='punch';
- if(!ids.includes(saveData.michaelSkillB))saveData.michaelSkillB='bubble';
- if(saveData.michaelSkillA===saveData.michaelSkillB)saveData.michaelSkillB=saveData.michaelSkillA==='bubble'?'punch':'bubble';
- a.value=saveData.michaelSkillA;b.value=saveData.michaelSkillB;
+ let ka=isKawazu?'kawazuSkillA':'michaelSkillA',kb=isKawazu?'kawazuSkillB':'michaelSkillB';
+ if(!ids.includes(saveData[ka]))saveData[ka]=isKawazu?'airSwim':'punch';
+ if(!ids.includes(saveData[kb]))saveData[kb]=isKawazu?'wallKick':'bubble';
+ if(saveData[ka]===saveData[kb])saveData[kb]=ids.find(x=>x!==saveData[ka])||saveData[kb];
+ a.value=saveData[ka];b.value=saveData[kb];
+ const heading=document.querySelector('#skillSetupTitle');
+ if(heading)heading.textContent=(isKawazu?'カワズ':'ミカエル')+' スキル設定';
+ const note=document.querySelector('#skillSetupNote');
+ if(note)note.textContent=isKawazu?'カワズさんも習得済みスキルを自由に付け替えできます。バーニング系は回数無制限。':'イベントをクリアするとスキルを習得できます。';
 }
 function learnFromOpponent(name){
  const list=LEARNABLE_SKILLS[name];if(!list)return false;let learned=[];
@@ -120,8 +131,14 @@ function showHome(){
   if(!saveData.kawazuUnlocked&&saveData.selectedCharacter==='Kawazu')saveData.selectedCharacter='Michael';
   rebuildSkillSelects();
   document.querySelectorAll('.charBtn').forEach(b=>b.classList.toggle('selected',b.dataset.char===saveData.selectedCharacter));
-  const a=document.querySelector('#skillASelect'),b=document.querySelector('#skillBSelect');
-  if(a)a.value=saveData.michaelSkillA;if(b)b.value=saveData.michaelSkillB;
+  const a=document.querySelector('#skillASelect'),b=document.querySelector('#skillBSelect'),isK=saveData.selectedCharacter==='Kawazu';
+  if(a)a.value=isK?saveData.kawazuSkillA:saveData.michaelSkillA;if(b)b.value=isK?saveData.kawazuSkillB:saveData.michaelSkillB;
+}
+let eventChallenge=null;
+function startLearningRace(name,place){
+  eventChallenge={opponent:name,place,racePlace:place==='forest'?'arena3':'arena2'};
+  tournament=null;
+  startRaceRound(name,true);
 }
 function showPlace(place){
   appState='place';currentPlace=place;hideAllScreens();document.querySelector('#fieldScreen')?.classList.remove('hidden');document.querySelector('#placePanel')?.classList.remove('hidden');
@@ -130,8 +147,8 @@ function showPlace(place){
     arena2:['🏟️ 水辺の競技場','池・蓮の葉・水面が多い高速コース。'],
     arena3:['🏟️ 森の競技場','木々と連続ヘアピンが多いテクニカルコース。'],
     practice:['🎯 練習場','ジャンプ3段階、舌アンカー、スキルを自由に練習できます。'],
-    forest:['🌲 森','トンボのアザゼル、クモのベリアルのイベント予定地。'],
-    pond:['🪷 池','ピラニアのリヴィア、ザリガニのアスモデウスのイベント予定地。'],
+    forest:['🌲 森','トンボのアザゼルさん、クモのベリアルさんがいる森。'],
+    pond:['🪷 池','ピラニアのリヴァイアさん、ザリガニのアスモデウスさんがいる池。'],
     master:['👑 マスタークラス','ベルゼブブさんが待つ高難度クラス。'],
     kawazu:['🐸 カワズさん','クリア後に現れる謎の高速カエル。']
   }[place];
@@ -144,22 +161,28 @@ function showPlace(place){
     actions.appendChild(b);
   }else{
     const p=document.createElement('div');p.className='homeBox';
-    p.innerHTML='<b>'+(place==='forest'?'森':'池')+'の交流イベント</b><p>対戦したことのある相手から、その相手のスキルをミカエルさんが教わります。</p>';
-    let any=false;for(const n of (saveData.encountered||[])){if(!LEARNABLE_SKILLS[n])continue;any=true;const q=document.createElement('button');q.className='menuBtn';let list=LEARNABLE_SKILLS[n],done=list.every(x=>saveData.unlockedSkills.includes(x[0]));q.textContent=(CHARACTER_DATA[n]?.jp||n)+(done?'（習得済み）':'から教わる');q.disabled=done;q.onclick=()=>{let got=learnFromOpponent(n);q.textContent=got?(got.join('・')+'を習得！'):'習得済み';q.disabled=true;};p.appendChild(q)}if(!any)p.innerHTML+='<p>まだスキルを教えてくれる相手と対戦していません。</p>';
+    p.innerHTML='<b>'+(place==='forest'?'森':'池')+'の交流イベント</b><p>対戦したことのある相手とイベントレースをして、勝つとその相手のスキルを教わります。</p>';
+    let any=false;for(const n of (saveData.encountered||[])){if(!LEARNABLE_SKILLS[n])continue;any=true;const q=document.createElement('button');q.className='menuBtn';let list=LEARNABLE_SKILLS[n],done=list.every(x=>saveData.unlockedSkills.includes(x[0]));q.textContent=(CHARACTER_DATA[n]?.jp||n)+(done?'（習得済み）':'とレースして教わる');q.disabled=done;q.onclick=()=>startLearningRace(n,place);p.appendChild(q)}if(!any)p.innerHTML+='<p>まだスキルを教えてくれる相手と対戦していません。</p>';
     if(place==='pond'){
       const sep=document.createElement('div');sep.className='panelNote';
       if(!saveData.kawazuUnlocked)sep.textContent='池の奥には、まだ入れない場所があるようだ……（クリア後に解禁）';
       else if(!saveData.timeLagUnlocked){
-        sep.textContent='クリア後イベント：池の時間が妙にゆっくり流れている。';
-        const q=document.createElement('button');q.className='menuBtn';q.textContent='池の奥へ：タイムラグを習得';
-        q.onclick=()=>{saveData.timeLagUnlocked=true;if(!saveData.unlockedSkills.includes('timeLag'))saveData.unlockedSkills.push('timeLag');saveGame();rebuildSkillSelects();showPlace('pond');};p.appendChild(q);
-      }else if(saveData.selectedCharacter==='Kawazu'&&!saveData.timeStopUnlocked){
-        sep.textContent='カワズさんには、さらに奥の「止まった水面」が見えている……。';
-        const q=document.createElement('button');q.className='menuBtn';q.textContent='カワズさんで禁断領域へ：時間停止を習得';
-        q.onclick=()=>{saveData.timeStopUnlocked=true;if(!saveData.unlockedSkills.includes('timeStop'))saveData.unlockedSkills.push('timeStop');saveGame();rebuildSkillSelects();showPlace('pond');};p.appendChild(q);
-      }else if(saveData.timeStopUnlocked)sep.textContent='池の時間イベント：タイムラグ／時間停止 習得済み。';
-      else sep.textContent='タイムラグ習得済み。カワズさんなら、池のさらに奥へ行けそうだ。';
+        sep.textContent='アスモデウスさんが、時間の流れを乱す射撃訓練を待っている。';
+        const q=document.createElement('button');q.className='menuBtn';q.textContent='アスモデウスさんとシューティング：タイムラグ';
+        q.onclick=()=>startShootingSkillEvent('pond','timeLag');p.appendChild(q);
+      }else sep.textContent='池の時間イベント：タイムラグ習得済み。';
       p.appendChild(sep);
+    }
+    if(place==='forest'&&saveData.kawazuUnlocked&&saveData.timeLagUnlocked&&!saveData.timeStopUnlocked){
+      const sep=document.createElement('div');sep.className='panelNote';
+      if(saveData.selectedCharacter==='Kawazu'){
+        sep.textContent='ベリアルさんの糸の間だけ、時間が止まって見える……。';
+        const q=document.createElement('button');q.className='menuBtn';q.textContent='ベリアルさんとシューティング：時間停止';
+        q.onclick=()=>startShootingSkillEvent('forest','timeStop');p.appendChild(q);
+      }else sep.textContent='タイムラグの先に、カワズさんだけが気づける何かが森にあるようだ。';
+      p.appendChild(sep);
+    }else if(place==='forest'&&saveData.timeStopUnlocked){
+      const sep=document.createElement('div');sep.className='panelNote';sep.textContent='森の時間イベント：時間停止習得済み。';p.appendChild(sep);
     }
     if(place==='forest'&&!saveData.unlockedSkills.includes('burningWing')){const q=document.createElement('button');q.className='menuBtn';q.textContent='森のシューティングイベント：バーニングウィング';q.onclick=()=>startShootingSkillEvent('forest','burningWing');p.appendChild(q);}
     if(place==='pond'&&!saveData.unlockedSkills.includes('highJump')){const q=document.createElement('button');q.className='menuBtn';q.textContent='池のシューティングイベント：バーニングクライム';q.onclick=()=>startShootingSkillEvent('pond','highJump');p.appendChild(q);}
@@ -178,18 +201,18 @@ function buildObjectsForPath(pp){
   return {anchors:aa,lilies:ll};
 }
 function startShootingSkillEvent(place,skillId){
-  const forest=place==='forest',enemyName=forest?'Azazel':'Leviathan';
+  const forest=place==='forest',enemyName=skillId==='timeLag'?'Asmodeus':skillId==='timeStop'?'Belial':forest?'Azazel':'Leviathan';
   const pp=makeShootingCourse(place),objs=buildObjectsForPath(pp);
   shootingEvent={
-    place,skillId,title:skillId==='burningWing'?'バーニングウィング':'バーニングクライム',
+    place,skillId,title:skillId==='burningWing'?'バーニングウィング':skillId==='highJump'?'バーニングクライム':skillId==='timeLag'?'タイムラグ':'時間停止',
     enemyName,hits:0,time:18,enemyClock:.7,shots:[],enemyShots:[],ended:false,
     path:pp,anchors:objs.anchors,lilies:objs.lilies,theme:forest?'forest':'water',
-    player:makeRacer('Michael',CHARACTER_DATA.Michael.color,0,1500,2200),
+    player:makeRacer((skillId==='timeStop'&&saveData.kawazuUnlocked)?'Kawazu':'Michael',CHARACTER_DATA[(skillId==='timeStop'&&saveData.kawazuUnlocked)?'Kawazu':'Michael'].color,0,1500,2200),
     enemy:makeRacer(enemyName,CHARACTER_DATA[enemyName].color,1,4450,2200)
   };
   const q=shootingEvent;q.player.ai=false;q.enemy.ai=true;q.player.flight=3;q.player.onGround=false;q.player.speed=0;q.player.face=0;q.enemy.flight=3;q.enemy.onGround=false;q.enemy.speed=0;q.enemy.face=Math.PI;
   appState='shooting';hideAllScreens();document.querySelector('#raceUi')?.classList.remove('hidden');
-  ui.lap.textContent=forest?'FOREST SHOOT':'POND SHOOT';ui.who.textContent='操作：ミカエルさん';ui.a.textContent='泡弾';ui.b.textContent='泡弾';ui.jump.textContent='泡弾';ui.tongue.textContent='泡弾';
+  ui.lap.textContent=forest?'FOREST SHOOT':'POND SHOOT';ui.who.textContent='操作：'+(CHARACTER_DATA[q.player.name]?.jp||q.player.name);ui.a.textContent='泡弾';ui.b.textContent='泡弾';ui.jump.textContent='泡弾';ui.tongue.textContent='泡弾';
   msg((CHARACTER_DATA[enemyName]?.jp||enemyName)+'との空中射撃！ 泡弾を6発当てろ');
 }
 function shootingFire(){
@@ -198,7 +221,7 @@ function shootingFire(){
 }
 function endShootingEvent(ok){
   const q=shootingEvent;if(!q||q.ended)return;q.ended=true;
-  if(ok){if(!saveData.unlockedSkills.includes(q.skillId))saveData.unlockedSkills.push(q.skillId);saveGame();msg(q.title+' 習得！');setTimeout(()=>{ui.jump.textContent='ジャンプ';ui.tongue.textContent='舌';shootingEvent=null;showPlace(q.place)},900);}
+  if(ok){if(!saveData.unlockedSkills.includes(q.skillId))saveData.unlockedSkills.push(q.skillId);if(q.skillId==='timeLag')saveData.timeLagUnlocked=true;if(q.skillId==='timeStop')saveData.timeStopUnlocked=true;saveGame();rebuildSkillSelects();msg(q.title+' 習得！');setTimeout(()=>{ui.jump.textContent='ジャンプ';ui.tongue.textContent='舌';shootingEvent=null;showPlace(q.place)},900);}
   else{msg('時間切れ！');setTimeout(()=>{ui.jump.textContent='ジャンプ';ui.tongue.textContent='舌';shootingEvent=null;showPlace(q.place)},800);}
 }
 function updateShooting(dt){
@@ -251,9 +274,10 @@ function applySelectedCharacter(){
   racers.forEach((r,i)=>r.ai=i!==controlledIndex);
 }
 function applyMichaelSkills(){
-  // A/B labels and functions are interpreted in useA/useB below.
   const michael=racers.find(r=>r.name==='Michael');
   if(michael){michael.customSkillA=saveData.michaelSkillA;michael.customSkillB=saveData.michaelSkillB;}
+  const kawazu=racers.find(r=>r.name==='Kawazu');
+  if(kawazu){kawazu.customSkillA=saveData.kawazuSkillA;kawazu.customSkillB=saveData.kawazuSkillB;}
 }
 function startRace(practice=false){
   if(practice){tournament=null;startRaceRound('Plain',true);return;}
@@ -262,12 +286,18 @@ function startRace(practice=false){
 }
 function startRaceRound(opponent,practice=false){
   appState='race';hideAllScreens();document.querySelector('#raceUi')?.classList.remove('hidden');
-  selectCourse(tournament?.place||'arena1',tournament?.round||0);reset(opponent);applyMichaelSkills();finished=false;
+  selectCourse(tournament?.place||eventChallenge?.racePlace||'arena1',tournament?.round||0);reset(opponent);applyMichaelSkills();finished=false;
   saveData.encountered=saveData.encountered||['Plain'];if(!saveData.encountered.includes(opponent)){saveData.encountered.push(opponent);saveGame();}
   racers.forEach(r=>{r.lap=1;r.cp=1;r.finished=false;r.speed=0;});
   msg(practice?('練習開始！ '+activeCourse.name):('大会 '+(tournament.round+1)+'回戦 / '+tournament.opponents.length+'　'+activeCourse.name+'　VS '+(CHARACTER_DATA[opponent]?.jp||opponent)));
 }
 function showRaceResult(win){
+ if(eventChallenge){
+   const ev=eventChallenge;eventChallenge=null;
+   if(win){const got=learnFromOpponent(ev.opponent);msg(got&&got.length?(got.join('・')+'を習得！'):'習得済み');setTimeout(()=>showPlace(ev.place),950);}
+   else{msg('イベントレース敗北。もう一度挑戦できます。');setTimeout(()=>showPlace(ev.place),750);}
+   return;
+ }
  if(!tournament){showField();return;}
  if(!win){msg('大会敗退');setTimeout(showField,450);return;}
  saveData.wins=(saveData.wins||0)+1;saveData.arenaWins=(saveData.arenaWins||0)+1;
@@ -322,7 +352,7 @@ function setupMetaUi(){
   document.querySelector('#storyNext')?.addEventListener('click',nextStory);
   document.querySelector('#continueBtn')?.addEventListener('click',()=>{loadSave();showField();});
   document.querySelector('#newBtn')?.addEventListener('click',()=>{
-    saveData={started:true,selectedCharacter:'Michael',michaelSkillA:'punch',michaelSkillB:'bubble',unlockedSkills:['punch','bubble'],encountered:['Plain'],wins:0,arenaWins:0,tournamentWins:{},masterUnlocked:false,kawazuUnlocked:false,timeLagUnlocked:false,timeStopUnlocked:false};
+    saveData={started:true,selectedCharacter:'Michael',michaelSkillA:'punch',michaelSkillB:'bubble',kawazuSkillA:'airSwim',kawazuSkillB:'wallKick',unlockedSkills:['punch','bubble'],encountered:['Plain'],wins:0,arenaWins:0,tournamentWins:{},masterUnlocked:false,kawazuUnlocked:false,timeLagUnlocked:false,timeStopUnlocked:false};
     saveGame();playStory('opening');
   });
   document.querySelector('#saveBtn')?.addEventListener('click',saveGame);
@@ -333,10 +363,10 @@ function setupMetaUi(){
   document.querySelectorAll('.charBtn').forEach(b=>b.addEventListener('click',()=>{
     if(b.dataset.char==='Kawazu'&&!saveData.kawazuUnlocked)return;saveData.selectedCharacter=b.dataset.char;
     document.querySelectorAll('.charBtn').forEach(x=>x.classList.toggle('selected',x===b));
-    saveGame();updateFieldUi();
+    saveGame();updateFieldUi();rebuildSkillSelects();
   }));
-  document.querySelector('#skillASelect')?.addEventListener('change',e=>{let old=saveData.michaelSkillA;if(e.target.value===saveData.michaelSkillB)saveData.michaelSkillB=old;saveData.michaelSkillA=e.target.value;saveGame();rebuildSkillSelects();});
-  document.querySelector('#skillBSelect')?.addEventListener('change',e=>{let old=saveData.michaelSkillB;if(e.target.value===saveData.michaelSkillA)saveData.michaelSkillA=old;saveData.michaelSkillB=e.target.value;saveGame();rebuildSkillSelects();});
+  document.querySelector('#skillASelect')?.addEventListener('change',e=>{let isK=saveData.selectedCharacter==='Kawazu',ka=isK?'kawazuSkillA':'michaelSkillA',kb=isK?'kawazuSkillB':'michaelSkillB',old=saveData[ka];if(e.target.value===saveData[kb])saveData[kb]=old;saveData[ka]=e.target.value;saveGame();rebuildSkillSelects();});
+  document.querySelector('#skillBSelect')?.addEventListener('change',e=>{let isK=saveData.selectedCharacter==='Kawazu',ka=isK?'kawazuSkillA':'michaelSkillA',kb=isK?'kawazuSkillB':'michaelSkillB',old=saveData[kb];if(e.target.value===saveData[ka])saveData[ka]=old;saveData[kb]=e.target.value;saveGame();rebuildSkillSelects();});
   document.querySelector('#quitRace')?.addEventListener('click',showField);
   showTitle();
 }
@@ -531,9 +561,11 @@ function useMichaelSkill(r,id,slot){
  let o=racers[1-r.index];
  if(id==='punch'){r[cdKey]=1.35;let d=Math.hypot(o.x-r.x,o.y-r.y);if(d<90){pushRival(o,r.face,78);msg('パンチ！ 相手を横へ弾いた');}else msg('パンチ！');return true;}
  if(id==='bubble'){r[cdKey]=.9;let aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'bubble',x:r.x,y:r.y,vx:Math.cos(aim)*1250,vy:Math.sin(aim)*1250,owner:r,t:1.65});msg('泡弾！ 自動照準');return true;}
- if(id==='burningWing'){if(r.burnWingUses<=0){msg('バーニングウィングは1レース3回まで！');return true;}r.burnWingUses--;r[cdKey]=.45;r.burningWing=1.8;r.speed=Math.min(maxSpeed+230,Math.max(r.speed+265,maxSpeed+85));r.boost=1.35;msg('バーニングウィング！ 残り '+r.burnWingUses+'/3');return true;}
- if(id==='highJump'){if(r.burnClimbUses<=0){msg('バーニングクライムは1レース3回まで！');return true;}r.burnClimbUses--;r[cdKey]=.45;r.highJump=1.05;r.highJumpTotal=1.05;r.highJumpDir=r.face;r.tongue=null;r.flight=3;r.onGround=false;r.speed=Math.max(535,Math.min(r.speed+90,610));msg('バーニングクライム！ 残り '+r.burnClimbUses+'/3');return true;} 
- if(id==='normalHighJump'){r[cdKey]=1.15;r.normalHighJump=.72;r.tongue=null;r.flight=2;r.onGround=false;r.speed=Math.max(r.speed,420);msg('ハイジャンプ！');return true;}
+ if(id==='burningWing'){if(r.name!=='Kawazu'){if(r.burnWingUses<=0){msg('バーニングウィングは1レース3回まで！');return true;}r.burnWingUses--;}r[cdKey]=.45;r.burningWing=1.8;r.speed=Math.min(maxSpeed+230,Math.max(r.speed+265,maxSpeed+85));r.boost=1.35;msg(r.name==='Kawazu'?'バーニングウィング！':'バーニングウィング！ 残り '+r.burnWingUses+'/3');return true;}
+ if(id==='highJump'){if(r.name!=='Kawazu'){if(r.burnClimbUses<=0){msg('バーニングクライムは1レース3回まで！');return true;}r.burnClimbUses--;}r[cdKey]=.45;r.highJump=1.05;r.highJumpTotal=1.05;r.highJumpDir=r.face;r.tongue=null;r.flight=3;r.onGround=false;r.speed=Math.max(535,Math.min(r.speed+90,610));msg(r.name==='Kawazu'?'バーニングクライム！':'バーニングクライム！ 残り '+r.burnClimbUses+'/3');return true;} 
+ if(id==='normalHighJump'){r[cdKey]=1.15;r.normalHighJump=.72;r.tongue=null;r.flight=2;r.onGround=false;r.speed=Math.max(r.speed,420);msg('ハイジャンプ！');return true;} 
+ if(id==='airSwim'){r[cdKey]=1.15;r.speed=Math.min(maxSpeed+155,r.speed+105);r.boost=.42;effects.push({kind:'airball',x:r.x-Math.cos(r.face)*20,y:r.y-Math.sin(r.face)*20,vx:-Math.cos(r.face)*850,vy:-Math.sin(r.face)*850,owner:r,t:.9,age:0});msg('エアースイム！');return true;}
+ if(id==='wallKick'){r[cdKey]=1.25;let ti=trackInfo(r.x,r.y);if(ti.d>150){let seg=ti.i??nearestTrackSegment(r.x,r.y).i,next=path[(seg+1)%path.length],a=Math.atan2(next.y-r.y,next.x-r.x);r.face=a;r.speed=Math.min(maxSpeed+170,Math.max(r.speed+155,520));r.flight=2;r.onGround=false;r.wallEscape=.18;msg('壁キック！ 壁を蹴って再加速！');}else{let o=racers[1-r.index],dx=o.x-r.x,dy=o.y-r.y,d=Math.hypot(dx,dy),behind=Math.cos(norm(Math.atan2(dy,dx)-r.face))<-.15;if(d<135&&behind){pushRival(o,r.face+Math.PI,105);r.speed=Math.min(maxSpeed+90,r.speed+70);}msg('エアキック！');}return true;}
  if(id==='timeLag'){r[cdKey]=8;globalTimeLag=6;msg('タイムラグ！ 6秒間、周囲の時間が半分に！');return true;}
  if(id==='timeStop'){if(r.timeStopUsed){msg('時間停止は1レースに一度だけ！');return true;}r.timeStopUsed=true;r[cdKey]=99;globalTimeStop=3;msg('禁断スキル――時間停止！ 3秒！');return true;}
  if(id==='waterBoost'){r[cdKey]=1.15;r.speed=Math.min(maxSpeed+65,r.speed+58);r.boost=Math.max(r.boost||0,.34);effects.push({kind:'waterBoost',x:r.x-Math.cos(r.face)*18,y:r.y-Math.sin(r.face)*18,a:r.face+Math.PI,t:.32,max:.32,owner:r});msg('後方放水ブースト！');return true;}
@@ -550,7 +582,7 @@ function useMichaelSkill(r,id,slot){
  if(id==='poisonBoost'){r[cdKey]=2.5;r.speed=Math.min(maxSpeed+155,r.speed+150);r.boost=.72;effects.push({kind:'poisonMist',x:r.x-Math.cos(r.face)*35,y:r.y-Math.sin(r.face)*35,owner:r,t:4,max:4});msg('ポイズンブースト！');return true;}
  return false;
 }
-function useA(r){if(r.name==='Michael'){useMichaelSkill(r,r.customSkillA||'punch','A');return;}if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
+function useA(r){if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillA||(r.name==='Kawazu'?'airSwim':'punch'),'A');return;}if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
  if(r.name==='Gabriel'){waterBoost(r,false);return;}
  if(r.name==='Beelzebub'){r.skillCdA=1.45;let o=racers[1-r.index],aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'poison',x:r.x,y:r.y,vx:Math.cos(aim)*980,vy:Math.sin(aim)*980,owner:r,t:1.65,age:0});msg('毒液！');return;}
  if(r.name==='Kawazu'){r.skillCdA=1.15;r.speed=Math.min(maxSpeed+155,r.speed+105);r.boost=.42;effects.push({kind:'airball',x:r.x-Math.cos(r.face)*20,y:r.y-Math.sin(r.face)*20,vx:-Math.cos(r.face)*850,vy:-Math.sin(r.face)*850,owner:r,t:.9,age:0});msg('エアースイム！');return;}
@@ -568,7 +600,7 @@ function useA(r){if(r.name==='Michael'){useMichaelSkill(r,r.customSkillA||'punch
  if(r.customSkillA==='dash'&&r.name==='Michael'){r.skillCdA=2.6;r.speed=Math.min(maxSpeed+105,r.speed+105);r.boost=.45;msg('天使ダッシュ！');return;}
  r.skillCdA=1.35;let o=racers[1-r.index],d=Math.hypot(o.x-r.x,o.y-r.y);if(d<90){pushRival(o,r.face,78*(r.power||1));msg('パンチ！ 相手を横へ弾いた');}else msg('パンチ！');
 }
-function useB(r){if(r.name==='Michael'){useMichaelSkill(r,r.customSkillB||'bubble','B');return;}if(r.skillCdB>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
+function useB(r){if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillB||(r.name==='Kawazu'?'wallKick':'bubble'),'B');return;}if(r.skillCdB>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
  if(r.name==='Gabriel'){waterSkill(r,true,false);return;}
  if(r.name==='Beelzebub'){r.skillCdB=2.5;r.speed=Math.min(maxSpeed+155,r.speed+150);r.boost=.72;let bx=r.x-Math.cos(r.face)*35,by=r.y-Math.sin(r.face)*35;effects.push({kind:'poisonMist',x:bx,y:by,owner:r,t:4.0,max:4.0});msg('ポイズンブースト！');return;}
  if(r.name==='Kawazu'){r.skillCdB=1.25;let ti=trackInfo(r.x,r.y);if(ti.d>165){let a=Math.atan2(r.y-ti.qy,r.x-ti.qx)+Math.PI;r.face=norm(a);r.x=ti.qx+Math.cos(a)*150;r.y=ti.qy+Math.sin(a)*150;r.speed=Math.min(maxSpeed+145,r.speed+90);r.boost=.35;msg('壁キック！')}else{let o=racers[1-r.index],dx=o.x-r.x,dy=o.y-r.y,d=Math.hypot(dx,dy),behind=Math.cos(norm(Math.atan2(dy,dx)-r.face))<-.15;if(d<135&&behind){pushRival(o,r.face+Math.PI,105);r.speed=Math.min(maxSpeed+90,r.speed+70);}msg('エアキック！')}return;}
@@ -814,7 +846,7 @@ function drawRacer(r){
 }
 function drawEffect(e){if(e.kind==='poisonMist'){ctx.save();ctx.globalAlpha=.18+.25*(e.t/e.max);ctx.fillStyle='#9b4bd1';for(let i=0;i<8;i++){let a=i*.9+(e.age||0)*.35,rr=20+(i%3)*17;ctx.beginPath();ctx.arc(e.x+Math.cos(a)*rr,e.y+Math.sin(a)*rr,24+(i%2)*12,0,Math.PI*2);ctx.fill();}ctx.restore();}else if(e.kind==='poison'){ctx.fillStyle='#9e49d6';ctx.strokeStyle='#d6a4ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,18,0,Math.PI*2);ctx.fill();ctx.stroke();}else if(e.kind==='airball'){ctx.save();ctx.globalAlpha=.6;ctx.strokeStyle='#e9ffff';ctx.lineWidth=5;ctx.beginPath();ctx.arc(e.x,e.y,16,0,Math.PI*2);ctx.stroke();ctx.restore();}else if(e.kind==='bewitch'){ctx.save();ctx.translate(e.x,e.y);ctx.globalAlpha=.75;ctx.fillStyle='#f04478';for(let i=0;i<4;i++){let a=(e.age||0)*5+i*Math.PI/2;ctx.beginPath();ctx.arc(Math.cos(a)*12,Math.sin(a)*12,8,0,Math.PI*2);ctx.fill();}ctx.restore();}else if(e.kind==='rock'){let h=Math.sin(Math.min(1,(e.age||0)/1.1)*Math.PI)*38;ctx.save();ctx.translate(e.x,e.y-h);ctx.rotate((e.age||0)*7);ctx.fillStyle='#8a765e';ctx.strokeStyle='#493f34';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-20,-11);ctx.lineTo(-5,-23);ctx.lineTo(18,-14);ctx.lineTo(22,8);ctx.lineTo(4,20);ctx.lineTo(-18,13);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}else if(e.kind==='bubble'){ctx.fillStyle='#bcecffaa';ctx.strokeStyle='#4eaeeb';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,17,0,Math.PI*2);ctx.fill();ctx.stroke()}else{let len=e.kind==='laser'?640:(e.kind==='waterBoost'?175:120);ctx.strokeStyle=e.kind==='laser'?'#baf5ff':'#7bd7ff';ctx.lineWidth=e.kind==='laser'?7:(e.kind==='waterBoost'?20:15);ctx.globalAlpha=Math.max(.15,e.t/e.max);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(e.a)*len,e.y+Math.sin(e.a)*len);ctx.stroke();ctx.globalAlpha=1}}
 function drawMini(){let sx=185/world.w,sy=118/world.h,ox=18,oy=58;ctx.fillStyle='#102820c9';ctx.fillRect(ox,oy,185,118);ctx.strokeStyle='#2f713c';ctx.lineWidth=17;ctx.beginPath();ctx.moveTo(ox+path[0].x*sx,oy+path[0].y*sy);for(let i=1;i<path.length;i++)ctx.lineTo(ox+path[i].x*sx,oy+path[i].y*sy);ctx.closePath();ctx.stroke();ctx.strokeStyle='#78d1df';ctx.lineWidth=10;ctx.stroke();for(const r of racers){ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(ox+r.x*sx,oy+r.y*sy,5,0,Math.PI*2);ctx.fill()}}
-function updateHud(r){ui.lap.textContent='LAP '+Math.min(r.lap,RACE_LAPS)+'/'+RACE_LAPS;ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){al='エアースイム';bl='壁キック'}else if(r.name==='Michael'){let aid=r.customSkillA||'punch',bid=r.customSkillB||'bubble';al=skillLabel(aid)+(aid==='burningWing'?' '+r.burnWingUses+'/3':aid==='highJump'?' '+r.burnClimbUses+'/3':'');bl=skillLabel(bid)+(bid==='burningWing'?' '+r.burnWingUses+'/3':bid==='highJump'?' '+r.burnClimbUses+'/3':'')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
+function updateHud(r){ui.lap.textContent='LAP '+Math.min(r.lap,RACE_LAPS)+'/'+RACE_LAPS;ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){let aid=r.customSkillA||'airSwim',bid=r.customSkillB||'wallKick';al=skillLabel(aid)+(aid==='burningWing'||aid==='highJump'?' ∞':'');bl=skillLabel(bid)+(bid==='burningWing'||bid==='highJump'?' ∞':'')}else if(r.name==='Michael'){let aid=r.customSkillA||'punch',bid=r.customSkillB||'bubble';al=skillLabel(aid)+(aid==='burningWing'?' '+r.burnWingUses+'/3':aid==='highJump'?' '+r.burnClimbUses+'/3':'');bl=skillLabel(bid)+(bid==='burningWing'?' '+r.burnWingUses+'/3':bid==='highJump'?' '+r.burnClimbUses+'/3':'')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
 function msg(t){ui.status.textContent=t;clearTimeout(msg.timer);msg.timer=setTimeout(()=>ui.status.textContent='ジャンプ3回＋舌ターンで最速を狙え！',2200)}
 function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;if(appState==='race'){
  if(globalTimeStop>0)globalTimeStop=Math.max(0,globalTimeStop-dt);
