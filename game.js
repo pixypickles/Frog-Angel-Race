@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.4';
+const VERSION='v2.5';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -424,7 +424,31 @@ function updateEffects(dt){for(const e of effects){if(globalTimeStop>0&&e.owner!
  }effects=effects.filter(e=>e.t>0)}
 function trackInfo(px,py){let best={d:1e9,qx:0,qy:0};for(let i=0;i<path.length;i++){let a=path[i],b=path[(i+1)%path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);if(d<best.d)best={d,qx,qy}}return best}
 function trackDistance(px,py){return trackInfo(px,py).d}
-function draw(){let me=racers[controlledIndex];camera.x=approach(camera.x,me.x-W/2,.16*W);camera.y=approach(camera.y,me.y-H/2,.16*H);camera.x=Math.max(0,Math.min(world.w-W,camera.x));camera.y=Math.max(0,Math.min(world.h-H,camera.y));ctx.clearRect(0,0,W,H);ctx.save();ctx.translate(-camera.x,-camera.y);drawWorld();for(const e of effects)drawEffect(e);for(const r of racers)drawRacer(r);ctx.restore();drawMini();updateHud(me)}
+function draw(){
+ let me=racers[controlledIndex],timeFx=globalTimeStop>0?'stop':(globalTimeLag>0?'lag':'');
+ camera.x=approach(camera.x,me.x-W/2,.16*W);camera.y=approach(camera.y,me.y-H/2,.16*H);camera.x=Math.max(0,Math.min(world.w-W,camera.x));camera.y=Math.max(0,Math.min(world.h-H,camera.y));ctx.clearRect(0,0,W,H);
+ ctx.save();ctx.translate(-camera.x,-camera.y);
+ if(timeFx){ctx.save();ctx.filter=timeFx==='stop'?'grayscale(88%) saturate(45%) hue-rotate(165deg) brightness(.88)':'grayscale(45%) saturate(65%) hue-rotate(155deg) brightness(.94)';drawWorld();for(const e of effects)if(e.owner!==me)drawEffect(e);for(const r of racers)if(r!==me)drawRacer(r);ctx.restore();for(const e of effects)if(e.owner===me)drawEffect(e);drawRacer(me);}
+ else{drawWorld();for(const e of effects)drawEffect(e);for(const r of racers)drawRacer(r);}
+ ctx.restore();
+ if(timeFx)drawTimeEffectOverlay(timeFx);
+ drawMini();updateHud(me)
+}
+function drawTimeEffectOverlay(mode){
+ ctx.save();
+ const stop=mode==='stop',pulse=.5+.5*Math.sin(performance.now()/(stop?90:150));
+ ctx.fillStyle=stop?`rgba(30,90,160,${.12+.06*pulse})`:`rgba(65,125,185,${.07+.035*pulse})`;ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle=stop?`rgba(205,235,255,${.52+.25*pulse})`:`rgba(210,240,255,${.26+.14*pulse})`;ctx.lineWidth=stop?5:3;
+ ctx.strokeRect(7,7,W-14,H-14);
+ ctx.font=stop?'bold 28px sans-serif':'bold 21px sans-serif';ctx.textAlign='center';ctx.textBaseline='top';
+ ctx.fillStyle=stop?'rgba(235,248,255,.94)':'rgba(232,247,255,.72)';
+ ctx.fillText(stop?'TIME STOP':'TIME LAG',W/2,18);
+ if(stop){
+   ctx.globalAlpha=.22+.12*pulse;
+   for(let i=0;i<7;i++){let y=70+i*(H-140)/6;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+ }
+ ctx.restore();
+}
 function drawWorld(){
  // The race is airborne: below the racers is a pond, not a road surface.
  ctx.fillStyle='#69cbe0';ctx.fillRect(0,0,world.w,world.h);
