@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.10';
+const VERSION='v2.11';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -14,7 +14,9 @@ const CHARACTER_DATA={
  Lucifer:{jp:'ルシファーさん',color:'#666a70'},
  Lilith:{jp:'リリスさん',color:'#ef78ad'},
  Beelzebub:{jp:'ベルゼブブさん',color:'#101515'},
- Kawazu:{jp:'カワズさん',color:'#3f9d52',wing:'red'}
+ Kawazu:{jp:'カワズさん',color:'#3f9d52',wing:'red'},
+ Azazel:{jp:'アザゼルさん',color:'#8c5a9e'},
+ Leviathan:{jp:'リヴァイアさん',color:'#d65a48'}
 };
 const TOURNAMENT_ROSTER=['Gabriel','Raphael','Uriel','Lucifer','Lilith'];
 function randomTournamentOpponent(exclude=[]){
@@ -162,52 +164,59 @@ function showPlace(place){
     actions.appendChild(p);
   }
 }
+let shootingEvent=null;
+function makeShootingCourse(place){
+  return place==='forest'
+    ?[{x:900,y:850},{x:5100,y:850},{x:5100,y:3550},{x:900,y:3550}]
+    :[{x:1000,y:2200},{x:1350,y:1050},{x:3000,y:650},{x:4650,y:1050},{x:5000,y:2200},{x:4650,y:3350},{x:3000,y:3750},{x:1350,y:3350}];
+}
+function buildObjectsForPath(pp){
+  let aa=[];for(let i=1;i<pp.length;i++){let a=pp[i-1],b=pp[i],c=pp[(i+1)%pp.length],v1={x:a.x-b.x,y:a.y-b.y},v2={x:c.x-b.x,y:c.y-b.y},l1=Math.hypot(v1.x,v1.y)||1,l2=Math.hypot(v2.x,v2.y)||1,bx=v1.x/l1+v2.x/l2,by=v1.y/l1+v2.y/l2,bl=Math.hypot(bx,by)||1;aa.push({x:b.x+bx/bl*250,y:b.y+by/bl*250});}
+  let ll=[];for(let i=0;i<14;i++)ll.push({x:360+(i*977)%5250,y:330+(i*613)%3700,r:48+(i%4)*10});
+  return {anchors:aa,lilies:ll};
+}
 function startShootingSkillEvent(place,skillId){
- const actions=document.querySelector('#placeActions');actions.innerHTML='';
- const forest=place==='forest',title=skillId==='burningWing'?'バーニングウィング':'バーニングクライム';
- const box=document.createElement('div');box.className='homeBox';
- box.innerHTML='<b>'+(forest?'森の空中射撃訓練':'池の空中射撃訓練')+'</b><p class="panelNote">レースと同じカエルで飛び回り、泡弾を当てよう。左側をドラッグで移動、右側をタップ／クリックで泡弾。6 HIT / 18秒</p>';
- const cv=document.createElement('canvas');cv.width=720;cv.height=360;cv.style.cssText='width:100%;max-width:720px;aspect-ratio:2/1;border-radius:18px;border:3px solid rgba(255,255,255,.7);touch-action:none;background:#68c7da;';
- const hud=document.createElement('div');hud.style.cssText='font-weight:900;margin:8px 0';hud.textContent='HIT 0/6　TIME 18.0';
- box.append(hud,cv);actions.appendChild(box);
- const c=cv.getContext('2d'),W=720,H=360,player={x:155,y:180,face:0},enemy={x:540,y:180,vx:95,vy:75},shots=[],enemyShots=[];
- let hits=0,left=18,ended=false,last=performance.now(),drag=false,joyX=0,joyY=0,enemyClock=.8;
- function pos(e){let r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
- cv.addEventListener('pointerdown',e=>{let q=pos(e);if(q.x<W*.48){drag=true;cv.setPointerCapture(e.pointerId);joyX=q.x-player.x;joyY=q.y-player.y;}else fire(q.x,q.y)});
- cv.addEventListener('pointermove',e=>{if(!drag)return;let q=pos(e);joyX=q.x-player.x;joyY=q.y-player.y});
- cv.addEventListener('pointerup',()=>{drag=false;joyX=joyY=0});
- function fire(x,y){let dx=x-player.x,dy=y-player.y,d=Math.hypot(dx,dy)||1;player.face=Math.atan2(dy,dx);shots.push({x:player.x,y:player.y,vx:dx/d*620,vy:dy/d*620,r:9});}
- function finish(ok){if(ended)return;ended=true;if(ok){if(!saveData.unlockedSkills.includes(skillId))saveData.unlockedSkills.push(skillId);saveGame();rebuildSkillSelects();hud.textContent=title+' 習得！';setTimeout(()=>showPlace(place),900);}else{hud.textContent='時間切れ！';let q=document.createElement('button');q.className='menuBtn';q.textContent='再挑戦';q.onclick=()=>startShootingSkillEvent(place,skillId);box.appendChild(q)}}
- function frog(x,y,face,isEnemy=false){
-   c.save();c.translate(x,y);c.rotate(face);c.fillStyle=isEnemy?(forest?'#6d4b86':'#d05b48'):'#49a94f';c.strokeStyle='#17352d';c.lineWidth=2;
-   // race-style broad wings + frog body, miniaturized
-   c.fillStyle=isEnemy?'#eee7f5':'#fff2b6';for(const side of [-1,1]){c.beginPath();c.moveTo(-5,side*12);c.quadraticCurveTo(-27,side*38,-5,side*49);c.quadraticCurveTo(5,side*34,5,side*15);c.fill();c.stroke();}
-   c.fillStyle=isEnemy?(forest?'#76518e':'#d05b48'):'#49a94f';c.beginPath();c.ellipse(0,0,22,16,0,0,Math.PI*2);c.fill();c.stroke();c.beginPath();c.arc(13,-10,8,0,Math.PI*2);c.arc(13,10,8,0,Math.PI*2);c.fill();c.stroke();
-   c.fillStyle='#fff';c.beginPath();c.arc(16,-11,3,0,Math.PI*2);c.arc(16,11,3,0,Math.PI*2);c.fill();c.restore();
- }
- function drawStage(){
-   c.fillStyle=forest?'#77b89a':'#69cbe0';c.fillRect(0,0,W,H);
-   if(forest){c.fillStyle='#2e7542';for(let i=0;i<13;i++){let x=(i*71)%W,y=(i*103)%H;c.beginPath();c.arc(x,y,18+(i%3)*7,0,Math.PI*2);c.fill();}}
-   else{c.fillStyle='#4aa74c';for(let i=0;i<8;i++){let x=50+(i*91)%620,y=45+(i*67)%270;c.beginPath();c.arc(x,y,17+(i%2)*6,0,Math.PI*2);c.fill();}}
-   // compact race arena: donut for pond, rectangular loop for forest
-   c.lineCap='round';c.lineJoin='round';c.strokeStyle='#2f713c';c.lineWidth=76;c.beginPath();
-   if(forest){c.moveTo(95,70);c.lineTo(625,70);c.lineTo(625,290);c.lineTo(95,290);c.closePath();}
-   else{c.ellipse(360,180,265,112,0,0,Math.PI*2);}
-   c.stroke();c.strokeStyle=forest?'#8ac9ae':'#7bd0df';c.lineWidth=54;c.stroke();
- }
- function tick(now){if(ended)return;let dt=Math.min(.04,(now-last)/1000);last=now;left-=dt;if(left<=0){finish(false);return;}
-   let kmx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),kmy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0),dx=drag?joyX:kmx,dy=drag?joyY:kmy,d=Math.hypot(dx,dy);
-   if(d>8){dx/=d;dy/=d;player.x+=dx*215*dt;player.y+=dy*215*dt;player.face=Math.atan2(dy,dx)}
-   player.x=Math.max(35,Math.min(W-35,player.x));player.y=Math.max(35,Math.min(H-35,player.y));
-   enemy.x+=enemy.vx*dt;enemy.y+=enemy.vy*dt;if(enemy.x<400||enemy.x>665)enemy.vx*=-1;if(enemy.y<65||enemy.y>295)enemy.vy*=-1;
-   enemyClock-=dt;if(enemyClock<=0){enemyClock=.9+Math.random()*.5;let ex=player.x-enemy.x,ey=player.y-enemy.y,ed=Math.hypot(ex,ey)||1;enemyShots.push({x:enemy.x,y:enemy.y,vx:ex/ed*260,vy:ey/ed*260,r:8})}
-   for(let i=shots.length-1;i>=0;i--){let q=shots[i];q.x+=q.vx*dt;q.y+=q.vy*dt;if(Math.hypot(q.x-enemy.x,q.y-enemy.y)<28){shots.splice(i,1);hits++;enemy.x=440+Math.random()*190;enemy.y=80+Math.random()*200;if(hits>=6){finish(true);return}}else if(q.x<0||q.x>W||q.y<0||q.y>H)shots.splice(i,1)}
-   for(let i=enemyShots.length-1;i>=0;i--){let q=enemyShots[i];q.x+=q.vx*dt;q.y+=q.vy*dt;if(Math.hypot(q.x-player.x,q.y-player.y)<24){enemyShots.splice(i,1);left=Math.max(0,left-.8)}else if(q.x<0||q.x>W||q.y<0||q.y>H)enemyShots.splice(i,1)}
-   drawStage();for(const q of shots){c.fillStyle='#bcecff';c.strokeStyle='#4eaeeb';c.lineWidth=2;c.beginPath();c.arc(q.x,q.y,q.r,0,Math.PI*2);c.fill();c.stroke()}for(const q of enemyShots){c.fillStyle=forest?'#e6b7ff':'#ff9b83';c.beginPath();c.arc(q.x,q.y,q.r,0,Math.PI*2);c.fill()}
-   frog(player.x,player.y,player.face,false);frog(enemy.x,enemy.y,Math.atan2(player.y-enemy.y,player.x-enemy.x),true);
-   c.fillStyle='#17352d';c.font='bold 13px sans-serif';c.textAlign='center';c.fillText('ミカエルさん',player.x,player.y-30);c.fillText(forest?'アザゼルさん / ベリアルさん':'リヴァイアさん / アスモデウスさん',enemy.x,enemy.y-31);
-   hud.textContent=`HIT ${hits}/6　TIME ${left.toFixed(1)}`;requestAnimationFrame(tick)
- }requestAnimationFrame(tick);
+  const forest=place==='forest',enemyName=forest?'Azazel':'Leviathan';
+  const pp=makeShootingCourse(place),objs=buildObjectsForPath(pp);
+  shootingEvent={
+    place,skillId,title:skillId==='burningWing'?'バーニングウィング':'バーニングクライム',
+    enemyName,hits:0,time:18,enemyClock:.7,shots:[],enemyShots:[],ended:false,
+    path:pp,anchors:objs.anchors,lilies:objs.lilies,theme:forest?'forest':'water',
+    player:makeRacer('Michael',CHARACTER_DATA.Michael.color,0,1500,2200),
+    enemy:makeRacer(enemyName,CHARACTER_DATA[enemyName].color,1,4450,2200)
+  };
+  const q=shootingEvent;q.player.ai=false;q.enemy.ai=true;q.player.flight=3;q.player.onGround=false;q.player.speed=0;q.player.face=0;q.enemy.flight=3;q.enemy.onGround=false;q.enemy.speed=0;q.enemy.face=Math.PI;
+  appState='shooting';hideAllScreens();document.querySelector('#raceUi')?.classList.remove('hidden');
+  ui.lap.textContent=forest?'FOREST SHOOT':'POND SHOOT';ui.who.textContent='操作：ミカエルさん';ui.a.textContent='泡弾';ui.b.textContent='泡弾';ui.jump.textContent='泡弾';ui.tongue.textContent='泡弾';
+  msg((CHARACTER_DATA[enemyName]?.jp||enemyName)+'との空中射撃！ 泡弾を6発当てろ');
+}
+function shootingFire(){
+  const q=shootingEvent;if(!q||q.ended)return;const r=q.player,o=q.enemy,aim=Math.atan2(o.y-r.y,o.x-r.x);
+  q.shots.push({kind:'bubble',x:r.x,y:r.y,vx:Math.cos(aim)*1250,vy:Math.sin(aim)*1250,owner:r,t:1.65});
+}
+function endShootingEvent(ok){
+  const q=shootingEvent;if(!q||q.ended)return;q.ended=true;
+  if(ok){if(!saveData.unlockedSkills.includes(q.skillId))saveData.unlockedSkills.push(q.skillId);saveGame();msg(q.title+' 習得！');setTimeout(()=>{ui.jump.textContent='ジャンプ';ui.tongue.textContent='舌';shootingEvent=null;showPlace(q.place)},900);}
+  else{msg('時間切れ！');setTimeout(()=>{ui.jump.textContent='ジャンプ';ui.tongue.textContent='舌';shootingEvent=null;showPlace(q.place)},800);}
+}
+function updateShooting(dt){
+  const q=shootingEvent;if(!q||q.ended)return;q.time-=dt;if(q.time<=0){endShootingEvent(false);return;}
+  const r=q.player,o=q.enemy;let kx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),ky=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0),dx=joy.x||kx,dy=joy.y||ky,m=Math.hypot(dx,dy);
+  if(m>.08){dx/=m;dy/=m;r.face=Math.atan2(dy,dx);r.x+=dx*1200*dt;r.y+=dy*1200*dt;}
+  r.x=Math.max(350,Math.min(world.w-350,r.x));r.y=Math.max(350,Math.min(world.h-350,r.y));
+  let t=performance.now()/1000;o.x=4050+Math.cos(t*.85)*900;o.y=2200+Math.sin(t*1.15)*1200;o.face=Math.atan2(r.y-o.y,r.x-o.x);
+  q.enemyClock-=dt;if(q.enemyClock<=0){q.enemyClock=.9+Math.random()*.55;let ax=Math.atan2(r.y-o.y,r.x-o.x);q.enemyShots.push({kind:'bubble',x:o.x,y:o.y,vx:Math.cos(ax)*780,vy:Math.sin(ax)*780,owner:o,t:2.2});}
+  for(let i=q.shots.length-1;i>=0;i--){let e=q.shots[i];e.x+=e.vx*dt;e.y+=e.vy*dt;e.t-=dt;if(Math.hypot(e.x-o.x,e.y-o.y)<120){q.shots.splice(i,1);q.hits++;if(q.hits>=6){endShootingEvent(true);return;}}else if(e.t<=0)q.shots.splice(i,1);}
+  for(let i=q.enemyShots.length-1;i>=0;i--){let e=q.enemyShots[i];e.x+=e.vx*dt;e.y+=e.vy*dt;e.t-=dt;if(Math.hypot(e.x-r.x,e.y-r.y)<110){q.enemyShots.splice(i,1);q.time=Math.max(0,q.time-.8);}else if(e.t<=0)q.enemyShots.splice(i,1);}
+}
+function drawShooting(){
+  const q=shootingEvent;if(!q)return;
+  const oldPath=path,oldAnchors=anchors,oldLilies=lilies,oldTheme=courseTheme;
+  path=q.path;anchors=q.anchors;lilies=q.lilies;courseTheme=q.theme;
+  ctx.clearRect(0,0,W,H);ctx.save();ctx.scale(W/world.w,H/world.h);
+  drawWorld();for(const e of q.shots)drawEffect(e);for(const e of q.enemyShots)drawEffect(e);drawRacer(q.player);drawRacer(q.enemy);ctx.restore();
+  path=oldPath;anchors=oldAnchors;lilies=oldLilies;courseTheme=oldTheme;
+  ctx.fillStyle='rgba(15,38,34,.84)';ctx.fillRect(W/2-155,14,310,46);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 19px sans-serif';ctx.fillText(`HIT ${q.hits}/6　TIME ${Math.max(0,q.time).toFixed(1)}`,W/2,44);
 }
 function applySelectedCharacter(){
   controlledIndex=saveData.selectedCharacter==='Michael'?0:1;
@@ -363,7 +372,11 @@ r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.highJump=Math.max(0,(r.highJump|
  // AI flight rhythm
  if(r.ai){if(r.flight<3&&Math.random()<dt*2.8)pressJumpSilent(r);if(r.flight===3&&r.glideClock>4.55&&r.glideClock<5.45)pressJumpSilent(r);}
  if(r.flight===0){r.speed=approach(r.speed,groundSpeed*inp.m*(r.name==='Kawazu'?1.14:1),380*dt);}else if(r.flight===1){r.speed=approach(r.speed,330,230*dt);}else if(r.flight===2){r.speed=approach(r.speed,455,260*dt);}else {r.glideClock+=dt;if(r.glideClock<5.65)r.speed=approach(r.speed,r.name==='Kawazu'?maxSpeed+65:maxSpeed,glideAccel*dt);else{r.glideGrace+=dt;r.speed=approach(r.speed,245,82*dt);if(r.speed<300){r.flight=0;r.onGround=true;r.glideClock=0;r.landAge=.28;}}}
- if(r.hitSlow>0)r.speed*=Math.pow(.78,dt*4);if(r.boost>0)r.speed=Math.min(maxSpeed+45,r.speed+210*dt);if(r.bump>0)r.speed=Math.min(r.speed,360);
+ if(r.hitSlow>0)r.speed*=Math.pow(.78,dt*4);
+ if(r.burningWing>0)r.speed=approach(r.speed,maxSpeed+205,720*dt);
+ else if(r.highJump>0)r.speed=approach(r.speed,maxSpeed+70,300*dt);
+ else if(r.boost>0)r.speed=Math.min(maxSpeed+45,r.speed+210*dt);
+ if(r.bump>0)r.speed=Math.min(r.speed,360);
  // Tongue anchor overrides ordinary turn. Player/rival overlap never affects anchor tongue.
  if(r.tongue?.kind==='anchor'){let a=r.tongue.target,dx=a.x-r.x,dy=a.y-r.y,d=Math.hypot(dx,dy)||1,tan=Math.atan2(dy,dx)+(r.tongue.side>0?Math.PI/2:-Math.PI/2);let hold=(performance.now()-r.tongue.started)/1000;r.face=lerpAngle(r.face,tan,Math.min(1,dt*7.5));if(hold>1.05)r.speed=Math.max(220,r.speed-250*dt);else r.speed=Math.max(r.speed,Math.min(maxSpeed,520));}
  r.vx=Math.cos(r.face)*r.speed;r.vy=Math.sin(r.face)*r.speed;r.x+=r.vx*dt;r.y+=r.vy*dt;
@@ -403,8 +416,8 @@ function useMichaelSkill(r,id,slot){
  let o=racers[1-r.index];
  if(id==='punch'){r[cdKey]=1.35;let d=Math.hypot(o.x-r.x,o.y-r.y);if(d<90){pushRival(o,r.face,78);msg('パンチ！ 相手を横へ弾いた');}else msg('パンチ！');return true;}
  if(id==='bubble'){r[cdKey]=.9;let aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'bubble',x:r.x,y:r.y,vx:Math.cos(aim)*1250,vy:Math.sin(aim)*1250,owner:r,t:1.65});msg('泡弾！ 自動照準');return true;}
- if(id==='burningWing'){r[cdKey]=3;r.burningWing=1.25;r.speed=Math.min(maxSpeed+145,r.speed+150);r.boost=1;msg('バーニングウィング！');return true;}
- if(id==='highJump'){r[cdKey]=4.5;r.highJump=1.05;r.highJumpTotal=1.05;r.highJumpDir=r.face;r.tongue=null;r.flight=3;r.onGround=false;r.speed=Math.max(455,Math.min(r.speed,490));msg('バーニングクライム！ 山なりに飛び越せ！');return true;}
+ if(id==='burningWing'){r[cdKey]=3;r.burningWing=1.8;r.speed=Math.min(maxSpeed+230,Math.max(r.speed+265,maxSpeed+85));r.boost=1.35;msg('バーニングウィング！ 一気に加速！');return true;}
+ if(id==='highJump'){r[cdKey]=4.5;r.highJump=1.05;r.highJumpTotal=1.05;r.highJumpDir=r.face;r.tongue=null;r.flight=3;r.onGround=false;r.speed=Math.max(535,Math.min(r.speed+90,610));msg('バーニングクライム！ 炎翼で山なりに飛び越せ！');return true;}
  if(id==='timeLag'){r[cdKey]=8;globalTimeLag=6;msg('タイムラグ！ 6秒間、周囲の時間が半分に！');return true;}
  if(id==='timeStop'){if(r.timeStopUsed){msg('時間停止は1レースに一度だけ！');return true;}r.timeStopUsed=true;r[cdKey]=99;globalTimeStop=3;msg('禁断スキル――時間停止！ 3秒！');return true;}
  if(id==='waterBoost'){r[cdKey]=1.15;r.speed=Math.min(maxSpeed+65,r.speed+58);r.boost=Math.max(r.boost||0,.34);effects.push({kind:'waterBoost',x:r.x-Math.cos(r.face)*18,y:r.y-Math.sin(r.face)*18,a:r.face+Math.PI,t:.32,max:.32,owner:r});msg('後方放水ブースト！');return true;}
@@ -552,7 +565,7 @@ let currentWingSpecial=false,currentWingRed=false,currentWingBurning=false;
 function angelWing(x,y,side,scale=1,tilt=0){
  // One connected angel-wing silhouette. Broad at the shoulder, tapered into layered feather tips.
  ctx.save();ctx.translate(x,y);ctx.scale(side*scale,scale);ctx.rotate(tilt);
- ctx.fillStyle=currentWingBurning?'#f05a24':(currentWingRed?'#d74c57':(currentWingSpecial?'#fff9d8':'#fffdf5'));ctx.strokeStyle=currentWingBurning?'#9e241b':(currentWingRed?'#7e2530':(currentWingSpecial?'#e4b94f':'#c9d9dc'));ctx.lineWidth=2.2;ctx.lineJoin='round';
+ ctx.fillStyle=currentWingBurning?'#d51f2f':(currentWingRed?'#d74c57':(currentWingSpecial?'#fff9d8':'#fffdf5'));ctx.strokeStyle=currentWingBurning?'#78131d':(currentWingRed?'#7e2530':(currentWingSpecial?'#e4b94f':'#c9d9dc'));ctx.lineWidth=2.2;ctx.lineJoin='round';
  ctx.beginPath();
  ctx.moveTo(0,2);
  ctx.bezierCurveTo(12,-17,32,-27,55,-25);
@@ -567,7 +580,7 @@ function angelWing(x,y,side,scale=1,tilt=0){
  ctx.bezierCurveTo(8,31,3,18,0,2);
  ctx.closePath();ctx.fill();ctx.stroke();
  // restrained feather separators: keep the wing reading as one mass, not insect wings
- ctx.strokeStyle=currentWingBurning?'#ffb13b':(currentWingRed?'#f19a9f':(currentWingSpecial?'#fff0a6':'#e2ecee'));ctx.lineWidth=1.8;
+ ctx.strokeStyle=currentWingBurning?'#ff5964':(currentWingRed?'#f19a9f':(currentWingSpecial?'#fff0a6':'#e2ecee'));ctx.lineWidth=1.8;
  for(const pts of [[[9,3],[33,-13],[55,-16]],[[10,9],[34,1],[59,1]],[[10,15],[31,13],[55,18]],[[9,21],[25,25],[41,31]]]){
   ctx.beginPath();ctx.moveTo(...pts[0]);ctx.quadraticCurveTo(...pts[1],...pts[2]);ctx.stroke();
  }
@@ -631,8 +644,13 @@ function frogSide(r,left){
  ctx.restore();
 }
 function drawRacer(r){
- if(r.highJump>0){ctx.save();ctx.globalAlpha=.28;ctx.strokeStyle='#ffffff';ctx.lineWidth=5;ctx.beginPath();ctx.arc(r.x,r.y,62,0,Math.PI*2);ctx.stroke();ctx.restore();}
- if(r.burningWing>0){ctx.save();ctx.globalAlpha=.42+.18*Math.sin(performance.now()/55);ctx.strokeStyle='#ff8a24';ctx.lineWidth=11;ctx.beginPath();ctx.arc(r.x,r.y-8,53,-2.7,-.45);ctx.arc(r.x,r.y-8,53,.45,2.7);ctx.stroke();ctx.strokeStyle='#ffd34e';ctx.lineWidth=4;ctx.stroke();ctx.restore();}
+ if(r.highJump>0){ctx.save();ctx.globalAlpha=.22;ctx.strokeStyle='#ff5964';ctx.lineWidth=5;ctx.beginPath();ctx.arc(r.x,r.y,62,0,Math.PI*2);ctx.stroke();ctx.restore();}
+ if(r.burningWing>0||r.highJump>0){
+   ctx.save();let a=r.face||0,pulse=.5+.5*Math.sin(performance.now()/48);
+   for(let i=1;i<=5;i++){let back=30+i*22,spread=26+i*4,alpha=(.34-i*.045)+pulse*.05;ctx.globalAlpha=Math.max(.06,alpha);ctx.strokeStyle=i<3?'#ff3348':'#b51225';ctx.lineWidth=Math.max(3,12-i*1.6);
+     for(const side of [-1,1]){let bx=r.x-Math.cos(a)*back+Math.cos(a+Math.PI/2)*side*spread,by=r.y-Math.sin(a)*back+Math.sin(a+Math.PI/2)*side*spread;ctx.beginPath();ctx.moveTo(r.x-Math.cos(a)*18+Math.cos(a+Math.PI/2)*side*24,r.y-Math.sin(a)*18+Math.sin(a+Math.PI/2)*side*24);ctx.quadraticCurveTo(bx+Math.cos(a+Math.PI/2)*side*9,by,bx,by);ctx.stroke();}}
+   ctx.restore();
+ }
  if(r.airBarrier>0){ctx.save();ctx.globalAlpha=.38+.12*Math.sin(performance.now()/90);ctx.strokeStyle='#dffcff';ctx.lineWidth=7;ctx.beginPath();ctx.arc(r.x,r.y-10,48,0,Math.PI*2);ctx.stroke();ctx.restore();}
 
   if(r.tongueBoostFx>0){
@@ -676,7 +694,7 @@ function drawRacer(r){
  if(r.flight===3 && r.glideClock>=3.55){let urgency=Math.min(1,(r.glideClock-3.55)/2.05),blink=Math.sin(now*(7+urgency*13))>.05; if(blink){ctx.save();ctx.globalAlpha=.35+.35*urgency;ctx.strokeStyle=urgency>.72?'#ffca4a':'#fff29a';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,-5,48+5*urgency,0,Math.PI*2);ctx.stroke();ctx.restore();}}
  ctx.restore();
  // readable text stays fixed instead of bobbing with the character
- ctx.fillStyle='#17352d';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(r.name,r.x,r.y-68-lift*.45);
+ ctx.fillStyle='#17352d';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(CHARACTER_DATA[r.name]?.jp||r.name,r.x,r.y-68-lift*.45);
 }
 function drawEffect(e){if(e.kind==='poisonMist'){ctx.save();ctx.globalAlpha=.18+.25*(e.t/e.max);ctx.fillStyle='#9b4bd1';for(let i=0;i<8;i++){let a=i*.9+(e.age||0)*.35,rr=20+(i%3)*17;ctx.beginPath();ctx.arc(e.x+Math.cos(a)*rr,e.y+Math.sin(a)*rr,24+(i%2)*12,0,Math.PI*2);ctx.fill();}ctx.restore();}else if(e.kind==='poison'){ctx.fillStyle='#9e49d6';ctx.strokeStyle='#d6a4ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,18,0,Math.PI*2);ctx.fill();ctx.stroke();}else if(e.kind==='airball'){ctx.save();ctx.globalAlpha=.6;ctx.strokeStyle='#e9ffff';ctx.lineWidth=5;ctx.beginPath();ctx.arc(e.x,e.y,16,0,Math.PI*2);ctx.stroke();ctx.restore();}else if(e.kind==='bewitch'){ctx.save();ctx.translate(e.x,e.y);ctx.globalAlpha=.75;ctx.fillStyle='#f04478';for(let i=0;i<4;i++){let a=(e.age||0)*5+i*Math.PI/2;ctx.beginPath();ctx.arc(Math.cos(a)*12,Math.sin(a)*12,8,0,Math.PI*2);ctx.fill();}ctx.restore();}else if(e.kind==='rock'){let h=Math.sin(Math.min(1,(e.age||0)/1.1)*Math.PI)*38;ctx.save();ctx.translate(e.x,e.y-h);ctx.rotate((e.age||0)*7);ctx.fillStyle='#8a765e';ctx.strokeStyle='#493f34';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-20,-11);ctx.lineTo(-5,-23);ctx.lineTo(18,-14);ctx.lineTo(22,8);ctx.lineTo(4,20);ctx.lineTo(-18,13);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}else if(e.kind==='bubble'){ctx.fillStyle='#bcecffaa';ctx.strokeStyle='#4eaeeb';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,17,0,Math.PI*2);ctx.fill();ctx.stroke()}else{let len=e.kind==='laser'?640:(e.kind==='waterBoost'?175:120);ctx.strokeStyle=e.kind==='laser'?'#baf5ff':'#7bd7ff';ctx.lineWidth=e.kind==='laser'?7:(e.kind==='waterBoost'?20:15);ctx.globalAlpha=Math.max(.15,e.t/e.max);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(e.a)*len,e.y+Math.sin(e.a)*len);ctx.stroke();ctx.globalAlpha=1}}
 function drawMini(){let sx=185/world.w,sy=118/world.h,ox=18,oy=58;ctx.fillStyle='#102820c9';ctx.fillRect(ox,oy,185,118);ctx.strokeStyle='#2f713c';ctx.lineWidth=17;ctx.beginPath();ctx.moveTo(ox+path[0].x*sx,oy+path[0].y*sy);for(let i=1;i<path.length;i++)ctx.lineTo(ox+path[i].x*sx,oy+path[i].y*sy);ctx.closePath();ctx.stroke();ctx.strokeStyle='#78d1df';ctx.lineWidth=10;ctx.stroke();for(const r of racers){ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(ox+r.x*sx,oy+r.y*sy,5,0,Math.PI*2);ctx.fill()}}
@@ -687,12 +705,13 @@ function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;if(appState===
  if(globalTimeLag>0)globalTimeLag=Math.max(0,globalTimeLag-dt);
  for(const r of racers){let rd=(globalTimeLag>0&&r!==racers[controlledIndex])?dt*.5:dt;updateRacer(r,rd);}
  updateEffects(dt);draw();
+}else if(appState==='shooting'){updateShooting(dt);drawShooting();
 }else{ctx.clearRect(0,0,W,H);}requestAnimationFrame(loop)}
 function norm(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a}function approach(a,b,d){return a<b?Math.min(b,a+d):Math.max(b,a-d)}function lerpAngle(a,b,t){return a+norm(b-a)*t}
 // input
-addEventListener('keydown',e=>{keys[e.key]=true;if(e.code==='Space'){e.preventDefault();pressJump(racers[controlledIndex])}if(e.key==='e')startTongue(racers[controlledIndex]);if(e.key==='j')useA(racers[controlledIndex]);if(e.key==='k'){let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r);}});addEventListener('keyup',e=>{keys[e.key]=false;if(e.key==='e')endTongue(racers[controlledIndex]);if(e.key==='k'&&racers[controlledIndex].name==='Lucifer')releaseChargeBoost(racers[controlledIndex])});
+addEventListener('keydown',e=>{keys[e.key]=true;if(e.code==='Space'){e.preventDefault();if(appState==='shooting')shootingFire();else pressJump(racers[controlledIndex])}if(e.key==='e'){if(appState==='shooting')shootingFire();else startTongue(racers[controlledIndex]);}if(e.key==='j'){if(appState==='shooting')shootingFire();else useA(racers[controlledIndex]);}if(e.key==='k'){if(appState==='shooting')shootingFire();else{let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r);}}});addEventListener('keyup',e=>{keys[e.key]=false;if(e.key==='e')endTongue(racers[controlledIndex]);if(e.key==='k'&&racers[controlledIndex].name==='Lucifer')releaseChargeBoost(racers[controlledIndex])});
 function bindPress(el,down,up){el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture?.(e.pointerId);down()});el.addEventListener('pointerup',e=>{e.preventDefault();up?.()});el.addEventListener('pointercancel',()=>up?.())}
-bindPress(ui.jump,()=>pressJump(racers[controlledIndex]));bindPress(ui.tongue,()=>startTongue(racers[controlledIndex]),()=>endTongue(racers[controlledIndex]));bindPress(ui.a,()=>useA(racers[controlledIndex]));bindPress(ui.b,()=>{let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r)},()=>{let r=racers[controlledIndex];if(r.name==='Lucifer')releaseChargeBoost(r)});
+bindPress(ui.jump,()=>appState==='shooting'?shootingFire():pressJump(racers[controlledIndex]));bindPress(ui.tongue,()=>appState==='shooting'?shootingFire():startTongue(racers[controlledIndex]),()=>{if(appState!=='shooting')endTongue(racers[controlledIndex])});bindPress(ui.a,()=>appState==='shooting'?shootingFire():useA(racers[controlledIndex]));bindPress(ui.b,()=>{if(appState==='shooting')shootingFire();else{let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r)}},()=>{if(appState!=='shooting'){let r=racers[controlledIndex];if(r.name==='Lucifer')releaseChargeBoost(r)}});
 ui.stick.addEventListener('pointerdown',e=>{joy.id=e.pointerId;ui.stick.setPointerCapture(e.pointerId);setJoy(e)});ui.stick.addEventListener('pointermove',e=>{if(e.pointerId===joy.id)setJoy(e)});ui.stick.addEventListener('pointerup',e=>{if(e.pointerId===joy.id){joy={id:null,x:0,y:0};moveKnob()}});ui.stick.addEventListener('pointercancel',()=>{joy={id:null,x:0,y:0};moveKnob()});
 function setJoy(e){let r=ui.stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=e.clientX-cx,dy=e.clientY-cy,m=Math.hypot(dx,dy),rad=r.width*.36;if(m>rad){dx*=rad/m;dy*=rad/m}joy.x=dx/rad;joy.y=dy/rad;moveKnob(dx,dy)}function moveKnob(dx=0,dy=0){let i=ui.stick.querySelector('i');i.style.transform=`translate(${dx}px,${dy}px)`}
 requestAnimationFrame(loop);
