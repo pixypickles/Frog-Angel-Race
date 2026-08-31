@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.5';
+const VERSION='v2.6';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -258,7 +258,7 @@ function setupMetaUi(){
 }
 
 const C=document.querySelector('#game'),ctx=C.getContext('2d'),W=C.width,H=C.height;
-const ui={who:$('#who'),speed:$('#speed'),lap:$('#lap'),status:$('#status'),jump:$('#jump'),tongue:$('#tongue'),a:$('#skillA'),b:$('#skillB'),swap:$('#swap'),stick:$('#stick')};
+const ui={who:$('#who'),speed:$('#speed'),lap:$('#lap'),status:$('#status'),jump:$('#jump'),tongue:$('#tongue'),a:$('#skillA'),b:$('#skillB'),stick:$('#stick')};
 function $(s){return document.querySelector(s)}
 const world={w:6000,h:4400};
 // A long pond circuit with real hairpins and S-bends. The camera only sees a small section at once.
@@ -287,7 +287,7 @@ const checkpoints=path.map((p,i)=>({x:p.x,y:p.y,r:240,i}));
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
-function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,courseWalk:0,timeStopUsed:false};}
+function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,courseWalk:0,timeStopUsed:false};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
 function reset(opponentName='Plain'){globalTimeStop=0;globalTimeLag=0;let playerName=saveData.selectedCharacter||'Michael',pc=CHARACTER_DATA[playerName]?.color||'#49a94f',oc=CHARACTER_DATA[opponentName]?.color||'#78a83c';racers.splice(0,2,makeRacer(playerName,pc,0,720,680),makeRacer(opponentName,oc,1,720,740));controlledIndex=0;racers[0].ai=false;racers[1].ai=true;if(playerName==='Uriel')racers[0].power=1.2;if(opponentName==='Uriel')racers[1].power=1.2;finished=false;ui.status.textContent='ジャンプ3回で最高速！'}
 function pressJump(r){if(r.finished)return;if(r.flight===0){r.flight=1;r.onGround=false;r.speed=Math.max(r.speed,285);r.wing=.2;r.jumpAge=0;r.flapAge=0;msg('ジャンプ！ もう一度で羽ばたき');}
@@ -306,7 +306,7 @@ function updateRacer(r,dt){
   r.tongueBoostTimer=Math.max(0,(r.tongueBoostTimer||0)-dt);
   if(r.tongueBoostTimer>0)r.speed=Math.min(maxSpeed+130,r.speed+360*dt);
 r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.highJump=Math.max(0,(r.highJump||0)-dt);r.confuse=Math.max(0,(r.confuse||0)-dt);r.burningWing=Math.max(0,(r.burningWing||0)-dt);if(r.charging)r.charge=Math.min(1.8,(r.charge||0)+dt);if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
- const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),turn=(turnGround*(1-ratio)+turnFast*ratio)*dt*(r.name==='Raphael'?1.22:1);
+ const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),turn=(turnGround*(1-ratio)+turnFast*ratio)*dt*(r.name==='Raphael'?1.22:1)*(r.highJump>0?.28:1);
  if(Math.abs(diff)<turn)r.face=want;else r.face+=Math.sign(diff)*turn;
  // AI flight rhythm
  if(r.ai){if(r.flight<3&&Math.random()<dt*2.8)pressJumpSilent(r);if(r.flight===3&&r.glideClock>4.55&&r.glideClock<5.45)pressJumpSilent(r);}
@@ -332,7 +332,7 @@ r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.highJump=Math.max(0,(r.highJump|
  }
  r.wasHighJump=r.highJump;
  r.x=Math.max(90,Math.min(world.w-90,r.x));r.y=Math.max(90,Math.min(world.h-90,r.y));
- if(r.highJump<=0&&r.courseWalk<=0)updateCheckpoint(r);
+ if(r.courseWalk<=0)updateCheckpoint(r);
  if(r.ai)aiSkills(r,dt);
 }
 function pressJumpSilent(r){if(r.flight===0){r.flight=1;r.speed=Math.max(r.speed,285)}else if(r.flight===1){r.flight=2;r.speed=Math.max(r.speed,405)}else if(r.flight===2){r.flight=3;r.glideClock=0;r.speed=Math.max(r.speed,520)}else if(r.glideClock>3.8){r.glideClock=0;r.speed=Math.max(r.speed,550)}}
@@ -352,7 +352,7 @@ function useMichaelSkill(r,id,slot){
  if(id==='punch'){r[cdKey]=1.35;let d=Math.hypot(o.x-r.x,o.y-r.y);if(d<90){pushRival(o,r.face,78);msg('パンチ！ 相手を横へ弾いた');}else msg('パンチ！');return true;}
  if(id==='bubble'){r[cdKey]=.9;let aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'bubble',x:r.x,y:r.y,vx:Math.cos(aim)*1250,vy:Math.sin(aim)*1250,owner:r,t:1.65});msg('泡弾！ 自動照準');return true;}
  if(id==='burningWing'){r[cdKey]=3;r.burningWing=1.25;r.speed=Math.min(maxSpeed+145,r.speed+150);r.boost=1;msg('バーニングウィング！');return true;}
- if(id==='highJump'){r[cdKey]=4.5;r.highJump=1.15;r.tongue=null;r.flight=3;r.onGround=false;r.speed=Math.max(r.speed,500);msg('ハイジャンプ！ 上空へ！');return true;}
+ if(id==='highJump'){r[cdKey]=4.5;r.highJump=1.05;r.highJumpTotal=1.05;r.highJumpDir=r.face;r.tongue=null;r.flight=3;r.onGround=false;r.speed=Math.max(455,Math.min(r.speed,490));msg('ハイジャンプ！ 山なりに飛び越せ！');return true;}
  if(id==='timeLag'){r[cdKey]=8;globalTimeLag=6;msg('タイムラグ！ 6秒間、周囲の時間が半分に！');return true;}
  if(id==='timeStop'){if(r.timeStopUsed){msg('時間停止は1レースに一度だけ！');return true;}r.timeStopUsed=true;r[cdKey]=99;globalTimeStop=3;msg('禁断スキル――時間停止！ 3秒！');return true;}
  if(id==='waterBoost'){r[cdKey]=1.15;r.speed=Math.min(maxSpeed+65,r.speed+58);r.boost=Math.max(r.boost||0,.34);effects.push({kind:'waterBoost',x:r.x-Math.cos(r.face)*18,y:r.y-Math.sin(r.face)*18,a:r.face+Math.PI,t:.32,max:.32,owner:r});msg('後方放水ブースト！');return true;}
@@ -598,8 +598,8 @@ function drawRacer(r){
  if(r.tongue){let t=r.tongue.target;ctx.strokeStyle='#e86a91';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(r.x,r.y+2);ctx.quadraticCurveTo((r.x+t.x)/2,(r.y+t.y)/2+18,t.x,t.y);ctx.stroke()}
  const now=performance.now()/1000;
  // Jump reads as actual lift in this top-down view: body rises away from its shadow.
- let lift=r.highJump>0?78:0,lean=0,poseScale=1;
- if(r.highJump>0){lift=78+10*Math.sin(now*9);poseScale=.88;}else if(r.flight===1){let t=Math.min(1,r.jumpAge/.42);lift=30*Math.sin(t*Math.PI*.92)+10;poseScale=1+.08*Math.sin(t*Math.PI);}
+ let lift=0,lean=0,poseScale=1;
+ if(r.highJump>0){let hp=1-r.highJump/Math.max(.001,r.highJumpTotal||1.05);lift=118*Math.sin(Math.PI*Math.max(0,Math.min(1,hp)));poseScale=.96-.10*Math.sin(Math.PI*hp);}else if(r.flight===1){let t=Math.min(1,r.jumpAge/.42);lift=30*Math.sin(t*Math.PI*.92)+10;poseScale=1+.08*Math.sin(t*Math.PI);}
  else if(r.flight===2){lift=35+5*Math.sin(now*12);poseScale=1+.035*Math.sin(now*12);}
  else if(r.flight===3){lift=30;lean=13;poseScale=.98;}
  if(r.landAge>0)poseScale=1-.08*Math.sin((r.landAge/.28)*Math.PI);
@@ -624,7 +624,7 @@ function drawRacer(r){
 }
 function drawEffect(e){if(e.kind==='poisonMist'){ctx.save();ctx.globalAlpha=.18+.25*(e.t/e.max);ctx.fillStyle='#9b4bd1';for(let i=0;i<8;i++){let a=i*.9+(e.age||0)*.35,rr=20+(i%3)*17;ctx.beginPath();ctx.arc(e.x+Math.cos(a)*rr,e.y+Math.sin(a)*rr,24+(i%2)*12,0,Math.PI*2);ctx.fill();}ctx.restore();}else if(e.kind==='poison'){ctx.fillStyle='#9e49d6';ctx.strokeStyle='#d6a4ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,18,0,Math.PI*2);ctx.fill();ctx.stroke();}else if(e.kind==='airball'){ctx.save();ctx.globalAlpha=.6;ctx.strokeStyle='#e9ffff';ctx.lineWidth=5;ctx.beginPath();ctx.arc(e.x,e.y,16,0,Math.PI*2);ctx.stroke();ctx.restore();}else if(e.kind==='bewitch'){ctx.save();ctx.translate(e.x,e.y);ctx.globalAlpha=.75;ctx.fillStyle='#f04478';for(let i=0;i<4;i++){let a=(e.age||0)*5+i*Math.PI/2;ctx.beginPath();ctx.arc(Math.cos(a)*12,Math.sin(a)*12,8,0,Math.PI*2);ctx.fill();}ctx.restore();}else if(e.kind==='rock'){let h=Math.sin(Math.min(1,(e.age||0)/1.1)*Math.PI)*38;ctx.save();ctx.translate(e.x,e.y-h);ctx.rotate((e.age||0)*7);ctx.fillStyle='#8a765e';ctx.strokeStyle='#493f34';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-20,-11);ctx.lineTo(-5,-23);ctx.lineTo(18,-14);ctx.lineTo(22,8);ctx.lineTo(4,20);ctx.lineTo(-18,13);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}else if(e.kind==='bubble'){ctx.fillStyle='#bcecffaa';ctx.strokeStyle='#4eaeeb';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,17,0,Math.PI*2);ctx.fill();ctx.stroke()}else{let len=e.kind==='laser'?640:(e.kind==='waterBoost'?175:120);ctx.strokeStyle=e.kind==='laser'?'#baf5ff':'#7bd7ff';ctx.lineWidth=e.kind==='laser'?7:(e.kind==='waterBoost'?20:15);ctx.globalAlpha=Math.max(.15,e.t/e.max);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(e.a)*len,e.y+Math.sin(e.a)*len);ctx.stroke();ctx.globalAlpha=1}}
 function drawMini(){let sx=185/world.w,sy=118/world.h,ox=18,oy=58;ctx.fillStyle='#102820c9';ctx.fillRect(ox,oy,185,118);ctx.strokeStyle='#2f713c';ctx.lineWidth=17;ctx.beginPath();ctx.moveTo(ox+path[0].x*sx,oy+path[0].y*sy);for(let i=1;i<path.length;i++)ctx.lineTo(ox+path[i].x*sx,oy+path[i].y*sy);ctx.closePath();ctx.stroke();ctx.strokeStyle='#78d1df';ctx.lineWidth=10;ctx.stroke();for(const r of racers){ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(ox+r.x*sx,oy+r.y*sy,5,0,Math.PI*2);ctx.fill()}}
-function updateHud(r){ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){al='エアースイム';bl='壁キック'}else if(r.name==='Michael'){al=skillLabel(r.customSkillA||'punch');bl=skillLabel(r.customSkillB||'bubble')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
+function updateHud(r){ui.lap.textContent='LAP '+Math.min(r.lap,RACE_LAPS)+'/'+RACE_LAPS;ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){al='エアースイム';bl='壁キック'}else if(r.name==='Michael'){al=skillLabel(r.customSkillA||'punch');bl=skillLabel(r.customSkillB||'bubble')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
 function msg(t){ui.status.textContent=t;clearTimeout(msg.timer);msg.timer=setTimeout(()=>ui.status.textContent='ジャンプ3回＋舌ターンで最速を狙え！',2200)}
 function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;if(appState==='race'){
  if(globalTimeStop>0)globalTimeStop=Math.max(0,globalTimeStop-dt);
@@ -634,10 +634,9 @@ function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;if(appState===
 }else{ctx.clearRect(0,0,W,H);}requestAnimationFrame(loop)}
 function norm(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a}function approach(a,b,d){return a<b?Math.min(b,a+d):Math.max(b,a-d)}function lerpAngle(a,b,t){return a+norm(b-a)*t}
 // input
-addEventListener('keydown',e=>{keys[e.key]=true;if(e.code==='Space'){e.preventDefault();pressJump(racers[controlledIndex])}if(e.key==='e')startTongue(racers[controlledIndex]);if(e.key==='j')useA(racers[controlledIndex]);if(e.key==='k'){let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r);}if(e.key==='c')swapControl()});addEventListener('keyup',e=>{keys[e.key]=false;if(e.key==='e')endTongue(racers[controlledIndex]);if(e.key==='k'&&racers[controlledIndex].name==='Lucifer')releaseChargeBoost(racers[controlledIndex])});
+addEventListener('keydown',e=>{keys[e.key]=true;if(e.code==='Space'){e.preventDefault();pressJump(racers[controlledIndex])}if(e.key==='e')startTongue(racers[controlledIndex]);if(e.key==='j')useA(racers[controlledIndex]);if(e.key==='k'){let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r);}});addEventListener('keyup',e=>{keys[e.key]=false;if(e.key==='e')endTongue(racers[controlledIndex]);if(e.key==='k'&&racers[controlledIndex].name==='Lucifer')releaseChargeBoost(racers[controlledIndex])});
 function bindPress(el,down,up){el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture?.(e.pointerId);down()});el.addEventListener('pointerup',e=>{e.preventDefault();up?.()});el.addEventListener('pointercancel',()=>up?.())}
-bindPress(ui.jump,()=>pressJump(racers[controlledIndex]));bindPress(ui.tongue,()=>startTongue(racers[controlledIndex]),()=>endTongue(racers[controlledIndex]));bindPress(ui.a,()=>useA(racers[controlledIndex]));bindPress(ui.b,()=>{let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r)},()=>{let r=racers[controlledIndex];if(r.name==='Lucifer')releaseChargeBoost(r)});ui.swap.addEventListener('click',swapControl);
-function swapControl(){endTongue(racers[controlledIndex]);controlledIndex=1-controlledIndex;racers.forEach((r,i)=>r.ai=i!==controlledIndex);msg((controlledIndex?'ガブリエル':'ミカエル')+'を操作');}
+bindPress(ui.jump,()=>pressJump(racers[controlledIndex]));bindPress(ui.tongue,()=>startTongue(racers[controlledIndex]),()=>endTongue(racers[controlledIndex]));bindPress(ui.a,()=>useA(racers[controlledIndex]));bindPress(ui.b,()=>{let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r)},()=>{let r=racers[controlledIndex];if(r.name==='Lucifer')releaseChargeBoost(r)});
 ui.stick.addEventListener('pointerdown',e=>{joy.id=e.pointerId;ui.stick.setPointerCapture(e.pointerId);setJoy(e)});ui.stick.addEventListener('pointermove',e=>{if(e.pointerId===joy.id)setJoy(e)});ui.stick.addEventListener('pointerup',e=>{if(e.pointerId===joy.id){joy={id:null,x:0,y:0};moveKnob()}});ui.stick.addEventListener('pointercancel',()=>{joy={id:null,x:0,y:0};moveKnob()});
 function setJoy(e){let r=ui.stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=e.clientX-cx,dy=e.clientY-cy,m=Math.hypot(dx,dy),rad=r.width*.36;if(m>rad){dx*=rad/m;dy*=rad/m}joy.x=dx/rad;joy.y=dy/rad;moveKnob(dx,dy)}function moveKnob(dx=0,dy=0){let i=ui.stick.querySelector('i');i.style.transform=`translate(${dx}px,${dy}px)`}
 requestAnimationFrame(loop);
