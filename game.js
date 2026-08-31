@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.16';
+const VERSION='v2.17';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -389,7 +389,7 @@ rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
-function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,courseWalk:0,timeStopUsed:false};}
+function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
 function reset(opponentName='Plain'){
  globalTimeStop=0;globalTimeLag=0;
@@ -420,7 +420,7 @@ function updateRacer(r,dt){
   r.tongueBoostFx=Math.max(0,(r.tongueBoostFx||0)-dt);
   r.tongueBoostTimer=Math.max(0,(r.tongueBoostTimer||0)-dt);
   if(r.tongueBoostTimer>0)r.speed=Math.min(maxSpeed+130,r.speed+360*dt);
-r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrace||0)-dt);r.highJump=Math.max(0,(r.highJump||0)-dt);r.normalHighJump=Math.max(0,(r.normalHighJump||0)-dt);r.confuse=Math.max(0,(r.confuse||0)-dt);r.burningWing=Math.max(0,(r.burningWing||0)-dt);if(r.charging)r.charge=Math.min(1.8,(r.charge||0)+dt);if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
+r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrace||0)-dt);r.wallEscape=Math.max(0,(r.wallEscape||0)-dt);r.highJump=Math.max(0,(r.highJump||0)-dt);r.normalHighJump=Math.max(0,(r.normalHighJump||0)-dt);r.confuse=Math.max(0,(r.confuse||0)-dt);r.burningWing=Math.max(0,(r.burningWing||0)-dt);if(r.charging)r.charge=Math.min(1.8,(r.charge||0)+dt);if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
  const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),turn=(turnGround*(1-ratio)+turnFast*ratio)*dt*(r.name==='Raphael'?1.22:1)*(r.highJump>0?.28:1);
  if(Math.abs(diff)<turn)r.face=want;else r.face+=Math.sign(diff)*turn;
  // AI flight rhythm
@@ -434,7 +434,12 @@ r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrac
  // Tongue anchor overrides ordinary turn. Player/rival overlap never affects anchor tongue.
  if(r.tongue?.kind==='anchor'){let a=r.tongue.target,dx=a.x-r.x,dy=a.y-r.y,d=Math.hypot(dx,dy)||1,tan=Math.atan2(dy,dx)+(r.tongue.side>0?Math.PI/2:-Math.PI/2);let hold=(performance.now()-r.tongue.started)/1000;r.face=lerpAngle(r.face,tan,Math.min(1,dt*7.5));if(hold>1.05)r.speed=Math.max(220,r.speed-250*dt);else r.speed=Math.max(r.speed,Math.min(maxSpeed,520));}
  r.vx=Math.cos(r.face)*r.speed;r.vy=Math.sin(r.face)*r.speed;r.x+=r.vx*dt;r.y+=r.vy*dt;
- // Guard-grass wall: lose speed, but reflect back into the course instead of sticking to it.
+ // After a wall hit, bias a few frames toward the course center so acute V-corners cannot trap the racer.
+ if(r.wallEscape>0&&r.highJump<=0){
+   let pre=trackInfo(r.x,r.y),dx=pre.qx-r.x,dy=pre.qy-r.y,d=Math.hypot(dx,dy)||1,pull=Math.min(d,310*dt);
+   r.x+=dx/d*pull;r.y+=dy/d*pull;
+ }
+ // Guard-grass wall.
  let hit=trackInfo(r.x,r.y);
  if(r.courseWalk>0){
    r.courseWalk-=dt;let a=Math.atan2(hit.qy-r.y,hit.qx-r.x);r.face=a;r.flight=0;r.onGround=true;r.speed=105;
@@ -447,21 +452,19 @@ r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrac
      if(!r.ai)msg('コースアウト！ 歩いて復帰…');
    }else{
      const seg=hit.i??nearestTrackSegment(hit.qx,hit.qy).i;
-     const a=path[seg],b=path[(seg+1)%path.length],ta=Math.atan2(b.y-a.y,b.x-a.x);
-     let tangent1=ta,tangent2=norm(ta+Math.PI);
-     let chosen=Math.abs(norm(tangent1-r.face))<=Math.abs(norm(tangent2-r.face))?tangent1:tangent2;
-     // Correct only the amount that actually penetrated the wall. Do NOT snap to the centerline.
+     const look=path[(seg+2)%path.length],toLook=Math.atan2(look.y-r.y,look.x-r.x);
+     // Move only from the penetrated wall edge to a safe position inside the corridor.
      let nx=(r.x-hit.qx)/(hit.d||1),ny=(r.y-hit.qy)/(hit.d||1);
-     const safeD=r.ai?172:176;
+     const safeD=125;
      r.x=hit.qx+nx*safeD;r.y=hit.qy+ny*safeD;
-     r.face=lerpAngle(r.face,chosen,r.ai?.88:.72);
+     r.face=lerpAngle(r.face,toLook,r.ai?.92:.80);
+     r.wallEscape=r.ai?.48:.42;
      if(r.wallGrace<=0){
-       r.speed=r.ai?Math.max(255,Math.min(r.speed*.68,390)):Math.max(150,r.speed*.52);
-       r.wallGrace=r.ai?.34:.30;r.bump=.10;
-       if(!r.ai)msg('ガード草に接触！ 減速');
+       r.speed=r.ai?Math.max(270,Math.min(r.speed*.66,395)):Math.max(155,r.speed*.50);
+       r.wallGrace=r.ai?.40:.36;r.bump=.08;
+       if(!r.ai)msg('ガード草に接触！ コースへ戻る');
      }else{
-       // During the brief grace window, slide along the wall instead of taking another bounce.
-       r.speed=Math.max(r.ai?245:145,Math.min(r.speed,r.ai?390:330));
+       r.speed=Math.max(r.ai?255:150,Math.min(r.speed,r.ai?395:325));
      }
    }
  }
