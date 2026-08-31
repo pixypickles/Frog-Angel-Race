@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.18';
+const VERSION='v2.20';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -361,7 +361,7 @@ const COURSE_SETS={
   {name:'蜘蛛の針路',theme:'forest',path:[[650,650],[2350,500],[4550,650],[5200,1250],[4750,1800],[3650,1600],[3150,2050],[3700,2500],[5000,2450],[5250,3300],[4300,3900],[2750,3550],[1750,3950],[700,3450],[550,2600],[1200,2200],[700,1750],[1750,1250]]},
   {name:'トンボ尾根',theme:'forest',path:[[700,800],[1750,500],[3200,600],[4550,500],[5250,1100],[5000,1900],[4300,2350],[5000,2950],[4750,3650],[3500,3950],[2400,3500],[1350,3900],[600,3350],[650,2500],[1300,2100],[750,1550]]}
  ],
- master:[{name:'魔王環状路',theme:'master',path:[[700,700],[2100,480],[3800,520],[5100,900],[5300,1700],[4700,2250],[3600,1900],[2900,2350],[3550,3000],[5000,3000],[5200,3450],[4100,3950],[2600,3850],[1250,3500],[600,2800],[700,1850],[1350,1250]]}],
+ master:[{name:'魔王環状路',theme:'master',path:[[2800,500],[3800,520],[5100,900],[5300,1700],[4700,2250],[3600,1900],[2900,2350],[3550,3000],[5000,3000],[5200,3450],[4100,3950],[2600,3850],[1250,3500],[600,2800],[700,1850],[1350,1250],[700,700],[2100,480]]}],
  kawazu:[{name:'カワズ水脈',theme:'water',path:[[700,700],[2700,500],[5000,850],[5150,1800],[4200,2200],[2850,1900],[2400,2450],[3300,2900],[5100,2850],[5000,3650],[3400,3900],[1700,3600],[600,3000],[800,2050],[2100,1650],[700,1300]]}]
 };
 let activeCourse=COURSE_SETS.arena1[0],courseTheme=activeCourse.theme;
@@ -374,11 +374,15 @@ function rebuildCourseObjects(){
    ix/=il;iy/=il;ox/=ol;oy/=ol;
    let cross=ix*oy-iy*ox,dot=ix*ox+iy*oy,angle=Math.acos(Math.max(-1,Math.min(1,dot)));
    if(angle>.38){
+     // Put the tree AFTER the apex, on the inside of the outgoing leg.
+     // This makes the tongue pull the racer around the corner instead of aiming them into the sharp tip.
      let side=Math.sign(cross)||1;
-     let n1x=-iy*side,n1y=ix*side,n2x=-oy*side,n2y=ox*side,bx=n1x+n2x,by=n1y+n2y,bl=Math.hypot(bx,by)||1;
-     // Tree sits clearly on the apex/inside of the difficult corner, just beyond the flight corridor.
-     let dist=235+(angle>1.05?35:0);
-     anchors.push({x:b.x+bx/bl*dist,y:b.y+by/bl*dist,corner:i});
+     let inx=-oy*side,iny=ox*side;
+     let forward=angle>1.05?300:245;
+     let inward=angle>1.05?255:225;
+     const ax=b.x+ox*forward+inx*inward,ay=b.y+oy*forward+iny*inward;
+     // Keep only enough clearance from the start line itself; do not suppress a useful corner tree far down the approach.
+     if(Math.hypot(ax-path[0].x,ay-path[0].y)>360)anchors.push({x:ax,y:ay,corner:i});
    }
  }
  lilies=[];for(let i=0;i<15;i++){let x=350+(i*977)%5300,y=300+(i*613)%3800;if(trackDistance(x,y)>330)lilies.push({x,y,r:48+(i%4)*10});}
@@ -397,11 +401,11 @@ function reset(opponentName='Plain'){
  let p0=path[0],p1=path[1],a=Math.atan2(p1.y-p0.y,p1.x-p0.x),tx=Math.cos(a),ty=Math.sin(a),nx=-ty,ny=tx;
  // Start just beyond the line. A lap is counted only after circling back and crossing it forward.
  racers.splice(0,2,
-   makeRacer(playerName,pc,0,p0.x+tx*85+nx*34,p0.y+ty*85+ny*34),
-   makeRacer(opponentName,oc,1,p0.x+tx*85-nx*34,p0.y+ty*85-ny*34)
+   makeRacer(playerName,pc,0,p0.x+tx*150+nx*34,p0.y+ty*150+ny*34),
+   makeRacer(opponentName,oc,1,p0.x+tx*150-nx*34,p0.y+ty*150-ny*34)
  );
  controlledIndex=0;racers[0].ai=false;racers[1].ai=true;racers[0].face=a;racers[1].face=a;
- racers[0].startLineLong=85;racers[1].startLineLong=85;racers[0].lapPrevX=racers[0].x;racers[0].lapPrevY=racers[0].y;racers[1].lapPrevX=racers[1].x;racers[1].lapPrevY=racers[1].y;
+ racers[0].startLineLong=150;racers[1].startLineLong=150;racers[0].lapPrevX=racers[0].x;racers[0].lapPrevY=racers[0].y;racers[1].lapPrevX=racers[1].x;racers[1].lapPrevY=racers[1].y;
  if(playerName==='Uriel')racers[0].power=1.2;if(opponentName==='Uriel')racers[1].power=1.2;
  finished=false;ui.status.textContent='ジャンプ3回で最高速！';
 }
@@ -499,7 +503,7 @@ function updateCheckpoint(r){
     const lateral=(crossX-p0.x)*nx+(crossY-p0.y)*ny;
     // The finish sits beside a very tight tongue corner. Keep this gate intentionally broad:
     // if the racer physically gets around that corner and crosses the finish plane, it counts.
-    if(Math.abs(lateral)<=900){
+    if(Math.abs(lateral)<=1500){
       if(long0<=0&&long1>0){
         r.lap++;
         if(r.lap>RACE_LAPS){
