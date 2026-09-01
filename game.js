@@ -700,7 +700,7 @@ rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false,raceStartDelay=0;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
-function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0,aiPathIndex:0,aiWallHits:0,aiWallHitTimer:0,aiBend:0,aiAssist:0,wingSnap:0,drifting:false,driftCharge:0,driftMoveFace:0,driftSide:0,driftFxClock:0,driftGhosts:[]};}
+function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0,aiPathIndex:0,aiWallHits:0,aiWallHitTimer:0,aiBend:0,aiAssist:0,wingSnap:0,drifting:false,driftCharge:0,driftMoveFace:0,driftSide:0,driftFxClock:0,driftGhosts:[],gutterPullX:0,gutterPullY:0};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
 function reset(opponentName='Plain'){
  globalTimeStop=0;globalTimeLag=0;
@@ -852,34 +852,30 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
    else if(r.takumiCornering&&bend<.22&&r.takumiPassiveCd<=0){r.takumiCornering=false;r.takumiPassiveCd=.95;r.speed=Math.min(maxSpeed+210,Math.max(r.speed+185,645));r.boost=.78;if(!r.ai)msg('コーナー脱出加速！');}
  }
  // Tongue anchor overrides ordinary turn. Player/rival overlap never affects anchor tongue.
+ r.gutterPullX=0;r.gutterPullY=0;
  if(r.tongue&&(r.tongue.kind==='anchor'||r.tongue.kind==='gutter')){
    let a=r.tongue.target,gutter=r.tongue.kind==='gutter';
    if(gutter&&a.slide){
-     // 溝落とし is kept entirely local to the current road segment.  Do not move the
-     // racer toward a remote virtual point: that could push the player outside the
-     // corridor and trigger the ordinary wall-recovery code.
+     // 溝落とし v2.66: visual tongue point may slide, but racer coordinates are NEVER
+     // modified here. Physics is only a small velocity bias applied later.
      let ns=nearestTrackSegment(r.x,r.y),i=ns.i;
      let ni=activeCourse.pointToPoint?Math.min(path.length-1,i+1):(i+1)%path.length;
-     let p0=path[i],p1=path[ni],fa=Math.atan2(p1.y-p0.y,p1.x-p0.x);
-     let side=a.turnSide||1,nx=-Math.sin(fa)*side,ny=Math.cos(fa)*side;
-     const edge=Math.max(48,courseHalfWidth*.68);
-     let tx=ns.qx+Math.cos(fa)*95+nx*edge,ty=ns.qy+Math.sin(fa)*95+ny*edge;
-     let dd=Math.hypot(tx-r.x,ty-r.y)||1;
-     if(dd>260){tx=r.x+(tx-r.x)/dd*260;ty=r.y+(ty-r.y)/dd*260;}
-     a.x+=(tx-a.x)*Math.min(1,dt*8);a.y+=(ty-a.y)*Math.min(1,dt*8);
+     if(ni!==i){
+       let p0=path[i],p1=path[ni],fa=Math.atan2(p1.y-p0.y,p1.x-p0.x);
+       let side=a.turnSide||1,nx=-Math.sin(fa)*side,ny=Math.cos(fa)*side;
+       const edge=Math.max(42,Math.min(courseHalfWidth*.62,150));
+       let tx=ns.qx+Math.cos(fa)*82+nx*edge,ty=ns.qy+Math.sin(fa)*82+ny*edge;
+       let dd=Math.hypot(tx-r.x,ty-r.y)||1;
+       if(dd>220){tx=r.x+(tx-r.x)/dd*220;ty=r.y+(ty-r.y)/dd*220;}
+       a.x+=(tx-a.x)*Math.min(1,dt*7);a.y+=(ty-a.y)*Math.min(1,dt*7);
 
-     // Inward force is a small, bounded attraction toward the inside edge.  It can
-     // tighten the line but can never fling Takumi across the course.
-     let pdx=tx-r.x,pdy=ty-r.y,pd=Math.hypot(pdx,pdy)||1;
-     let pull=Math.min(52*dt,pd*.055);
-     r.x+=pdx/pd*pull;r.y+=pdy/pd*pull;
-     r.wallGrace=Math.max(r.wallGrace,.12);
-
-     // Steering follows the road tangent rather than orbiting around the virtual
-     // tongue point. This is the key safety difference from v2.63.
-     let routeTurn=fa;
-     r.face=lerpAngle(r.face,routeTurn,Math.min(1,dt*8.5));
-     r.speed=Math.max(r.speed,Math.min(maxSpeed+35,550));
+       // Store only a unit inward bias. No direct x/y displacement, no orbiting around
+       // the virtual point, and no interaction with wall-recovery coordinates.
+       r.gutterPullX=nx;r.gutterPullY=ny;
+       r.face=lerpAngle(r.face,fa,Math.min(1,dt*7.2));
+       r.wallGrace=Math.max(r.wallGrace,.18);
+       r.speed=Math.max(r.speed,500);
+     }
    }else{
      let dx=a.x-r.x,dy=a.y-r.y,d=Math.hypot(dx,dy)||1,tan=Math.atan2(dy,dx)+(r.tongue.side>0?Math.PI/2:-Math.PI/2),hold=(performance.now()-r.tongue.started)/1000;
      r.face=lerpAngle(r.face,tan,Math.min(1,dt*7.5));
@@ -892,7 +888,14 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
    r.driftMoveFace=lerpAngle(r.driftMoveFace,r.face,Math.min(1,dt*.42));
    moveFace=r.driftMoveFace;r.speed=Math.max(r.speed,430);
  }
- r.vx=Math.cos(moveFace)*r.speed;r.vy=Math.sin(moveFace)*r.speed;r.x+=r.vx*dt;r.y+=r.vy*dt;
+ let mvx=Math.cos(moveFace)*r.speed,mvy=Math.sin(moveFace)*r.speed;
+ if(r.name==='Takumi'&&(r.gutterPullX||r.gutterPullY)){
+   // Equivalent to a mild inward aerodynamic pull: bend velocity by at most ~9 degrees.
+   const inward=90;
+   mvx+=r.gutterPullX*inward;mvy+=r.gutterPullY*inward;
+   let ml=Math.hypot(mvx,mvy)||1;mvx=mvx/ml*r.speed;mvy=mvy/ml*r.speed;
+ }
+ r.vx=mvx;r.vy=mvy;r.x+=r.vx*dt;r.y+=r.vy*dt;
  if(r.ai){
    let rs=aiForwardSegment(r),dx=rs.qx-r.x,dy=rs.qy-r.y,d=Math.hypot(dx,dy)||1;
    // Invisible CPU-only lane assist. It is a small continuous force, never a position snap.
@@ -1038,16 +1041,15 @@ function useA(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Taku
    if(!best){msg('溝落とし：もう少しカーブへ近づけ！');return;}
    let side=Math.sign(best.turn)||1;
    let ex=-Math.sin(best.ia)*side,ey=Math.cos(best.ia)*side;
-   let dx=best.b.x-r.x,dy=best.b.y-r.y,d=Math.hypot(dx,dy)||1;
-   // Entry-side target, capped so the tongue never appears to grab something far away.
-   let along=Math.min(170,Math.max(70,d*.34));
-   let tx=r.x+Math.cos(best.ia)*along+ex*Math.max(48,courseHalfWidth*.66);
-   let ty=r.y+Math.sin(best.ia)*along+ey*Math.max(48,courseHalfWidth*.66);
+   // Initial visual grip is always local to Takumi, never derived from the distant apex.
+   let along=78;
+   let tx=r.x+Math.cos(best.ia)*along+ex*Math.max(42,Math.min(courseHalfWidth*.60,145));
+   let ty=r.y+Math.sin(best.ia)*along+ey*Math.max(42,Math.min(courseHalfWidth*.60,145));
    let td=Math.hypot(tx-r.x,ty-r.y)||1;
-   if(td>250){tx=r.x+(tx-r.x)/td*250;ty=r.y+(ty-r.y)/td*250;}
+   if(td>205){tx=r.x+(tx-r.x)/td*205;ty=r.y+(ty-r.y)/td*205;}
    let target={x:tx,y:ty,virtualWall:true,slide:true,turnSide:side};
    r.skillCdA=.72;r.tongue={kind:'gutter',target,started:performance.now()-250,side:side>0?-1:1};
-   r.speed=Math.max(r.speed,500);r.wallGrace=Math.max(r.wallGrace,.15);msg('溝落とし！ 内側を舌で滑らせる！');
+   r.speed=Math.max(r.speed,490);r.wallGrace=Math.max(r.wallGrace,.18);msg('溝落とし！ 内側を舌で滑らせる！');
    setTimeout(()=>{if(r.tongue?.kind==='gutter'&&r.tongue.target===target){r.boost=.28;r.tongue=null;}},650);
    return;}if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillA||(r.name==='Kawazu'?'airSwim':'punch'),'A');return;}if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
  if(r.name==='Gabriel'){waterBoost(r,false);return;}
@@ -1432,7 +1434,30 @@ function drawRacer(r){
  // Glide: slight forward pitch / streamlined squash.
  if(r.flight===3){ctx.transform(1,0,-Math.sin(r.face)*.045,1,0,0);}
  if(r.name==='Takumi'&&r.drifting){let slip=norm(r.face-(r.driftMoveFace||r.face));ctx.rotate(Math.max(-.22,Math.min(.22,slip*.22)));ctx.scale(1.03,.96);}
- currentWingSpecial=r.name==='Michael';currentWingRed=r.name==='Kawazu';currentWingTakumi=r.name==='Takumi';currentWingBurning=r.burningWing>0||r.highJump>0;currentWingFold=Math.min(1,(r.wingSnap||0)/.19);if(dir==='down')frogFront(r);else if(dir==='up')frogBack(r);else frogSide(r,dir==='left');currentWingBurning=false;currentWingTakumi=false;currentWingFold=0;if(r.name==='Takumi'){ctx.save();
+ currentWingSpecial=r.name==='Michael';currentWingRed=r.name==='Kawazu';currentWingTakumi=r.name==='Takumi';currentWingBurning=r.burningWing>0||r.highJump>0;currentWingFold=Math.min(1,(r.wingSnap||0)/.19);if(dir==='down')frogFront(r);else if(dir==='up')frogBack(r);else frogSide(r,dir==='left');currentWingBurning=false;currentWingTakumi=false;currentWingFold=0;
+if(r.name==='Beelzebub'){ctx.save();
+ const neon='#a8ff00',neon2='#66ff33',dark='#09120f';
+ if(dir==='down'){
+   // Reference-inspired fluorescent accents: lime belly, lime eye disks and small leg bands.
+   ctx.fillStyle=neon;ctx.beginPath();ctx.ellipse(0,14,13,18,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=neon2;ctx.beginPath();ctx.arc(-14,-39,10,0,Math.PI*2);ctx.arc(14,-39,10,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#fffdf4';ctx.beginPath();ctx.arc(-14,-39,7,0,Math.PI*2);ctx.arc(14,-39,7,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=neon;ctx.beginPath();ctx.arc(-12,-39,3.8,0,Math.PI*2);ctx.arc(12,-39,3.8,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle=neon2;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-15,34);ctx.lineTo(-7,38);ctx.stroke();ctx.beginPath();ctx.moveTo(15,34);ctx.lineTo(7,38);ctx.stroke();
+ }else if(dir==='up'){
+   ctx.strokeStyle=neon2;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-17,23);ctx.lineTo(-5,29);ctx.stroke();ctx.beginPath();ctx.moveTo(17,23);ctx.lineTo(5,29);ctx.stroke();
+   ctx.fillStyle=neon;ctx.beginPath();ctx.roundRect(-9,-7,18,7,3);ctx.fill();
+ }else{
+   const d=dir==='left'?-1:1;ctx.scale(d,1);
+   ctx.fillStyle=neon;ctx.beginPath();ctx.ellipse(8,14,10,18,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=neon2;ctx.beginPath();ctx.arc(15,-39,10,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#fffdf4';ctx.beginPath();ctx.arc(15,-39,7,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=neon;ctx.beginPath();ctx.arc(18,-39,3.8,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle=neon2;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-7,35);ctx.lineTo(4,39);ctx.stroke();
+ }
+ ctx.restore();
+}
+if(r.name==='Takumi'){ctx.save();
  const black='#151515',white='#f5f3eb';
  if(dir==='down'){
    ctx.fillStyle=black;ctx.beginPath();ctx.ellipse(0,-23,30,23,0,Math.PI,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(-14,-38,13,0,Math.PI*2);ctx.arc(14,-38,13,0,Math.PI*2);ctx.fill();
