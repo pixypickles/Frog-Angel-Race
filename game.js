@@ -514,7 +514,7 @@ const COURSE_SETS={
   {name:'風のオーバル',theme:'wind',halfWidth:300,path:[[850,850],[2800,520],[4750,850],[5250,2100],[4750,3450],[2800,3800],[850,3450],[450,2100]]},
   {name:'風切りトライアングル',theme:'wind',halfWidth:210,path:[[650,3550],[2850,450],[5150,3550],[4300,4050],[2850,3350],[1400,4050]]},
   {name:'空原クローバーリング',theme:'wind',halfWidth:190,path:[[650,2100],[900,850],[2000,450],[3000,850],[4000,450],[5100,900],[5250,2100],[5000,3350],[3950,4050],[3000,3650],[2000,4050],[850,3400]]},
-  {name:'風車ヘアピン峠',theme:'wind',halfWidth:165,path:[[650,350],[5200,350],[5200,1450],[900,1450],[900,2550],[5000,2550],[5000,3650],[650,3650],[650,4550],[5200,4550]]}
+  {name:'風のキャニオンS',theme:'wind',halfWidth:205,path:[[650,700],[1850,450],[3300,650],[5000,500],[5250,1450],[3900,1850],[2250,1500],[750,2050],[600,3000],[1900,3500],[3400,3200],[5000,3650],[4550,4200],[2900,4050],[1350,4250],[500,3600]]}
  ],
  arena2:[
   {name:'水路ツインルート',theme:'water',halfWidth:190,branches:[[[1300,900],[2200,1450],[3300,1450],[4300,900]]],path:[[650,900],[1300,900],[4300,900],[5100,1400],[5100,3350],[4300,3950],[1300,3950],[550,3350],[550,1500]]},
@@ -669,7 +669,7 @@ function rebuildCourseObjects(){
 }
 const COURSE_ORDER={
  arena1:[0,1,3,2],
- arena2:[0,3,1,2],
+ arena2:[0,1,2,3],
  arena3:[0,3,1,2],
  arena4:[1,2,0,3],
  arena5:[0,1,4,3,2],
@@ -871,16 +871,16 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
  if(r.name==='Bunta'&&r.ai&&!r.bump){
    // Secret boss cruising floor. Keep him outrageously fast even after ordinary
    // glide/boost code has tried to settle toward normal character limits.
-   const bend=r.aiBend||0,target=bend>.95?455:bend>.62?500:bend>.38?565:720;
+   const bend=r.aiBend||0,target=bend>.95?540:bend>.62?590:bend>.38?645:720;
    r.speed=approach(r.speed,target,470*dt);
  }
  if(r.bump>0)r.speed=Math.min(r.speed,r.name==='Bunta'?430:360);
  if(r.ai){
    const bend=r.aiBend||0;
    if(r.name==='Bunta'){
-     if(bend>.95)r.speed=Math.min(r.speed,455);
-     else if(bend>.62)r.speed=Math.min(r.speed,500);
-     else if(bend>.38)r.speed=Math.min(r.speed,555);
+     if(bend>.95)r.speed=Math.min(r.speed,540);
+     else if(bend>.62)r.speed=Math.min(r.speed,590);
+     else if(bend>.38)r.speed=Math.min(r.speed,645);
    }else{
      if(bend>.95)r.speed=Math.min(r.speed,335);
      else if(bend>.62)r.speed=Math.min(r.speed,400);
@@ -932,7 +932,7 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
    r.driftMoveFace=lerpAngle(r.driftMoveFace,r.face,Math.min(1,dt*.42));
    moveFace=r.driftMoveFace;r.speed=Math.max(r.speed,430);
  }
- let mvx=Math.cos(moveFace)*r.speed,mvy=Math.sin(moveFace)*r.speed;
+ const downhillMul=courseTheme==='akina'?1.12:1;let mvx=Math.cos(moveFace)*r.speed*downhillMul,mvy=Math.sin(moveFace)*r.speed*downhillMul;
  if(r.name==='Takumi'&&(r.gutterPullX||r.gutterPullY)){
    // Equivalent to a mild inward aerodynamic pull: bend velocity by at most ~9 degrees.
    const inward=90;
@@ -1658,7 +1658,7 @@ function upcomingCurveGuide(r){
   if(second)return {text:`${firstArrow} ${arrowFor(second.endAng)}`,cls:'sequence'};
   return {text:firstArrow,cls};
 }
-function updateHud(r){let cg=upcomingCurveGuide(r);if(ui.curve){ui.curve.textContent=cg.text;ui.curve.className='curveGuide '+cg.cls;}ui.lap.textContent=activeCourse.pointToPoint?'POINT TO POINT':('LAP '+Math.min(r.lap,RACE_LAPS)+'/'+RACE_LAPS);ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Takumi'||r.name==='Bunta'){al='溝落とし';bl=r.drifting?'ドリフト '+Math.round(Math.min(1,(r.driftCharge||0)/1.35)*100)+'%':'ドリフト飛行'}else if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){let aid=r.customSkillA||'airSwim',bid=r.customSkillB||'wallKick';al=skillLabel(aid)+' ∞';bl=skillLabel(bid)+' ∞'}else if(r.name==='Michael'){let aid=r.customSkillA||'punch',bid=r.customSkillB||'bubble';al=skillLabel(aid)+(aid==='burningWing'?' '+r.burnWingUses+'/3':aid==='highJump'?' '+r.burnClimbUses+'/3':'');bl=skillLabel(bid)+(bid==='burningWing'?' '+r.burnWingUses+'/3':bid==='highJump'?' '+r.burnClimbUses+'/3':'')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
+function updateHud(r){let cg=upcomingCurveGuide(r);if(ui.curve){ui.curve.textContent=cg.text;ui.curve.className='curveGuide '+cg.cls;}ui.lap.textContent=activeCourse.pointToPoint?'POINT TO POINT':('LAP '+Math.min(r.lap,RACE_LAPS)+'/'+RACE_LAPS);ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56*(courseTheme==='akina'?1.12:1))+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Takumi'||r.name==='Bunta'){al='溝落とし';bl=r.drifting?'ドリフト '+Math.round(Math.min(1,(r.driftCharge||0)/1.35)*100)+'%':'ドリフト飛行'}else if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){let aid=r.customSkillA||'airSwim',bid=r.customSkillB||'wallKick';al=skillLabel(aid)+' ∞';bl=skillLabel(bid)+' ∞'}else if(r.name==='Michael'){let aid=r.customSkillA||'punch',bid=r.customSkillB||'bubble';al=skillLabel(aid)+(aid==='burningWing'?' '+r.burnWingUses+'/3':aid==='highJump'?' '+r.burnClimbUses+'/3':'');bl=skillLabel(bid)+(bid==='burningWing'?' '+r.burnWingUses+'/3':bid==='highJump'?' '+r.burnClimbUses+'/3':'')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
 function msg(t){ui.status.textContent=t;clearTimeout(msg.timer);msg.timer=setTimeout(()=>ui.status.textContent='ジャンプ3回＋舌ターンで最速を狙え！',2200)}
 function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;if(appState==='race'){
  if(raceStartDelay>0){raceStartDelay=Math.max(0,raceStartDelay-dt);draw();}
