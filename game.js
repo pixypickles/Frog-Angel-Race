@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.32';
+const VERSION='v2.33';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -431,15 +431,26 @@ const COURSE_SETS={
   {name:'古代迷走路',theme:'master',halfWidth:215,extraAnchors:[[1900,800],[3000,1100],[4300,850],[4450,1900],[3500,2350],[4600,3150],[3000,3500],[1600,3300],[1050,2300]],path:[[700,700],[1900,500],[3000,1050],[4300,500],[5100,1100],[4500,1850],[3300,1500],[2700,2200],[3500,2700],[4900,2400],[5200,3300],[4000,3900],[2600,3500],[1300,3900],[600,3000],[1100,2300],[600,1500]]},
   {name:'遺跡ダウンヒル',theme:'master',pointToPoint:true,halfWidth:225,extraAnchors:[[1450,800],[2150,1150],[1700,1600],[2750,1950],[2200,2400],[3400,2750],[2950,3250],[4200,3500]],path:[[650,550],[1500,550],[2200,900],[1650,1250],[2450,1600],[1800,2050],[2900,2350],[2250,2800],[3500,3100],[3000,3550],[4300,3800],[5200,3450]]}
  ],
- akina:[{name:'アキナ山・下り',theme:'autumn',pointToPoint:true,halfWidth:170,
- worldOverride:{w:7200,h:9800},
- extraAnchors:[[1250,8650],[1850,8150],[1300,7550],[2100,7000],[1500,6450],[2450,5900],[1800,5350],[3000,4800],[2200,4250],[3300,3700],[4200,3150],[3600,2600],[5000,2050],[4450,1500]],
+ akina:[{name:'アキナ山・下り',theme:'akina',pointToPoint:true,halfWidth:210,
+ worldOverride:{w:9000,h:15000},
+ extraAnchors:[],
  path:[
-  [650,9300],[980,8850],[1450,8500],[1100,8050],[1700,7700],[1150,7300],
-  [2050,6900],[1450,6450],[2450,6050],[1700,5600],
-  [2950,5150],[2150,4700],[3350,4250],[2550,3800],
-  [3850,3400],[4700,3000],[4100,2550],[5050,2200],
-  [4400,1800],[5450,1450],[4950,1050],[6100,700],[6650,500]
+  [700,14350],[850,13700],[1050,13050],[1250,12400],
+  [950,11800],[700,11250],[1050,10800],[1650,10650],[2250,10850],[2550,11200],
+  [2250,11500],[1700,11400],[1450,11000],[1800,10550],[2450,10150],
+  [3100,9750],[3700,9400],[4300,9050],
+  [3950,8650],[3350,8450],[2750,8500],[2250,8750],[2050,9100],
+  [2350,9400],[3000,9450],[3650,9250],[4200,8950],[4650,8550],
+  [4850,8100],[4600,7700],[4050,7500],[3450,7550],[3000,7850],
+  [3200,8150],[3800,8250],[4400,8050],[5000,7650],
+  [5450,7200],[5650,6750],[5400,6400],[4850,6250],[4350,6400],
+  [4200,6750],[4550,7000],[5150,6950],[5750,6600],
+  [6200,6150],[6500,5650],
+  [6250,5250],[5750,5100],[5350,5300],[5550,5600],[6100,5550],[6650,5200],
+  [7000,4800],[6800,4450],[6300,4300],[6000,4500],[6200,4750],[6700,4650],[7200,4250],
+  [7500,3850],[7300,3500],[6850,3400],[6600,3600],[6800,3800],[7250,3700],[7700,3300],
+  [7950,2850],[7700,2500],[7200,2400],[6900,2600],[7100,2800],[7550,2700],[8050,2250],
+  [8300,1750],[8100,1300],[7600,1150],[7250,1350],[7450,1600],[7950,1500],[8450,1000],[8650,650]
  ]}],
  master:[
   {name:'魔王環状路',theme:'master',path:[[2800,500],[3800,520],[5100,900],[5300,1700],[4700,2250],[3600,1900],[2900,2350],[3550,3000],[5000,3000],[5200,3450],[4100,3950],[2600,3850],[1250,3500],[600,2800],[700,1850],[1350,1250],[700,700],[2100,480]]},
@@ -737,10 +748,17 @@ function drawTimeEffectOverlay(mode){
 }
 function drawWorld(){
  // The race is airborne: below the racers is a pond, not a road surface.
- const pal=courseTheme==='autumn'?{water:'#d8b46a',grass:'#713d25',inner:'#d9c39a'}:courseTheme==='wind'?{water:'#9edee8',grass:'#55995b',inner:'#b7e4e7'}:courseTheme==='forest'?{water:'#77b8a5',grass:'#245f38',inner:'#86c3ae'}:courseTheme==='master'?{water:'#77758d',grass:'#403d52',inner:'#8b879d'}:{water:'#58bdd5',grass:'#397e48',inner:'#70c8d9'};ctx.fillStyle=pal.water;ctx.fillRect(0,0,world.w,world.h);
- // soft water patches make different sections feel like pond / puddle zones
- for(let y=240;y<world.h;y+=620){for(let x=260;x<world.w;x+=760){let n=((x*13+y*7)%190)-95;ctx.fillStyle='rgba(255,255,255,.055)';ctx.beginPath();ctx.ellipse(x+n,y-n*.35,170,72,.18,0,Math.PI*2);ctx.fill();}}
- for(const l of lilies)drawLily(l.x,l.y,l.r);
+ const pal=courseTheme==='akina'?{water:'#4f8a43',grass:'#275d31',inner:'#777b7d'}:courseTheme==='autumn'?{water:'#d8b46a',grass:'#713d25',inner:'#d9c39a'}:courseTheme==='wind'?{water:'#9edee8',grass:'#55995b',inner:'#b7e4e7'}:courseTheme==='forest'?{water:'#77b8a5',grass:'#245f38',inner:'#86c3ae'}:courseTheme==='master'?{water:'#77758d',grass:'#403d52',inner:'#8b879d'}:{water:'#58bdd5',grass:'#397e48',inner:'#70c8d9'};ctx.fillStyle=pal.water;ctx.fillRect(0,0,world.w,world.h);
+ // soft scenery texture; Akina is land, not pond.
+ if(courseTheme==='akina'){
+   ctx.save();ctx.globalAlpha=.22;
+   for(let y=260;y<world.h;y+=520){for(let x=260;x<world.w;x+=620){
+     if(trackDistance(x,y)>courseHalfWidth+150){let n=((x*11+y*5)%150)-75;ctx.fillStyle=((x+y)%3)?'#285f32':'#6b9a4e';ctx.beginPath();ctx.arc(x+n,y,45+((x+y)%35),0,Math.PI*2);ctx.fill();}
+   }}ctx.restore();
+ }else{
+   for(let y=240;y<world.h;y+=620){for(let x=260;x<world.w;x+=760){let n=((x*13+y*7)%190)-95;ctx.fillStyle='rgba(255,255,255,.055)';ctx.beginPath();ctx.ellipse(x+n,y-n*.35,170,72,.18,0,Math.PI*2);ctx.fill();}}
+   for(const l of lilies)drawLily(l.x,l.y,l.r);
+ }
  if(courseTheme==='wind'){ctx.save();ctx.globalAlpha=.22;ctx.strokeStyle='#ffffff';ctx.lineWidth=10;for(let i=0;i<12;i++){let x=300+(i*487)%5400,y=250+(i*811)%3900;ctx.beginPath();ctx.arc(x,y,55,0,Math.PI*1.5);ctx.stroke();}ctx.restore();}
  if(courseTheme==='forest'){ctx.save();for(let i=0;i<20;i++){let x=220+(i*701)%5550,y=180+(i*997)%4000;if(trackDistance(x,y)>330){ctx.fillStyle='#174b2b';ctx.beginPath();ctx.arc(x,y,42,0,Math.PI*2);ctx.fill();}}ctx.restore();}
  if(courseTheme==='master'){ctx.save();ctx.globalAlpha=.18;ctx.fillStyle='#c7a7ff';for(let i=0;i<14;i++){let x=300+(i*839)%5300,y=260+(i*541)%3800;ctx.beginPath();ctx.arc(x,y,35+(i%3)*14,0,Math.PI*2);ctx.fill();}ctx.restore();}
@@ -752,8 +770,8 @@ function drawWorld(){
  ctx.strokeStyle=pal.grass;ctx.lineWidth=courseHalfWidth*2+70;drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
  ctx.strokeStyle=pal.inner;ctx.lineWidth=courseHalfWidth*2;drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
  drawGrassBlades();
- ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=3;ctx.setLineDash([18,46]);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);ctx.setLineDash([]);
- for(const a of anchors)drawTree(a.x,a.y);
+ ctx.strokeStyle=courseTheme==='akina'?'rgba(245,245,235,.72)':'rgba(255,255,255,.16)';ctx.lineWidth=courseTheme==='akina'?5:3;ctx.setLineDash(courseTheme==='akina'?[34,42]:[18,46]);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);ctx.setLineDash([]);
+ if(courseTheme!=='akina')for(const a of anchors)drawTree(a.x,a.y);
  // start gate across the water corridor
  {const gates=activeCourse.pointToPoint?[startGate(),finishGate()]:[finishGate()];for(const g of gates){ctx.save();ctx.translate(g.p0.x,g.p0.y);ctx.rotate(Math.atan2(g.ty,g.tx)+Math.PI/2);let gh=Math.max(190,courseHalfWidth+55);for(let i=-4;i<=4;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*20,-gh,20,gh*2)}ctx.restore();}}
 }
