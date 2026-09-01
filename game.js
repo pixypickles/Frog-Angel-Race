@@ -856,7 +856,27 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
  }
  // AI flight rhythm
  if(r.ai){if(r.flight<3&&Math.random()<dt*2.8)pressJumpSilent(r);if(r.flight===3&&r.glideClock>4.55&&r.glideClock<5.45)pressJumpSilent(r);}
- if(r.flight===0){r.speed=approach(r.speed,groundSpeed*inp.m*(r.name==='Kawazu'?1.14:r.name==='Takumi'?1.12:1),380*dt);}else if(r.flight===1){r.speed=approach(r.speed,r.name==='Takumi'?355:330,230*dt);}else if(r.flight===2){r.speed=approach(r.speed,r.name==='Takumi'?485:455,260*dt);}else {r.glideClock+=dt;if(r.glideClock<5.65)r.speed=approach(r.speed,r.name==='Kawazu'?maxSpeed+65:r.name==='Takumi'?maxSpeed+55:maxSpeed,glideAccel*dt);else{r.glideGrace+=dt;r.speed=approach(r.speed,r.name==='Takumi'?280:245,82*dt);if(r.speed<300){r.flight=0;r.onGround=true;r.glideClock=0;r.landAge=.28;}}}
+ if(r.flight===0){
+   const aiBase=r.ai?(r.name==='Plain'?1.035:(r.name==='Bunta'||r.name==='Takumi'||r.name==='Kawazu'?1:1.06)):1;
+   r.speed=approach(r.speed,groundSpeed*inp.m*(r.name==='Kawazu'?1.14:r.name==='Takumi'?1.12:aiBase),380*dt);
+ }else if(r.flight===1){
+   const aiLift=r.ai?(r.name==='Plain'?340:(r.name==='Bunta'||r.name==='Takumi'||r.name==='Kawazu'?330:348)):330;
+   r.speed=approach(r.speed,r.name==='Takumi'?355:aiLift,230*dt);
+ }else if(r.flight===2){
+   const aiFlap=r.ai?(r.name==='Plain'?470:(r.name==='Bunta'||r.name==='Takumi'||r.name==='Kawazu'?455:480)):455;
+   r.speed=approach(r.speed,r.name==='Takumi'?485:aiFlap,260*dt);
+ }else {
+   r.glideClock+=dt;
+   if(r.glideClock<5.65){
+     const aiCruise=r.ai?(r.name==='Plain'?600:(r.name==='Bunta'||r.name==='Takumi'||r.name==='Kawazu'?maxSpeed:615)):maxSpeed;
+     r.speed=approach(r.speed,r.name==='Kawazu'?maxSpeed+65:r.name==='Takumi'?maxSpeed+55:aiCruise,glideAccel*dt);
+   }else{
+     r.glideGrace+=dt;
+     const tiredTarget=(r.ai&&r.name!=='Plain'&&r.name!=='Bunta'&&r.name!=='Kawazu'&&r.name!=='Takumi')?260:245;
+     r.speed=approach(r.speed,r.name==='Takumi'?280:tiredTarget,82*dt);
+     if(r.speed<300){r.flight=0;r.onGround=true;r.glideClock=0;r.landAge=.28;}
+   }
+ }
  if(r.name==='Bunta'){
    // Bunta's raw pace is only a little above Takumi now.
    if(r.flight===0)r.speed=Math.max(r.speed,290);
@@ -882,9 +902,10 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
      else if(bend>.62)r.speed=Math.min(r.speed,590);
      else if(bend>.38)r.speed=Math.min(r.speed,645);
    }else{
-     if(bend>.95)r.speed=Math.min(r.speed,335);
-     else if(bend>.62)r.speed=Math.min(r.speed,400);
-     else if(bend>.38)r.speed=Math.min(r.speed,470);
+     const plain=r.name==='Plain';
+     if(bend>.95)r.speed=Math.min(r.speed,plain?365:385);
+     else if(bend>.62)r.speed=Math.min(r.speed,plain?430:450);
+     else if(bend>.38)r.speed=Math.min(r.speed,plain?500:520);
    }
  }
  if(r.name==='Takumi'||r.name==='Bunta'){
