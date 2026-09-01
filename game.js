@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.42';
+const VERSION='v2.43';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -14,7 +14,7 @@ const CHARACTER_DATA={
  Lucifer:{jp:'ルシファーさん',color:'#666a70'},
  Lilith:{jp:'リリスさん',color:'#ef78ad'},
  Beelzebub:{jp:'ベルゼブブさん',color:'#101515'},
- Kawazu:{jp:'カワズさん',color:'#3f9d52',wing:'red'},
+ Kawazu:{jp:'カワズさん',color:'#329451',wing:'red'},
  Azazel:{jp:'アザゼルさん',color:'#8c5a9e'},
  Leviathan:{jp:'リヴァイアさん',color:'#d65a48'},
  Asmodeus:{jp:'アスモデウスさん',color:'#d64b35'},
@@ -955,7 +955,24 @@ function drawRacer(r){
    ctx.fillStyle=black;ctx.beginPath();ctx.ellipse(4,-24,27,21,0,Math.PI,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(13,-38,13,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.roundRect(-14,18,36,19,9);ctx.fill();ctx.beginPath();ctx.ellipse(-20,9,7,15,.28,0,Math.PI*2);ctx.fill();
    ctx.fillStyle=white;ctx.beginPath();ctx.roundRect(-12,-12,35,22,9);ctx.fill();ctx.fillStyle='#fffdf4';ctx.beginPath();ctx.arc(15,-39,10,0,Math.PI*2);ctx.fill();ctx.fillStyle=black;ctx.beginPath();ctx.arc(18,-39,4,0,Math.PI*2);ctx.fill();ctx.strokeStyle=black;ctx.lineWidth=3;ctx.beginPath();ctx.arc(22,-17,7,.35,Math.PI-.5);ctx.stroke();
  }
- ctx.restore();}if(r.name==='Kawazu'){ctx.save();if(dir==='down'){ctx.fillStyle='#f5eee1';ctx.beginPath();ctx.ellipse(0,13,9,15,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d8232e';ctx.beginPath();ctx.arc(-12,-39,5,0,Math.PI*2);ctx.arc(12,-39,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#2975a8';ctx.fillRect(-18,5,5,23);ctx.fillRect(13,5,5,23);ctx.fillStyle='#f28a28';ctx.beginPath();ctx.arc(-12,40,7,0,Math.PI*2);ctx.arc(12,40,7,0,Math.PI*2);ctx.fill();}ctx.restore();}
+ ctx.restore();}if(r.name==='Kawazu'){ctx.save();
+ const eyeRed='#f2383d',eyeDark='#352b2b',belly='#f7f7f2',sideBlue='#1689d5',orange='#ff7a32';
+ if(dir==='down'){
+   // Corrected Kawazu palette: red eyes with dark pupils, white belly, blue side marks, orange hands/feet.
+   ctx.fillStyle=belly;ctx.beginPath();ctx.ellipse(0,13,12,17,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=eyeRed;ctx.beginPath();ctx.arc(-14,-39,10,0,Math.PI*2);ctx.arc(14,-39,10,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=eyeDark;ctx.beginPath();ctx.arc(-12,-39,4,0,Math.PI*2);ctx.arc(12,-39,4,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=sideBlue;ctx.fillRect(-18,5,5,23);ctx.fillRect(13,5,5,23);
+   ctx.fillStyle=orange;ctx.beginPath();ctx.arc(-23,12,7,0,Math.PI*2);ctx.arc(23,12,7,0,Math.PI*2);ctx.arc(-12,40,7,0,Math.PI*2);ctx.arc(12,40,7,0,Math.PI*2);ctx.fill();
+ }else if(dir==='left'||dir==='right'){
+   const d=dir==='left'?-1:1;ctx.scale(d,1);
+   ctx.fillStyle=belly;ctx.beginPath();ctx.ellipse(8,13,10,17,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=eyeRed;ctx.beginPath();ctx.arc(15,-39,10,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=eyeDark;ctx.beginPath();ctx.arc(18,-39,4,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=sideBlue;ctx.beginPath();ctx.roundRect(-17,5,7,24,3);ctx.fill();
+   ctx.fillStyle=orange;ctx.beginPath();ctx.arc(-20,12,7,0,Math.PI*2);ctx.ellipse(-8,40,9,5,-.15,0,Math.PI*2);ctx.ellipse(12,40,9,5,.15,0,Math.PI*2);ctx.fill();
+ }
+ ctx.restore();}
  // Wing-flap speed lines on stage 2 and on successful maintenance taps.
  if(r.flight===2 || r.wing>0){ctx.save();ctx.globalAlpha=.28;ctx.strokeStyle='#ffffff';ctx.lineWidth=4;for(const side of [-1,1]){for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(side*(35+i*5),-12+i*8);ctx.lineTo(side*(52+i*7),-17+i*8);ctx.stroke()}}ctx.restore();}
  // Glide-maintenance warning: starts before the ideal window, becomes fast near expiry.
