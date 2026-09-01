@@ -826,9 +826,9 @@ function updateRacer(r,dt){
   r.tongueBoostTimer=Math.max(0,(r.tongueBoostTimer||0)-dt);
   if(r.tongueBoostTimer>0)r.speed=Math.min(maxSpeed+130,r.speed+360*dt);
 r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r.wingSnap||0)-dt);r.aiWallHitTimer=Math.max(0,(r.aiWallHitTimer||0)-dt);if(r.aiWallHitTimer<=0)r.aiWallHits=0;r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrace||0)-dt);r.wallEscape=Math.max(0,(r.wallEscape||0)-dt);r.highJump=Math.max(0,(r.highJump||0)-dt);r.normalHighJump=Math.max(0,(r.normalHighJump||0)-dt);r.confuse=Math.max(0,(r.confuse||0)-dt);r.burningWing=Math.max(0,(r.burningWing||0)-dt);if(r.charging)r.charge=Math.min(1.8,(r.charge||0)+dt);if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
- const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),aiTurn=r.ai?((r.name==='Bunta'?2.70:1.28)+Math.min(r.name==='Bunta'?1.30:.55,(r.aiBend||0)*(r.name==='Bunta'?.88:.42))):1,driftTurn=(r.name==='Takumi'&&r.drifting)?2.15:1,turn=(turnGround*(1-ratio)+turnFast*ratio)*dt*(r.name==='Raphael'?1.22:1)*(r.highJump>0?.28:1)*aiTurn*driftTurn;
+ const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),aiTurn=r.ai?((r.name==='Bunta'?2.25:1.28)+Math.min(r.name==='Bunta'?1.05:.55,(r.aiBend||0)*(r.name==='Bunta'?.72:.42))):1,driftTurn=((r.name==='Takumi'||r.name==='Bunta')&&r.drifting)?2.15:1,turn=(turnGround*(1-ratio)+turnFast*ratio)*dt*(r.name==='Raphael'?1.22:1)*(r.highJump>0?.28:1)*aiTurn*driftTurn;
  if(Math.abs(diff)<turn)r.face=want;else r.face+=Math.sign(diff)*turn;
- if(r.name==='Takumi'&&r.drifting){
+ if((r.name==='Takumi'||r.name==='Bunta')&&r.drifting){
    let slip=Math.abs(norm(r.face-r.driftMoveFace));
    r.driftCharge=Math.min(1.8,(r.driftCharge||0)+dt*(.55+Math.min(1.1,slip)));
    r.wingSnap=Math.max(r.wingSnap,.06); // rapid little flaps while sliding
@@ -848,28 +848,30 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
  if(r.ai){if(r.flight<3&&Math.random()<dt*2.8)pressJumpSilent(r);if(r.flight===3&&r.glideClock>4.55&&r.glideClock<5.45)pressJumpSilent(r);}
  if(r.flight===0){r.speed=approach(r.speed,groundSpeed*inp.m*(r.name==='Kawazu'?1.14:r.name==='Takumi'?1.12:1),380*dt);}else if(r.flight===1){r.speed=approach(r.speed,r.name==='Takumi'?355:330,230*dt);}else if(r.flight===2){r.speed=approach(r.speed,r.name==='Takumi'?485:455,260*dt);}else {r.glideClock+=dt;if(r.glideClock<5.65)r.speed=approach(r.speed,r.name==='Kawazu'?maxSpeed+65:r.name==='Takumi'?maxSpeed+55:maxSpeed,glideAccel*dt);else{r.glideGrace+=dt;r.speed=approach(r.speed,r.name==='Takumi'?280:245,82*dt);if(r.speed<300){r.flight=0;r.onGround=true;r.glideClock=0;r.landAge=.28;}}}
  if(r.name==='Bunta'){
-   if(r.flight===0)r.speed=Math.max(r.speed,430);
-   else if(r.flight===1)r.speed=Math.max(r.speed,560);
-   else if(r.flight===2)r.speed=Math.max(r.speed,700);
-   else r.speed=Math.max(r.speed,820);
+   // Bunta is stronger than Takumi, but no longer wins just by holding a huge
+   // permanent straight-line speed advantage.
+   if(r.flight===0)r.speed=Math.max(r.speed,300);
+   else if(r.flight===1)r.speed=Math.max(r.speed,390);
+   else if(r.flight===2)r.speed=Math.max(r.speed,520);
+   else r.speed=Math.max(r.speed,640);
  }
  if(r.hitSlow>0)r.speed*=Math.pow(.78,dt*4);
  if(r.burningWing>0)r.speed=approach(r.speed,maxSpeed+205,720*dt);
  else if(r.highJump>0)r.speed=approach(r.speed,maxSpeed+70,300*dt);
- else if(r.boost>0)r.speed=Math.min(maxSpeed+(r.name==='Bunta'?420:r.name==='Takumi'?120:45),r.speed+(r.name==='Bunta'?470:r.name==='Takumi'?330:210)*dt);
+ else if(r.boost>0)r.speed=Math.min(maxSpeed+(r.name==='Bunta'?210:r.name==='Takumi'?120:45),r.speed+(r.name==='Bunta'?370:r.name==='Takumi'?330:210)*dt);
  if(r.name==='Bunta'&&r.ai&&!r.bump){
    // Secret boss cruising floor. Keep him outrageously fast even after ordinary
    // glide/boost code has tried to settle toward normal character limits.
-   const bend=r.aiBend||0,target=bend>.95?620:bend>.62?700:bend>.38?780:860;
-   r.speed=approach(r.speed,target,700*dt);
+   const bend=r.aiBend||0,target=bend>.95?500:bend>.62?550:bend>.38?610:675;
+   r.speed=approach(r.speed,target,520*dt);
  }
- if(r.bump>0)r.speed=Math.min(r.speed,r.name==='Bunta'?560:360);
+ if(r.bump>0)r.speed=Math.min(r.speed,r.name==='Bunta'?460:360);
  if(r.ai){
    const bend=r.aiBend||0;
    if(r.name==='Bunta'){
-     if(bend>.95)r.speed=Math.min(r.speed,620);
-     else if(bend>.62)r.speed=Math.min(r.speed,700);
-     else if(bend>.38)r.speed=Math.min(r.speed,780);
+     if(bend>.95)r.speed=Math.min(r.speed,500);
+     else if(bend>.62)r.speed=Math.min(r.speed,550);
+     else if(bend>.38)r.speed=Math.min(r.speed,610);
    }else{
      if(bend>.95)r.speed=Math.min(r.speed,335);
      else if(bend>.62)r.speed=Math.min(r.speed,400);
@@ -881,7 +883,7 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
    if(!activeCourse.pointToPoint){n1=path[(i+1)%path.length];n2=path[(i+2)%path.length];}
    let bend=Math.abs(norm(Math.atan2(n2.y-n1.y,n2.x-n1.x)-Math.atan2(n1.y-r.y,n1.x-r.x)));
    if(bend>.48)r.takumiCornering=true;
-   else if(r.takumiCornering&&bend<.22&&r.takumiPassiveCd<=0){r.takumiCornering=false;r.takumiPassiveCd=.95;r.speed=Math.min(maxSpeed+(r.name==='Bunta'?360:210),Math.max(r.speed+(r.name==='Bunta'?260:185),r.name==='Bunta'?840:645));r.boost=r.name==='Bunta'?1.0:.78;if(!r.ai)msg('コーナー脱出加速！');}
+   else if(r.takumiCornering&&bend<.22&&r.takumiPassiveCd<=0){r.takumiCornering=false;r.takumiPassiveCd=.95;r.speed=Math.min(maxSpeed+(r.name==='Bunta'?190:210),Math.max(r.speed+(r.name==='Bunta'?205:185),r.name==='Bunta'?700:645));r.boost=r.name==='Bunta'?.88:.78;if(!r.ai)msg('コーナー脱出加速！');}
  }
  // Tongue anchor overrides ordinary turn. Player/rival overlap never affects anchor tongue.
  r.gutterPullX=0;r.gutterPullY=0;
@@ -1143,7 +1145,7 @@ function releaseTakumiDrift(r){
  if(!r||(r.name!=='Takumi'&&r.name!=='Bunta')||!r.drifting)return;
  let p=Math.min(1,(r.driftCharge||0)/1.35);
  r.drifting=false;r.skillCdB=.65;r.driftFxClock=0;
- if(p>.12){r.speed=Math.min(maxSpeed+(r.name==='Bunta'?430:225),Math.max(r.speed+(r.name==='Bunta'?170:95)+(r.name==='Bunta'?290:190)*p,(r.name==='Bunta'?790:610)+(r.name==='Bunta'?190:110)*p));r.boost=(r.name==='Bunta'?.62:.42)+(r.name==='Bunta'?.68:.55)*p;msg('ドリフト加速 '+Math.round(p*100)+'%！');}
+ if(p>.12){r.speed=Math.min(maxSpeed+(r.name==='Bunta'?245:225),Math.max(r.speed+(r.name==='Bunta'?115:95)+(r.name==='Bunta'?215:190)*p,(r.name==='Bunta'?665:610)+(r.name==='Bunta'?135:110)*p));r.boost=(r.name==='Bunta'?.50:.42)+(r.name==='Bunta'?.60:.55)*p;msg('ドリフト加速 '+Math.round(p*100)+'%！');}
  else msg('ドリフト解除');
  r.driftCharge=0;r.driftMoveFace=r.face;
 }
