@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.40';
+const VERSION='v2.41';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -163,7 +163,7 @@ function showPlace(place){
     pond:['🪷 池','ピラニアのリヴァイアさん、ザリガニのアスモデウスさんがいる池。'],
     master:['👑 マスタークラス','ベルゼブブさんが待つ高難度クラス。'],
     kawazu:['🐸 カワズさん','クリア後に現れる謎の高速カエル。'],
-    akina:saveData.takumiUnlocked?['🍁 アキナ山','左下原点の10000×10000座標第一稿をそのまま使用した一本道。形状確認用で、細部は今後さらに詰めます。']:['❓ ？？？','地図に名前のない一本道。白黒の翼を持つ速いカエルが待っている……。']
+    akina:saveData.takumiUnlocked?['🍁 アキナ山','左下原点10000×10000の座標第一稿。近接する道路が十字路に見えないよう、アキナ山だけ道幅を細く調整しています。']:['❓ ？？？','地図に名前のない一本道。白黒の翼を持つ速いカエルが待っている……。']
   }[place];
   document.querySelector('#placeTitle').textContent=data[0];
   document.querySelector('#placeDesc').textContent=data[1];
@@ -434,7 +434,7 @@ const COURSE_SETS={
   {name:'古代迷走路',theme:'master',halfWidth:215,extraAnchors:[[1900,800],[3000,1100],[4300,850],[4450,1900],[3500,2350],[4600,3150],[3000,3500],[1600,3300],[1050,2300]],path:[[700,700],[1900,500],[3000,1050],[4300,500],[5100,1100],[4500,1850],[3300,1500],[2700,2200],[3500,2700],[4900,2400],[5200,3300],[4000,3900],[2600,3500],[1300,3900],[600,3000],[1100,2300],[600,1500]]},
   {name:'遺跡ダウンヒル',theme:'master',pointToPoint:true,halfWidth:225,extraAnchors:[[1450,800],[2150,1150],[1700,1600],[2750,1950],[2200,2400],[3400,2750],[2950,3250],[4200,3500]],path:[[650,550],[1500,550],[2200,900],[1650,1250],[2450,1600],[1800,2050],[2900,2350],[2250,2800],[3500,3100],[3000,3550],[4300,3800],[5200,3450]]}
  ],
- akina:[{name:'アキナ山・下り（座標第一稿）',theme:'akina',pointToPoint:true,halfWidth:165,
+ akina:[{name:'アキナ山・下り（座標第一稿）',theme:'akina',pointToPoint:true,halfWidth:92,
  worldOverride:{w:10000,h:10000},originBottomLeft:true,courseDraft:true,extraAnchors:[],
  path:[
   [900,0],[1050,450],[1200,950],[1450,1450],[1700,1900],[1450,2200],[1050,2500],
@@ -772,7 +772,7 @@ function drawWorld(){
  const drawRoute=(pts,closed=true)=>{ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);if(closed)ctx.closePath();ctx.stroke();};
  // Every race corridor has a visible inner frame. Courses that were "open" are framed again
  // because losing the inside boundary makes the route unreadable and creates accidental cuts.
- ctx.strokeStyle=pal.grass;ctx.lineWidth=courseHalfWidth*2+70;drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
+ ctx.strokeStyle=pal.grass;ctx.lineWidth=courseHalfWidth*2+(courseTheme==='akina'?22:70);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
  ctx.strokeStyle=pal.inner;ctx.lineWidth=courseHalfWidth*2;drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
  drawGrassBlades();
  ctx.strokeStyle=courseTheme==='akina'?'rgba(245,245,235,.72)':'rgba(255,255,255,.16)';ctx.lineWidth=courseTheme==='akina'?5:3;ctx.setLineDash(courseTheme==='akina'?[34,42]:[18,46]);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);ctx.setLineDash([]);
@@ -782,7 +782,7 @@ function drawWorld(){
 }
 function strokeLoop(){ctx.beginPath();ctx.moveTo(path[0].x,path[0].y);for(let i=1;i<path.length;i++)ctx.lineTo(path[i].x,path[i].y);ctx.closePath();ctx.stroke()}
 function drawGrassBlades(){
- const edge=courseHalfWidth+6, blade=28, spacing=34;
+ const edge=courseHalfWidth+(courseTheme==='akina'?2:6), blade=28, spacing=34;
  ctx.fillStyle='#2f8a43';
  for(let i=0;i<(activeCourse.pointToPoint?path.length-1:path.length);i++){
   const a=path[i],b=path[(i+1)%path.length],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
