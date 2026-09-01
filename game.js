@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.48';
+const VERSION='v2.49';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -542,7 +542,7 @@ rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false,raceStartDelay=0;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
-function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0};}
+function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0,aiPathIndex:0,aiWallHits:0,aiWallHitTimer:0};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
 function reset(opponentName='Plain'){
  globalTimeStop=0;globalTimeLag=0;
@@ -568,14 +568,51 @@ else { // maintenance: generous window centered around five seconds
  else if(r.glideClock>5.9){r.glideClock=0;r.glideGrace=0;r.speed=Math.max(r.speed,510);r.wing=.45;r.flapAge=0;msg('遅めの羽ばたき。少し速度ロス');}
  else {r.wing=.2;msg('まだ羽ばたきには早い');}
 }}
+
+function aiForwardSegment(r){
+  const n=path.length,closed=!activeCourse.pointToPoint,base=Math.max(0,Math.min(n-2,r.aiPathIndex||0));
+  let best={i:base,t:0,d:1e9,qx:path[base].x,qy:path[base].y};
+  // Search mostly forward. This prevents close parallel roads / forks from making the CPU
+  // jump to a geometrically-near but logically-wrong segment.
+  for(let off=-3;off<=22;off++){
+    let i=base+off;
+    if(closed){i=(i%(n)+n)%n;}else if(i<0||i>=n-1)continue;
+    let a=path[i],b=path[(i+1)%n],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy||1;
+    let t=Math.max(0,Math.min(1,((r.x-a.x)*vx+(r.y-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(r.x-qx,r.y-qy);
+    // Small forward bias on ties so progress wins over a nearby old segment.
+    let score=d-off*2.5;
+    if(score<best.d){best={i,t,d:score,rawD:d,qx,qy};}
+  }
+  if(activeCourse.pointToPoint)r.aiPathIndex=Math.max(base,best.i);
+  else{
+    let advance=(best.i-base+n)%n;
+    if(advance<=22)r.aiPathIndex=best.i;
+  }
+  return best;
+}
+function aiLookTarget(r,seg){
+  const n=path.length;
+  // Use distance-based lookahead instead of a fixed +2 point jump.
+  let i=seg.i,remain=170+r.speed*.42,x=path[(i+1)%n].x,y=path[(i+1)%n].y;
+  while(remain>0){
+    let a=path[i],ni=activeCourse.pointToPoint?Math.min(n-1,i+1):(i+1)%n,b=path[ni];
+    let len=Math.hypot(b.x-a.x,b.y-a.y)||1;
+    if(remain<=len){let t=remain/len;x=a.x+(b.x-a.x)*t;y=a.y+(b.y-a.y)*t;break;}
+    remain-=len;i=ni;
+    if(activeCourse.pointToPoint&&i>=n-1){x=path[n-1].x;y=path[n-1].y;break;}
+  }
+  return {x,y};
+}
 function desiredInput(r){if(!r.ai){let kx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),ky=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);let x=joy.x||kx,y=joy.y||ky;if(r.confuse>0){x=-x;y=-y;}let m=Math.hypot(x,y);return m>.08?{x:x/m,y:y/m,m:Math.min(1,m)}:{x:Math.cos(r.face),y:Math.sin(r.face),m:0};}
- let near=nearestTrackSegment(r.x,r.y),look=activeCourse.pointToPoint?Math.min(path.length-1,near.i+2):(near.i+2)%path.length,target=path[look];if(activeCourse.pointToPoint&&near.i>=path.length-2){let g=finishGate();target={x:g.p0.x+g.tx*650,y:g.p0.y+g.ty*650};}let dx=target.x-r.x,dy=target.y-r.y,m=Math.hypot(dx,dy)||1;return {x:dx/m,y:dy/m,m:1};}
+ let near=aiForwardSegment(r),target=aiLookTarget(r,near);
+ if(activeCourse.pointToPoint&&r.aiPathIndex>=path.length-3){let g=finishGate();target={x:g.p0.x+g.tx*650,y:g.p0.y+g.ty*650};}
+ let dx=target.x-r.x,dy=target.y-r.y,m=Math.hypot(dx,dy)||1;return {x:dx/m,y:dy/m,m:1};}
 function updateRacer(r,dt){
   if(globalTimeStop>0&&r!==racers[controlledIndex])return;
   r.tongueBoostFx=Math.max(0,(r.tongueBoostFx||0)-dt);
   r.tongueBoostTimer=Math.max(0,(r.tongueBoostTimer||0)-dt);
   if(r.tongueBoostTimer>0)r.speed=Math.min(maxSpeed+130,r.speed+360*dt);
-r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrace||0)-dt);r.wallEscape=Math.max(0,(r.wallEscape||0)-dt);r.highJump=Math.max(0,(r.highJump||0)-dt);r.normalHighJump=Math.max(0,(r.normalHighJump||0)-dt);r.confuse=Math.max(0,(r.confuse||0)-dt);r.burningWing=Math.max(0,(r.burningWing||0)-dt);if(r.charging)r.charge=Math.min(1.8,(r.charge||0)+dt);if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
+r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.aiWallHitTimer=Math.max(0,(r.aiWallHitTimer||0)-dt);if(r.aiWallHitTimer<=0)r.aiWallHits=0;r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrace||0)-dt);r.wallEscape=Math.max(0,(r.wallEscape||0)-dt);r.highJump=Math.max(0,(r.highJump||0)-dt);r.normalHighJump=Math.max(0,(r.normalHighJump||0)-dt);r.confuse=Math.max(0,(r.confuse||0)-dt);r.burningWing=Math.max(0,(r.burningWing||0)-dt);if(r.charging)r.charge=Math.min(1.8,(r.charge||0)+dt);if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
  const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),turn=(turnGround*(1-ratio)+turnFast*ratio)*dt*(r.name==='Raphael'?1.22:1)*(r.highJump>0?.28:1);
  if(Math.abs(diff)<turn)r.face=want;else r.face+=Math.sign(diff)*turn;
  // AI flight rhythm
@@ -613,24 +650,33 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.airBarrier=Math.max(0,
      r.courseWalk=6;r.flight=0;r.onGround=true;r.speed=105;r.tongue=null;
      if(!r.ai)msg('コースアウト！ 歩いて復帰…');
    }else{
-     const seg=hit.i??nearestTrackSegment(hit.qx,hit.qy).i;
-     const look=path[activeCourse.pointToPoint?Math.min(path.length-1,seg+2):(seg+2)%path.length],toLook=Math.atan2(look.y-r.y,look.x-r.x);
-     // Move only from the penetrated wall edge to a safe position inside the corridor.
-     let nx=(r.x-hit.qx)/(hit.d||1),ny=(r.y-hit.qy)/(hit.d||1);
-     const safeD=Math.max(105,courseHalfWidth-70);
-     r.x=hit.qx+nx*safeD;r.y=hit.qy+ny*safeD;
-     r.face=lerpAngle(r.face,toLook,r.ai?.92:.80);
-     r.wallEscape=r.ai?.48:.42;
+     let aiSeg=r.ai?aiForwardSegment(r):null;
+     const seg=r.ai?aiSeg.i:(hit.i??nearestTrackSegment(hit.qx,hit.qy).i);
+     const look=r.ai?aiLookTarget(r,aiSeg):path[activeCourse.pointToPoint?Math.min(path.length-1,seg+2):(seg+2)%path.length],toLook=Math.atan2(look.y-r.y,look.x-r.x);
+     if(r.ai){
+       r.aiWallHits=(r.aiWallHits||0)+1;r.aiWallHitTimer=.9;
+       // Recover toward the logical main route, never toward an accidental fork/nearby branch.
+       r.x=aiSeg.qx;r.y=aiSeg.qy;
+       r.face=toLook;r.wallEscape=.35;
+       if(r.aiWallHits>=2){r.speed=210;r.flight=1;r.onGround=false;r.aiWallHits=0;}
+     }else{
+       // Move only from the penetrated wall edge to a safe position inside the corridor.
+       let nx=(r.x-hit.qx)/(hit.d||1),ny=(r.y-hit.qy)/(hit.d||1);
+       const safeD=Math.max(105,courseHalfWidth-70);
+       r.x=hit.qx+nx*safeD;r.y=hit.qy+ny*safeD;
+       r.face=lerpAngle(r.face,toLook,.80);
+       r.wallEscape=.42;
+     }
      if(r.wallGrace<=0){
        // A hard wall hit kills the airborne momentum. These frogs settle to the ground once speed is lost.
-       r.speed=r.ai?135:70;
-       r.flight=0;r.onGround=true;r.glideClock=0;r.glideGrace=0;r.landAge=.28;r.tongue=null;
+       r.speed=r.ai?Math.max(r.speed,185):70;
+       r.flight=r.ai?1:0;r.onGround=!r.ai;r.glideClock=0;r.glideGrace=0;r.landAge=.28;r.tongue=null;
        r.wallGrace=r.ai?.44:.40;r.bump=.08;
        if(!r.ai)msg('ガード草に激突！ 勢いを失って着地');
      }else{
        // While escaping the acute corner, stay slow and grounded instead of rebounding.
-       r.speed=Math.min(r.speed,r.ai?150:85);
-       r.flight=0;r.onGround=true;
+       r.speed=Math.min(r.speed,r.ai?220:85);
+       r.flight=r.ai?1:0;r.onGround=!r.ai;
      }
    }
  }
@@ -804,9 +850,13 @@ function drawWorld(){
  const pal=courseTheme==='akina'?{water:'#4f8a43',grass:'#275d31',inner:'#777b7d'}:courseTheme==='autumn'?{water:'#d8b46a',grass:'#713d25',inner:'#d9c39a'}:courseTheme==='wind'?{water:'#9edee8',grass:'#55995b',inner:'#b7e4e7'}:courseTheme==='forest'?{water:'#77b8a5',grass:'#245f38',inner:'#86c3ae'}:courseTheme==='master'?{water:'#77758d',grass:'#403d52',inner:'#8b879d'}:{water:'#58bdd5',grass:'#397e48',inner:'#70c8d9'};ctx.fillStyle=pal.water;ctx.fillRect(0,0,world.w,world.h);
  // soft scenery texture; Akina is land, not pond.
  if(courseTheme==='akina'){
-   ctx.save();ctx.globalAlpha=.22;
-   for(let y=260;y<world.h;y+=520){for(let x=260;x<world.w;x+=620){
-     if(trackDistance(x,y)>courseHalfWidth+150){let n=((x*11+y*5)%150)-75;ctx.fillStyle=((x+y)%3)?'#285f32':'#6b9a4e';ctx.beginPath();ctx.arc(x+n,y,45+((x+y)%35),0,Math.PI*2);ctx.fill();}
+   // Only decorate the visible camera neighborhood. The 40000×40000 Akina world used
+   // to scan thousands of scenery points and run trackDistance() against ~785 road
+   // segments every frame, which caused mobile stutter.
+   ctx.save();ctx.globalAlpha=.18;
+   let x0=Math.max(0,camera.x-300),x1=Math.min(world.w,camera.x+W+300),y0=Math.max(0,camera.y-300),y1=Math.min(world.h,camera.y+H+300);
+   for(let y=Math.floor(y0/620)*620;y<=y1;y+=620){for(let x=Math.floor(x0/720)*720;x<=x1;x+=720){
+     let n=((x*11+y*5)%150)-75;ctx.fillStyle=((x+y)%3)?'#285f32':'#6b9a4e';ctx.beginPath();ctx.arc(x+n,y,42+((x+y)%31),0,Math.PI*2);ctx.fill();
    }}ctx.restore();
  }else{
    for(let y=240;y<world.h;y+=620){for(let x=260;x<world.w;x+=760){let n=((x*13+y*7)%190)-95;ctx.fillStyle='rgba(255,255,255,.055)';ctx.beginPath();ctx.ellipse(x+n,y-n*.35,170,72,.18,0,Math.PI*2);ctx.fill();}}
@@ -830,23 +880,19 @@ function drawWorld(){
 }
 function strokeLoop(){ctx.beginPath();ctx.moveTo(path[0].x,path[0].y);for(let i=1;i<path.length;i++)ctx.lineTo(path[i].x,path[i].y);ctx.closePath();ctx.stroke()}
 function drawGrassBlades(){
- const edge=courseHalfWidth+(courseTheme==='akina'?2:6), blade=28, spacing=34;
+ const edge=courseHalfWidth+(courseTheme==='akina'?2:6),blade=courseTheme==='akina'?20:28,spacing=courseTheme==='akina'?78:34;
  ctx.fillStyle='#2f8a43';
+ const margin=180,x0=camera.x-margin,x1=camera.x+W+margin,y0=camera.y-margin,y1=camera.y+H+margin;
  for(let i=0;i<(activeCourse.pointToPoint?path.length-1:path.length);i++){
-  const a=path[i],b=path[(i+1)%path.length],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
-  const tx=dx/len,ty=dy/len,nx=-ty,ny=tx;
-  const count=Math.max(1,Math.floor(len/spacing));
+  const a=path[i],b=path[(i+1)%path.length];
+  if(courseTheme==='akina'&&(Math.max(a.x,b.x)<x0||Math.min(a.x,b.x)>x1||Math.max(a.y,b.y)<y0||Math.min(a.y,b.y)>y1))continue;
+  const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1,tx=dx/len,ty=dy/len,nx=-ty,ny=tx,count=Math.max(1,Math.floor(len/spacing));
   for(let j=0;j<=count;j++){
-   const d=Math.min(len,j*spacing), wob=((j+i)&1)?7:-7;
-   const cx=a.x+tx*d,cy=a.y+ty*d;
+   const d=Math.min(len,j*spacing),wob=((j+i)&1)?7:-7,cx=a.x+tx*d,cy=a.y+ty*d;
+   if(courseTheme==='akina'&&(cx<x0||cx>x1||cy<y0||cy>y1))continue;
    for(const side of [-1,1]){
-    const bx=cx+nx*edge*side,by=cy+ny*edge*side;
-    const tipx=bx+nx*blade*side+tx*wob,tipy=by+ny*blade*side+ty*wob;
-    ctx.beginPath();
-    ctx.moveTo(bx-tx*11,by-ty*11);
-    ctx.lineTo(tipx,tipy);
-    ctx.lineTo(bx+tx*11,by+ty*11);
-    ctx.closePath();ctx.fill();
+    const bx=cx+nx*edge*side,by=cy+ny*edge*side,tipx=bx+nx*blade*side+tx*wob,tipy=by+ny*blade*side+ty*wob;
+    ctx.beginPath();ctx.moveTo(bx-tx*11,by-ty*11);ctx.lineTo(tipx,tipy);ctx.lineTo(bx+tx*11,by+ty*11);ctx.closePath();ctx.fill();
    }
   }
  }
