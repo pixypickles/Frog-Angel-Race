@@ -906,6 +906,11 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
    const bend=r.aiBend||0,target=bend>.95?540:bend>.62?590:bend>.38?645:720;
    r.speed=approach(r.speed,target,470*dt);
  }
+ if(r.name==='Kawazu'&&r.ai&&!r.bump){
+   // Post-clear Kawazu challenge: fast on purpose because this course rewards shortcuts.
+   const bend=r.aiBend||0,target=bend>.95?545:bend>.62?605:bend>.38?665:705;
+   r.speed=approach(r.speed,target,520*dt);
+ }
  if(r.bump>0)r.speed=Math.min(r.speed,r.name==='Bunta'?430:360);
  if(r.ai){
    const bend=r.aiBend||0;
@@ -913,6 +918,10 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
      if(bend>.95)r.speed=Math.min(r.speed,540);
      else if(bend>.62)r.speed=Math.min(r.speed,590);
      else if(bend>.38)r.speed=Math.min(r.speed,645);
+   }else if(r.name==='Kawazu'){
+     if(bend>.95)r.speed=Math.min(r.speed,545);
+     else if(bend>.62)r.speed=Math.min(r.speed,605);
+     else if(bend>.38)r.speed=Math.min(r.speed,665);
    }else{
      const plain=r.name==='Plain';
      if(bend>.95)r.speed=Math.min(r.speed,plain?365:385);
