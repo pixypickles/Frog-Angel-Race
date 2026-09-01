@@ -3,7 +3,7 @@
 
 // ===== v1.5 meta game / field map =====
 const VERSION='v2.49';
-const RACE_LAPS=3;
+const RACE_LAPS=2;
 
 const CHARACTER_DATA={
  Michael:{jp:'ミカエルさん',color:'#49a94f',wing:'special'},
@@ -514,7 +514,7 @@ const COURSE_SETS={
   {name:'風のオーバル',theme:'wind',halfWidth:300,path:[[850,850],[2800,520],[4750,850],[5250,2100],[4750,3450],[2800,3800],[850,3450],[450,2100]]},
   {name:'風切りトライアングル',theme:'wind',halfWidth:250,path:[[700,3450],[2850,500],[5150,3450],[3850,3850],[2850,2850],[1750,3850]]},
   {name:'空原クローバーリング',theme:'wind',path:[[2850,2150],[1450,650],[550,1500],[1450,2250],[550,3300],[1900,3900],[2850,2600],[3850,3900],[5200,3300],[4300,2250],[5200,1100],[4050,550]]},
-  {name:'風車ヘアピン峠',theme:'wind',halfWidth:220,path:[[650,650],[5000,650],[5000,1250],[1200,1250],[1200,1850],[4800,1850],[4800,2450],[900,2450],[900,3100],[5000,3100],[5000,3750],[650,3750]]}
+  {name:'風車ヘアピン峠',theme:'wind',halfWidth:190,path:[[650,500],[5100,500],[5100,1350],[1100,1350],[1100,2200],[4850,2200],[4850,3050],[850,3050],[850,3900],[5100,3900],[5100,4400],[650,4400]]}
  ],
  arena2:[
   {name:'水路ツインルート',theme:'water',halfWidth:245,branches:[[[700,2050],[1800,1050],[3000,700],[4300,1100],[5200,2050]],[[700,2050],[1750,3000],[3000,3550],[4300,3000],[5200,2050]]],path:[[700,2050],[5200,2050],[4750,3550],[3000,3900],[1100,3500],[500,2600],[500,1450],[1200,600],[3000,450],[4700,700]]},
@@ -538,7 +538,7 @@ const COURSE_SETS={
   {name:'遺跡スクエア・四連直角',theme:'master',halfWidth:245,path:[[650,650],[5100,650],[5100,1750],[3300,1750],[3300,2850],[5100,2850],[5100,3950],[650,3950],[650,2850],[2350,2850],[2350,1750],[650,1750]]},
   {name:'石門トリプルルート',theme:'master',halfWidth:225,branches:[[[1100,700],[1900,1450],[2900,1850],[3900,1450],[4700,700]],[[1100,700],[1500,2550],[2900,3300],[4300,2550],[4700,700]]],extraAnchors:[[1900,1380],[2900,1780],[3900,1380],[2900,3200]],path:[[650,700],[1100,700],[4700,700],[5250,1550],[5000,3500],[3800,4050],[1900,3900],[600,3100],[500,1800]]},
   {name:'崩落ノコギリ',theme:'master',halfWidth:205,path:[[550,700],[1500,500],[2100,1400],[2700,500],[3300,1400],[3900,500],[5000,900],[4400,1900],[5100,2700],[4200,3500],[3000,4000],[2300,3050],[1600,4000],[600,3500],[1200,2550],[500,1800]]},
-  {name:'古代迷宮スパイラル',theme:'master',halfWidth:205,path:[[550,650],[5100,650],[5100,3900],[650,3900],[650,1250],[4500,1250],[4500,3300],[1250,3300],[1250,1850],[3900,1850],[3900,2750],[1900,2750],[1900,2250],[3200,2250]]},
+  {name:'古代迷宮スパイラル',theme:'master',halfWidth:185,path:[[450,450],[5250,450],[5250,4150],[450,4150],[450,1300],[4550,1300],[4550,3350],[1250,3350],[1250,2100],[3850,2100],[3850,2850],[2000,2850],[2000,2500],[3150,2500]]},
   {name:'遺跡ダウンヒル',theme:'master',pointToPoint:true,halfWidth:225,extraAnchors:[[1450,800],[2150,1150],[1700,1600],[2750,1950],[2200,2400],[3400,2750],[2950,3250],[4200,3500]],path:[[650,550],[1500,550],[2200,900],[1650,1250],[2450,1600],[1800,2050],[2900,2350],[2250,2800],[3500,3100],[3000,3550],[4300,3800],[5200,3450]]}
  ],
  akina:[{name:'アキナ山・下り（113点精密稿）',theme:'akina',pointToPoint:true,halfWidth:190,
@@ -636,9 +636,24 @@ function rebuildCourseObjects(){
          anchorKind='pole';
        }
      }else{
-       let bisx=ix+ox,bisy=iy+oy,bl=Math.hypot(bisx,bisy)||1;bisx/=bl;bisy/=bl;
-       let inward=angle>1.05?255:225,forward=angle>1.05?300:245;
-       ax=b.x+bisx*forward+nx*inward;ay=b.y+bisy*forward+ny*inward;
+       // Normal courses: anchor the tree in the INNER pocket of the corner.
+       // Average the two inside normals, then place the trunk just beyond the road edge.
+       const leftIn={x:-iy*side,y:ix*side},leftOut={x:-oy*side,y:ox*side};
+       let px=leftIn.x+leftOut.x,py=leftIn.y+leftOut.y,pl=Math.hypot(px,py);
+       if(pl<.12){px=nx;py=ny;pl=1;}
+       px/=pl;py/=pl;
+       const treeR=42,clear=courseHalfWidth+treeR+14;
+       let found=false;
+       for(let off=courseHalfWidth+treeR+20;off<=courseHalfWidth+300;off+=24){
+         const tx=b.x+px*off,ty=b.y+py*off;
+         if(trackDistance(tx,ty)>=clear){ax=tx;ay=ty;found=true;break;}
+       }
+       if(!found){
+         // Tight switchbacks: keep the tree on the inside edge even when there is
+         // not enough grass for the ideal apex-pocket position.
+         const off=courseHalfWidth+treeR+8;
+         ax=b.x+px*off;ay=b.y+py*off;
+       }
      }
      if(Math.hypot(ax-path[0].x,ay-path[0].y)>360){
        if(courseTheme!=='akina'||!lastAkinaTree||Math.hypot(ax-lastAkinaTree.x,ay-lastAkinaTree.y)>520){
@@ -1578,8 +1593,10 @@ function drawMini(){
  let drawW=bw*scale,drawH=bh*scale,baseX=ox+(mw-drawW)/2-minX*scale,baseY=oy+(mh-drawH)/2-minY*scale;
  const mx=x=>baseX+x*scale,my=y=>baseY+y*scale;
  const route=(pts,closed)=>{ctx.beginPath();ctx.moveTo(mx(pts[0].x),my(pts[0].y));for(let i=1;i<pts.length;i++)ctx.lineTo(mx(pts[i].x),my(pts[i].y));if(closed)ctx.closePath();ctx.stroke();};
- ctx.strokeStyle=courseTheme==='akina'?'#27633b':'#2f713c';ctx.lineWidth=8;route(path,!activeCourse.pointToPoint);for(const br of courseBranches)route(br,false);
- ctx.strokeStyle=courseTheme==='akina'?'#9a9da0':'#78d1df';ctx.lineWidth=4;route(path,!activeCourse.pointToPoint);for(const br of courseBranches)route(br,false);
+ const miniRoad=Math.max(5,courseHalfWidth*2*scale);
+ ctx.strokeStyle=courseTheme==='akina'?'#27633b':'#2f713c';ctx.lineWidth=miniRoad+3;route(path,!activeCourse.pointToPoint);for(const br of courseBranches)route(br,false);
+ ctx.strokeStyle=courseTheme==='akina'?'#9a9da0':'#78d1df';ctx.lineWidth=miniRoad;route(path,!activeCourse.pointToPoint);for(const br of courseBranches)route(br,false);
+ ctx.strokeStyle='rgba(255,255,255,.62)';ctx.lineWidth=1.5;route(path,!activeCourse.pointToPoint);for(const br of courseBranches)route(br,false);
  if(activeCourse.pointToPoint){
    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(mx(path[0].x),my(path[0].y),4.5,0,Math.PI*2);ctx.fill();
    ctx.fillStyle='#ffd45a';ctx.beginPath();ctx.arc(mx(path[path.length-1].x),my(path[path.length-1].y),4.5,0,Math.PI*2);ctx.fill();
