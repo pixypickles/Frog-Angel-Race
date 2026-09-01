@@ -581,17 +581,31 @@ function rebuildCourseObjects(){
        if(pocketL<.12){pocketX=nx;pocketY=ny;pocketL=1;}
        pocketX/=pocketL;pocketY/=pocketL;
        const treeR=42,roadClear=courseHalfWidth+treeR+18;
-       let found=false;
-       // Search from just outside the inside edge toward the apex pocket.
+       let found=false,anchorKind='tree';
+       // 1) Best case: tree in the open inner pocket near the apex.
        for(let off=courseHalfWidth+treeR+22;off<=courseHalfWidth+520;off+=34){
          const tx=b.x+pocketX*off,ty=b.y+pocketY*off;
          if(trackDistance(tx,ty)>=roadClear){ax=tx;ay=ty;found=true;break;}
        }
+       // 2) If the apex pocket is occupied by a nearby switchback, prefer the ENTRANCE
+       // side of the bend. Search backwards along the incoming road and outward from its
+       // inside edge before considering any road-edge fallback.
        if(!found){
-         // Tight switchbacks may have no grass pocket at all. In that case place the tree
-         // on the INSIDE road edge, never in the middle of the lane.
-         const edge=courseHalfWidth-treeR-8;
-         ax=b.x+pocketX*Math.max(28,edge);ay=b.y+pocketY*Math.max(28,edge);
+         for(let back=90;back<=360&&!found;back+=45){
+           for(let off=courseHalfWidth+treeR+18;off<=courseHalfWidth+360;off+=34){
+             const tx=b.x-ix*back+leftIn.x*off,ty=b.y-iy*back+leftIn.y*off;
+             if(trackDistance(tx,ty)>=roadClear){ax=tx;ay=ty;found=true;break;}
+           }
+         }
+       }
+       if(!found){
+         // 3) No room for a full tree: use a slim tongue pole at the INSIDE EDGE,
+         // biased toward the corner entrance. A pole needs far less lateral space and
+         // avoids putting a bulky tree in the racing line.
+         const poleR=10,back=Math.min(250,Math.max(95,il*.24));
+         const edge=Math.max(35,courseHalfWidth-poleR-6);
+         ax=b.x-ix*back+leftIn.x*edge;ay=b.y-iy*back+leftIn.y*edge;
+         anchorKind='pole';
        }
      }else{
        let bisx=ix+ox,bisy=iy+oy,bl=Math.hypot(bisx,bisy)||1;bisx/=bl;bisy/=bl;
@@ -600,7 +614,7 @@ function rebuildCourseObjects(){
      }
      if(Math.hypot(ax-path[0].x,ay-path[0].y)>360){
        if(courseTheme!=='akina'||!lastAkinaTree||Math.hypot(ax-lastAkinaTree.x,ay-lastAkinaTree.y)>520){
-         anchors.push({x:ax,y:ay,corner:i});if(courseTheme==='akina')lastAkinaTree={x:ax,y:ay};
+         anchors.push({x:ax,y:ay,corner:i,kind:(courseTheme==='akina'?(typeof anchorKind!=='undefined'?anchorKind:'tree'):'tree')});if(courseTheme==='akina')lastAkinaTree={x:ax,y:ay};
        }
      }
    }
@@ -737,18 +751,31 @@ function aiForwardSegment(r){
 }
 function aiLookTarget(r,seg){
   const n=path.length;
-  // Use distance-based lookahead instead of a fixed +2 point jump.
-  let i=seg.i,remain=150+r.speed*.34,x=path[(i+1)%n].x,y=path[(i+1)%n].y;
+  // Look ahead FROM the racer's current projection on the route. Previously this
+  // restarted from the beginning of the segment every frame, so a racer spawned
+  // 150 units into segment 0 could steer back toward its own start position and
+  // draw circles indefinitely.
+  let i=seg.i,remain=150+r.speed*.34,x=seg.qx,y=seg.qy;
   const i1=activeCourse.pointToPoint?Math.min(n-2,seg.i):seg.i;
   const i2=activeCourse.pointToPoint?Math.min(n-2,i1+5):(i1+5)%n;
   const a1=path[i1],b1=path[(i1+1)%n],a2=path[i2],b2=path[(i2+1)%n];
   r.aiBend=Math.abs(norm(Math.atan2(b2.y-a2.y,b2.x-a2.x)-Math.atan2(b1.y-a1.y,b1.x-a1.x)));
+
+  // First consume only the portion of the current segment that lies AHEAD of seg.t.
+  let a=path[i],ni=activeCourse.pointToPoint?Math.min(n-1,i+1):(i+1)%n,b=path[ni];
+  let segLen=Math.hypot(b.x-a.x,b.y-a.y)||1,forwardLen=segLen*(1-(seg.t||0));
+  if(remain<=forwardLen){
+    let t=(seg.t||0)+remain/segLen;
+    return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};
+  }
+  remain-=forwardLen;i=ni;
+
   while(remain>0){
-    let a=path[i],ni=activeCourse.pointToPoint?Math.min(n-1,i+1):(i+1)%n,b=path[ni];
+    if(activeCourse.pointToPoint&&i>=n-1){x=path[n-1].x;y=path[n-1].y;break;}
+    let a=path[i],next=activeCourse.pointToPoint?Math.min(n-1,i+1):(i+1)%n,b=path[next];
     let len=Math.hypot(b.x-a.x,b.y-a.y)||1;
     if(remain<=len){let t=remain/len;x=a.x+(b.x-a.x)*t;y=a.y+(b.y-a.y)*t;break;}
-    remain-=len;i=ni;
-    if(activeCourse.pointToPoint&&i>=n-1){x=path[n-1].x;y=path[n-1].y;break;}
+    remain-=len;i=next;
   }
   return {x,y};
 }
@@ -1046,7 +1073,7 @@ function drawWorld(){
  ctx.strokeStyle=pal.inner;ctx.lineWidth=courseHalfWidth*2;drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
  if(courseTheme!=='akina')drawGrassBlades();
  ctx.strokeStyle=courseTheme==='akina'?'rgba(245,245,235,.72)':'rgba(255,255,255,.16)';ctx.lineWidth=courseTheme==='akina'?5:3;ctx.setLineDash(courseTheme==='akina'?[34,42]:[18,46]);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);ctx.setLineDash([]);
- for(const a of anchors)drawTree(a.x,a.y);
+ for(const a of anchors)(a.kind==='pole'?drawAnchorPole(a.x,a.y):drawTree(a.x,a.y));
  // start gate across the water corridor
  {const gates=activeCourse.pointToPoint?[startGate(),finishGate()]:[finishGate()];for(const g of gates){ctx.save();ctx.translate(g.p0.x,g.p0.y);ctx.rotate(Math.atan2(g.ty,g.tx)+Math.PI/2);let gh=Math.max(190,courseHalfWidth+55);for(let i=-4;i<=4;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*20,-gh,20,gh*2)}ctx.restore();}}
 }
@@ -1071,6 +1098,14 @@ function drawGrassBlades(){
 }
 function drawLily(x,y,r){ctx.save();ctx.translate(x,y);ctx.fillStyle='#4aa74c';ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.lineTo(0,0);ctx.arc(0,0,r,-.48,.48,true);ctx.closePath();ctx.fill();ctx.fillStyle='#8cd45d';ctx.beginPath();ctx.arc(-r*.22,-r*.18,r*.22,0,Math.PI*2);ctx.fill();if(r>65){ctx.fillStyle='#f5bfd4';for(let i=0;i<6;i++){let a=i*Math.PI/3;ctx.beginPath();ctx.ellipse(Math.cos(a)*r*.18,Math.sin(a)*r*.18,r*.16,r*.07,a,0,Math.PI*2);ctx.fill()}ctx.fillStyle='#ffd86b';ctx.beginPath();ctx.arc(0,0,r*.08,0,Math.PI*2);ctx.fill()}ctx.restore()}
 function drawTree(x,y){ctx.fillStyle='#714624';ctx.fillRect(x-10,y-8,20,72);ctx.fillStyle='#247b3c';ctx.beginPath();ctx.arc(x,y-20,34,0,Math.PI*2);ctx.fill();ctx.fillStyle='#8bd85d';ctx.beginPath();ctx.arc(x-10,y-30,14,0,Math.PI*2);ctx.fill()}
+function drawAnchorPole(x,y){
+ ctx.save();ctx.translate(x,y);
+ ctx.fillStyle='#d9ddd8';ctx.fillRect(-5,-50,10,92);
+ ctx.fillStyle='#f2b632';ctx.fillRect(-8,-50,16,18);
+ ctx.strokeStyle='#4f5350';ctx.lineWidth=3;ctx.strokeRect(-5,-50,10,92);
+ ctx.fillStyle='#f7e27b';ctx.beginPath();ctx.arc(0,-53,8,0,Math.PI*2);ctx.fill();
+ ctx.restore();
+}
 let currentWingSpecial=false,currentWingRed=false,currentWingBurning=false,currentWingTakumi=false;
 function angelWing(x,y,side,scale=1,tilt=0){
  // One connected angel-wing silhouette. Broad at the shoulder, tapered into layered feather tips.
