@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.33';
+const VERSION='v2.34';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -300,6 +300,9 @@ function startRace(practice=false){
 function startRaceRound(opponent,practice=false){
   appState='race';hideAllScreens();document.querySelector('#raceUi')?.classList.remove('hidden');
   selectCourse(tournament?.place||eventChallenge?.racePlace||'arena1',tournament?.round||0);reset(opponent);applyMichaelSkills();finished=false;
+  camera.x=Math.max(0,Math.min(world.w-W,racers[controlledIndex].x-W/2));
+  camera.y=Math.max(0,Math.min(world.h-H,racers[controlledIndex].y-H/2));
+  raceStartDelay=1.15;
   saveData.encountered=saveData.encountered||['Plain'];if(!saveData.encountered.includes(opponent)){saveData.encountered.push(opponent);saveGame();}
   racers.forEach(r=>{r.lap=1;r.cp=1;r.finished=false;r.speed=0;});if(activeCourse.pointToPoint)ui.lap.textContent='POINT TO POINT';
   msg(practice?('練習開始！ '+activeCourse.name):('大会 '+(tournament.round+1)+'回戦 / '+tournament.opponents.length+'　'+activeCourse.name+'　VS '+(CHARACTER_DATA[opponent]?.jp||opponent)));
@@ -431,26 +434,22 @@ const COURSE_SETS={
   {name:'古代迷走路',theme:'master',halfWidth:215,extraAnchors:[[1900,800],[3000,1100],[4300,850],[4450,1900],[3500,2350],[4600,3150],[3000,3500],[1600,3300],[1050,2300]],path:[[700,700],[1900,500],[3000,1050],[4300,500],[5100,1100],[4500,1850],[3300,1500],[2700,2200],[3500,2700],[4900,2400],[5200,3300],[4000,3900],[2600,3500],[1300,3900],[600,3000],[1100,2300],[600,1500]]},
   {name:'遺跡ダウンヒル',theme:'master',pointToPoint:true,halfWidth:225,extraAnchors:[[1450,800],[2150,1150],[1700,1600],[2750,1950],[2200,2400],[3400,2750],[2950,3250],[4200,3500]],path:[[650,550],[1500,550],[2200,900],[1650,1250],[2450,1600],[1800,2050],[2900,2350],[2250,2800],[3500,3100],[3000,3550],[4300,3800],[5200,3450]]}
  ],
- akina:[{name:'アキナ山・下り',theme:'akina',pointToPoint:true,halfWidth:210,
- worldOverride:{w:9000,h:15000},
- extraAnchors:[],
+ akina:[{name:'アキナ山・下り',theme:'akina',pointToPoint:true,halfWidth:185,
+ worldOverride:{w:8600,h:15000},extraAnchors:[],
  path:[
-  [700,14350],[850,13700],[1050,13050],[1250,12400],
-  [950,11800],[700,11250],[1050,10800],[1650,10650],[2250,10850],[2550,11200],
-  [2250,11500],[1700,11400],[1450,11000],[1800,10550],[2450,10150],
-  [3100,9750],[3700,9400],[4300,9050],
-  [3950,8650],[3350,8450],[2750,8500],[2250,8750],[2050,9100],
-  [2350,9400],[3000,9450],[3650,9250],[4200,8950],[4650,8550],
-  [4850,8100],[4600,7700],[4050,7500],[3450,7550],[3000,7850],
-  [3200,8150],[3800,8250],[4400,8050],[5000,7650],
-  [5450,7200],[5650,6750],[5400,6400],[4850,6250],[4350,6400],
-  [4200,6750],[4550,7000],[5150,6950],[5750,6600],
-  [6200,6150],[6500,5650],
-  [6250,5250],[5750,5100],[5350,5300],[5550,5600],[6100,5550],[6650,5200],
-  [7000,4800],[6800,4450],[6300,4300],[6000,4500],[6200,4750],[6700,4650],[7200,4250],
-  [7500,3850],[7300,3500],[6850,3400],[6600,3600],[6800,3800],[7250,3700],[7700,3300],
-  [7950,2850],[7700,2500],[7200,2400],[6900,2600],[7100,2800],[7550,2700],[8050,2250],
-  [8300,1750],[8100,1300],[7600,1150],[7250,1350],[7450,1600],[7950,1500],[8450,1000],[8650,650]
+  [650,14350],
+  [760,13900],[980,13550],[1250,13200],
+  [900,12850],[650,12500],[900,12150],[1350,11850],
+  [1750,11550],[1450,11250],[1050,10950],[1300,10650],
+  [1850,10350],[2500,10050],[3200,9750],[3900,9450],
+  [3500,9150],[2850,8850],[2150,8550],[1550,8250],
+  [1850,7950],[2500,7650],[3250,7350],[4050,7050],
+  [4550,6750],[4750,6450],[4500,6150],[3950,5850],
+  [3450,5550],[3700,5250],[4300,4950],[4950,4650],
+  [5550,4350],[5850,4050],
+  [5550,3750],[5100,3450],[5350,3150],[5850,2850],
+  [6250,2550],[6000,2250],[5550,1950],[5900,1650],
+  [6450,1350],[7000,1100],[7550,900],[8150,700]
  ]}],
  master:[
   {name:'魔王環状路',theme:'master',path:[[2800,500],[3800,520],[5100,900],[5300,1700],[4700,2250],[3600,1900],[2900,2350],[3550,3000],[5000,3000],[5200,3450],[4100,3950],[2600,3850],[1250,3500],[600,2800],[700,1850],[1350,1250],[700,700],[2100,480]]},
@@ -500,7 +499,7 @@ function selectCourse(place,round=0){
  courseBranches=(activeCourse.branches||[]).map(br=>br.map(([x,y])=>({x,y})));path=activeCourse.path.map(([x,y])=>({x,y}));rebuildCourseObjects();
 }
 rebuildCourseObjects();
-let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false;
+let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false,raceStartDelay=0;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
 function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0};}
@@ -521,7 +520,7 @@ function reset(opponentName='Plain'){
  if(opponentName==='Kawazu'){racers[1].burnWingUses=Infinity;racers[1].burnClimbUses=Infinity;racers[1].timeStopUsed=false;}
  finished=false;ui.status.textContent='ジャンプ3回で最高速！';
 }
-function pressJump(r){if(r.finished)return;if(r.flight===0){r.flight=1;r.onGround=false;r.speed=Math.max(r.speed,285);r.wing=.2;r.jumpAge=0;r.flapAge=0;msg('ジャンプ！ もう一度で羽ばたき');}
+function pressJump(r){if(appState==='race'&&raceStartDelay>0)return;if(r.finished)return;if(r.flight===0){r.flight=1;r.onGround=false;r.speed=Math.max(r.speed,285);r.wing=.2;r.jumpAge=0;r.flapAge=0;msg('ジャンプ！ もう一度で羽ばたき');}
 else if(r.flight===1){r.flight=2;r.speed=Math.max(r.speed,405);r.wing=.55;r.flapAge=0;msg('羽ばたき加速！ もう一度で滑空');}
 else if(r.flight===2){r.flight=3;r.glideClock=0;r.glideGrace=0;r.speed=Math.max(r.speed,520);r.wing=1;r.flapAge=0;msg('滑空！ 最高速へ');}
 else { // maintenance: generous window centered around five seconds
@@ -619,7 +618,7 @@ function updateCheckpoint(r){
  }
  if((long0<=0&&long1>0)||(long0>=0&&long1<0)){const denom=long1-long0,u=Math.abs(denom)<1e-6?0:(-long0/denom),crossX=x0+(x1-x0)*u,crossY=y0+(y1-y0)*u,lateral=(crossX-p0.x)*nx+(crossY-p0.y)*ny,gateHalf=Math.max(520,courseHalfWidth+260);if(Math.abs(lateral)<=gateHalf){if(long0<=0&&long1>0){r.lap++;if(r.lap>RACE_LAPS){r.finished=true;r.speed=0;if(!finished){finished=true;msg((r===racers[controlledIndex]?'YOU WIN! ':'')+(CHARACTER_DATA[r.name]?.jp||r.name)+' ゴール！');setTimeout(()=>showRaceResult(r===racers[controlledIndex]),1300);}}else if(r===racers[controlledIndex])msg('LAP '+r.lap+' / '+RACE_LAPS);}else{const before=r.lap;r.lap=Math.max(1,r.lap-1);if(r===racers[controlledIndex]&&r.lap<before)msg('逆走でゴール通過：LAP -1 → '+r.lap+'/'+RACE_LAPS);}}}r.startLineLong=long1;
 }
-function startTongue(r){if(r.finished)return;const TONGUE_ANCHOR_RANGE=330;let anchor=nearestAnchor(r,TONGUE_ANCHOR_RANGE);if(anchor){let cross=Math.sin(norm(Math.atan2(anchor.y-r.y,anchor.x-r.x)-r.face));r.tongue={kind:'anchor',target:anchor,started:performance.now(),side:cross>0?-1:1};msg('アンカーに舌！ 離すタイミングで脱出');return;}
+function startTongue(r){if(appState==='race'&&raceStartDelay>0)return;if(r.finished)return;const TONGUE_ANCHOR_RANGE=330;let anchor=nearestAnchor(r,TONGUE_ANCHOR_RANGE);if(anchor){let cross=Math.sin(norm(Math.atan2(anchor.y-r.y,anchor.x-r.x)-r.face));r.tongue={kind:'anchor',target:anchor,started:performance.now(),side:cross>0?-1:1};msg('アンカーに舌！ 離すタイミングで脱出');return;}
  let other=racers[1-r.index],d=Math.hypot(other.x-r.x,other.y-r.y);if(d<((r.name==='Lilith'||r.name==='Beelzebub')?390:270)){if(other.highJump>0){msg('バーニングクライム！ 舌が届かない');return;}
  if(other.burningWing>0){r.hitSlow=.45;msg('熱い！ バーニングウィングで舌を弾かれた');return;}
  if(other.airBarrier>0){msg('エアバリア！ 舌を弾かれた');return;}r.tongue={kind:'rival',target:other,started:performance.now()};let behind=Math.cos(norm(r.face-other.face))>.35;if(!(other.name==='Uriel'&&behind))other.hitSlow=.55;tongueSlipstreamBoost(r);msg(other.name==='Uriel'&&behind?'舌ヒット！ ウリエルは減速しない':'舌ヒット！ スリップ加速！');return;}
@@ -653,7 +652,7 @@ function useMichaelSkill(r,id,slot){
  if(id==='poisonBoost'){r[cdKey]=2.5;r.speed=Math.min(maxSpeed+155,r.speed+150);r.boost=.72;effects.push({kind:'poisonMist',x:r.x-Math.cos(r.face)*35,y:r.y-Math.sin(r.face)*35,owner:r,t:4,max:4});msg('ポイズンブースト！');return true;}
  return false;
 }
-function useA(r){if(r.name==='Takumi'){if(r.skillCdA>0)return;
+function useA(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Takumi'){if(r.skillCdA>0)return;
    let ns=nearestTrackSegment(r.x,r.y),i=ns.i;
    let a=path[i],b=path[Math.min(path.length-1,i+1)],c=path[Math.min(path.length-1,i+2)];
    if(!activeCourse.pointToPoint){b=path[(i+1)%path.length];c=path[(i+2)%path.length];}
@@ -684,7 +683,7 @@ function useA(r){if(r.name==='Takumi'){if(r.skillCdA>0)return;
  if(r.customSkillA==='dash'&&r.name==='Michael'){r.skillCdA=2.6;r.speed=Math.min(maxSpeed+105,r.speed+105);r.boost=.45;msg('天使ダッシュ！');return;}
  r.skillCdA=1.35;let o=racers[1-r.index],d=Math.hypot(o.x-r.x,o.y-r.y);if(d<90){pushRival(o,r.face,78*(r.power||1));msg('パンチ！ 相手を横へ弾いた');}else msg('パンチ！');
 }
-function useB(r){if(r.name==='Takumi'){msg('コーナー脱出加速は自動発動！');return;}if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillB||(r.name==='Kawazu'?'wallKick':'bubble'),'B');return;}if(r.skillCdB>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
+function useB(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Takumi'){msg('コーナー脱出加速は自動発動！');return;}if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillB||(r.name==='Kawazu'?'wallKick':'bubble'),'B');return;}if(r.skillCdB>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
  if(r.name==='Gabriel'){waterSkill(r,true,false);return;}
  if(r.name==='Beelzebub'){r.skillCdB=2.5;r.speed=Math.min(maxSpeed+155,r.speed+150);r.boost=.72;let bx=r.x-Math.cos(r.face)*35,by=r.y-Math.sin(r.face)*35;effects.push({kind:'poisonMist',x:bx,y:by,owner:r,t:4.0,max:4.0});msg('ポイズンブースト！');return;}
  if(r.name==='Kawazu'){r.skillCdB=1.25;let ti=trackInfo(r.x,r.y);if(ti.d>165){let a=Math.atan2(r.y-ti.qy,r.x-ti.qx)+Math.PI;r.face=norm(a);r.x=ti.qx+Math.cos(a)*150;r.y=ti.qy+Math.sin(a)*150;r.speed=Math.min(maxSpeed+145,r.speed+90);r.boost=.35;msg('壁キック！')}else{let o=racers[1-r.index],dx=o.x-r.x,dy=o.y-r.y,d=Math.hypot(dx,dy),behind=Math.cos(norm(Math.atan2(dy,dx)-r.face))<-.15;if(d<135&&behind){pushRival(o,r.face+Math.PI,105);r.speed=Math.min(maxSpeed+90,r.speed+70);}msg('エアキック！')}return;}
@@ -729,7 +728,8 @@ function draw(){
  else{drawWorld();for(const e of effects)drawEffect(e);for(const r of racers)drawRacer(r);}
  ctx.restore();
  if(timeFx)drawTimeEffectOverlay(timeFx);
- drawMini();updateHud(me)
+ drawMini();updateHud(me);
+ if(raceStartDelay>0){ctx.save();ctx.fillStyle='rgba(8,35,31,.72)';ctx.fillRect(W/2-92,H/2-46,184,92);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 30px sans-serif';ctx.fillText(raceStartDelay>.65?'READY':'GO!',W/2,H/2+10);ctx.restore();}
 }
 function drawTimeEffectOverlay(mode){
  ctx.save();
@@ -960,10 +960,13 @@ function drawMini(){let sx=185/world.w,sy=118/world.h,ox=18,oy=58;ctx.fillStyle=
 function updateHud(r){ui.lap.textContent=activeCourse.pointToPoint?'POINT TO POINT':('LAP '+Math.min(r.lap,RACE_LAPS)+'/'+RACE_LAPS);ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Takumi'){al='溝走り';bl='コーナー脱出加速（AUTO）'}else if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){let aid=r.customSkillA||'airSwim',bid=r.customSkillB||'wallKick';al=skillLabel(aid)+' ∞';bl=skillLabel(bid)+' ∞'}else if(r.name==='Michael'){let aid=r.customSkillA||'punch',bid=r.customSkillB||'bubble';al=skillLabel(aid)+(aid==='burningWing'?' '+r.burnWingUses+'/3':aid==='highJump'?' '+r.burnClimbUses+'/3':'');bl=skillLabel(bid)+(bid==='burningWing'?' '+r.burnWingUses+'/3':bid==='highJump'?' '+r.burnClimbUses+'/3':'')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
 function msg(t){ui.status.textContent=t;clearTimeout(msg.timer);msg.timer=setTimeout(()=>ui.status.textContent='ジャンプ3回＋舌ターンで最速を狙え！',2200)}
 function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;if(appState==='race'){
- if(globalTimeStop>0)globalTimeStop=Math.max(0,globalTimeStop-dt);
- if(globalTimeLag>0)globalTimeLag=Math.max(0,globalTimeLag-dt);
- for(const r of racers){let rd=(globalTimeLag>0&&r!==racers[controlledIndex])?dt*.5:dt;updateRacer(r,rd);}
- updateEffects(dt);draw();
+ if(raceStartDelay>0){raceStartDelay=Math.max(0,raceStartDelay-dt);draw();}
+ else{
+   if(globalTimeStop>0)globalTimeStop=Math.max(0,globalTimeStop-dt);
+   if(globalTimeLag>0)globalTimeLag=Math.max(0,globalTimeLag-dt);
+   for(const r of racers){let rd=(globalTimeLag>0&&r!==racers[controlledIndex])?dt*.5:dt;updateRacer(r,rd);}
+   updateEffects(dt);draw();
+ }
 }else if(appState==='shooting'){updateShooting(dt);drawShooting();
 }else{ctx.clearRect(0,0,W,H);}requestAnimationFrame(loop)}
 function norm(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a}function approach(a,b,d){return a<b?Math.min(b,a+d):Math.max(b,a-d)}function lerpAngle(a,b,t){return a+norm(b-a)*t}
