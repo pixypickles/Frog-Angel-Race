@@ -587,7 +587,7 @@ function aiForwardSegment(r){
   let best={i:base,t:0,d:1e9,qx:path[base].x,qy:path[base].y};
   // Search mostly forward. This prevents close parallel roads / forks from making the CPU
   // jump to a geometrically-near but logically-wrong segment.
-  for(let off=-3;off<=22;off++){
+  for(let off=-2;off<=14;off++){
     let i=base+off;
     if(closed){i=(i%(n)+n)%n;}else if(i<0||i>=n-1)continue;
     let a=path[i],b=path[(i+1)%n],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy||1;
@@ -599,7 +599,7 @@ function aiForwardSegment(r){
   if(activeCourse.pointToPoint)r.aiPathIndex=Math.max(base,best.i);
   else{
     let advance=(best.i-base+n)%n;
-    if(advance<=22)r.aiPathIndex=best.i;
+    if(advance<=14)r.aiPathIndex=best.i;
   }
   return best;
 }
@@ -646,6 +646,10 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.aiWallHitTimer=Math.ma
  // Tongue anchor overrides ordinary turn. Player/rival overlap never affects anchor tongue.
  if(r.tongue&&(r.tongue.kind==='anchor'||r.tongue.kind==='gutter')){let a=r.tongue.target,dx=a.x-r.x,dy=a.y-r.y,d=Math.hypot(dx,dy)||1,tan=Math.atan2(dy,dx)+(r.tongue.side>0?Math.PI/2:-Math.PI/2);let hold=(performance.now()-r.tongue.started)/1000,gutter=r.tongue.kind==='gutter';r.face=lerpAngle(r.face,tan,Math.min(1,dt*(gutter?13.5:7.5)));if(gutter){r.speed=Math.max(r.speed,Math.min(maxSpeed+35,555));}else if(hold>1.05)r.speed=Math.max(220,r.speed-250*dt);else r.speed=Math.max(r.speed,Math.min(maxSpeed,520));}
  r.vx=Math.cos(r.face)*r.speed;r.vy=Math.sin(r.face)*r.speed;r.x+=r.vx*dt;r.y+=r.vy*dt;
+ if(r.ai&&r.wallEscape>0){
+   let rs=aiForwardSegment(r),dx=rs.qx-r.x,dy=rs.qy-r.y,d=Math.hypot(dx,dy)||1;
+   let nudge=Math.min(d,150*dt);r.x+=dx/d*nudge;r.y+=dy/d*nudge;
+ }
  // After a wall hit, bias a few frames toward the course center so acute V-corners cannot trap the racer.
  if(r.wallEscape>0&&r.highJump<=0){
    let pre=trackInfo(r.x,r.y),dx=pre.qx-r.x,dy=pre.qy-r.y,d=Math.hypot(dx,dy)||1,pull=Math.min(d,310*dt);
@@ -668,10 +672,15 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.aiWallHitTimer=Math.ma
      const look=r.ai?aiLookTarget(r,aiSeg):path[activeCourse.pointToPoint?Math.min(path.length-1,seg+2):(seg+2)%path.length],toLook=Math.atan2(look.y-r.y,look.x-r.x);
      if(r.ai){
        r.aiWallHits=(r.aiWallHits||0)+1;r.aiWallHitTimer=.9;
-       // Recover toward the logical main route, never toward an accidental fork/nearby branch.
-       r.x=aiSeg.qx;r.y=aiSeg.qy;
-       r.face=toLook;r.wallEscape=.35;
-       if(r.aiWallHits>=2){r.speed=210;r.flight=1;r.onGround=false;r.aiWallHits=0;}
+       // Never teleport the CPU back to the route. Steer and pull it smoothly toward the
+       // logical forward segment over several frames so recovery remains visible/natural.
+       let rdx=aiSeg.qx-r.x,rdy=aiSeg.qy-r.y,rd=Math.hypot(rdx,rdy)||1;
+       let pull=Math.min(rd,420*dt);
+       r.x+=rdx/rd*pull;r.y+=rdy/rd*pull;
+       r.face=lerpAngle(r.face,toLook,Math.min(1,dt*8.5));
+       r.wallEscape=.48;
+       if(r.aiWallHits>=2){r.speed=Math.min(Math.max(r.speed,175),235);r.flight=1;r.onGround=false;}
+       if(r.aiWallHits>=5){r.speed=145;r.aiWallHits=2;} // stubborn corner: slow down rather than warp
      }else{
        // Move only from the penetrated wall edge to a safe position inside the corridor.
        let nx=(r.x-hit.qx)/(hit.d||1),ny=(r.y-hit.qy)/(hit.d||1);
