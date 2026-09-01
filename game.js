@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.31';
+const VERSION='v2.32';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -163,7 +163,7 @@ function showPlace(place){
     pond:['🪷 池','ピラニアのリヴァイアさん、ザリガニのアスモデウスさんがいる池。'],
     master:['👑 マスタークラス','ベルゼブブさんが待つ高難度クラス。'],
     kawazu:['🐸 カワズさん','クリア後に現れる謎の高速カエル。'],
-    akina:saveData.takumiUnlocked?['🍁 アキナ山','一本道の峠コース。連続ヘアピンを下り、タクミさんとゴールを競います。']:['❓ ？？？','地図に名前のない一本道。白黒の翼を持つ速いカエルが待っている……。']
+    akina:saveData.takumiUnlocked?['🍁 アキナ山','左下スタートの長い一本道・峠コース。下から上へ連続ヘアピンを抜け、タクミさんとゴールを競います。']:['❓ ？？？','地図に名前のない一本道。白黒の翼を持つ速いカエルが待っている……。']
   }[place];
   document.querySelector('#placeTitle').textContent=data[0];
   document.querySelector('#placeDesc').textContent=data[1];
@@ -398,7 +398,7 @@ function setupMetaUi(){
 const C=document.querySelector('#game'),ctx=C.getContext('2d'),W=C.width,H=C.height;
 const ui={who:$('#who'),speed:$('#speed'),lap:$('#lap'),status:$('#status'),jump:$('#jump'),tongue:$('#tongue'),a:$('#skillA'),b:$('#skillB'),stick:$('#stick')};
 function $(s){return document.querySelector(s)}
-const world={w:6000,h:4400};
+const world={w:6000,h:4400};const DEFAULT_WORLD={w:6000,h:4400};
 const COURSE_SETS={
  arena1:[
   {name:'木立の大回廊',theme:'wind',halfWidth:300,extraAnchors:[[1250,760],[1850,560],[2650,760],[3500,600],[4450,900],[4750,1600],[4300,2200],[3400,2500],[2450,2250],[1650,2650],[1050,3300],[1900,3650],[3000,3500],[4100,3650],[4850,3150],[5050,2450]],path:[[700,900],[1800,520],[3200,520],[4700,850],[5200,1650],[4750,2450],[5000,3300],[4100,3900],[2700,3750],[1500,3950],[650,3250],[850,2400],[600,1650]]},
@@ -431,13 +431,15 @@ const COURSE_SETS={
   {name:'古代迷走路',theme:'master',halfWidth:215,extraAnchors:[[1900,800],[3000,1100],[4300,850],[4450,1900],[3500,2350],[4600,3150],[3000,3500],[1600,3300],[1050,2300]],path:[[700,700],[1900,500],[3000,1050],[4300,500],[5100,1100],[4500,1850],[3300,1500],[2700,2200],[3500,2700],[4900,2400],[5200,3300],[4000,3900],[2600,3500],[1300,3900],[600,3000],[1100,2300],[600,1500]]},
   {name:'遺跡ダウンヒル',theme:'master',pointToPoint:true,halfWidth:225,extraAnchors:[[1450,800],[2150,1150],[1700,1600],[2750,1950],[2200,2400],[3400,2750],[2950,3250],[4200,3500]],path:[[650,550],[1500,550],[2200,900],[1650,1250],[2450,1600],[1800,2050],[2900,2350],[2250,2800],[3500,3100],[3000,3550],[4300,3800],[5200,3450]]}
  ],
- akina:[{name:'アキナ山・下り',theme:'autumn',pointToPoint:true,halfWidth:185,
- extraAnchors:[[4300,780],[3650,980],[3000,760],[2450,1180],[1800,1050],[1400,1550],[2150,1900],[2850,2050],[2100,2450],[1450,2850],[2100,3200],[1500,3550]],
+ akina:[{name:'アキナ山・下り',theme:'autumn',pointToPoint:true,halfWidth:170,
+ worldOverride:{w:7200,h:9800},
+ extraAnchors:[[1250,8650],[1850,8150],[1300,7550],[2100,7000],[1500,6450],[2450,5900],[1800,5350],[3000,4800],[2200,4250],[3300,3700],[4200,3150],[3600,2600],[5000,2050],[4450,1500]],
  path:[
-  [5350,520],[4850,620],[5050,850],[4550,720],[4300,1030],[3900,820],[3600,1120],[3250,900],[2900,1170],[2550,910],
-  [2200,1180],[1850,980],[1500,1250],[1300,1650],[1650,1850],[2350,1780],[3000,1950],[3300,2250],
-  [3000,2470],[2400,2350],[1850,2480],[1450,2760],[1700,3000],[2250,2920],[2500,3180],[2150,3400],
-  [1700,3300],[1350,3550],[1550,3820],[1150,4020],[700,3950],[520,3650]
+  [650,9300],[980,8850],[1450,8500],[1100,8050],[1700,7700],[1150,7300],
+  [2050,6900],[1450,6450],[2450,6050],[1700,5600],
+  [2950,5150],[2150,4700],[3350,4250],[2550,3800],
+  [3850,3400],[4700,3000],[4100,2550],[5050,2200],
+  [4400,1800],[5450,1450],[4950,1050],[6100,700],[6650,500]
  ]}],
  master:[
   {name:'魔王環状路',theme:'master',path:[[2800,500],[3800,520],[5100,900],[5300,1700],[4700,2250],[3600,1900],[2900,2350],[3550,3000],[5000,3000],[5200,3450],[4100,3950],[2600,3850],[1250,3500],[600,2800],[700,1850],[1350,1250],[700,700],[2100,480]]},
@@ -483,6 +485,7 @@ const COURSE_ORDER={
 function selectCourse(place,round=0){
  let set=COURSE_SETS[place]||COURSE_SETS.arena1,order=COURSE_ORDER[place]||set.map((_,i)=>i),idx=order[round%order.length]%set.length;
  activeCourse=set[idx];courseTheme=activeCourse.theme;courseHalfWidth=activeCourse.halfWidth||195;courseNoWalls=false;
+ world.w=activeCourse.worldOverride?.w||DEFAULT_WORLD.w;world.h=activeCourse.worldOverride?.h||DEFAULT_WORLD.h;
  courseBranches=(activeCourse.branches||[]).map(br=>br.map(([x,y])=>({x,y})));path=activeCourse.path.map(([x,y])=>({x,y}));rebuildCourseObjects();
 }
 rebuildCourseObjects();
