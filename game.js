@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.30';
+const VERSION='v2.31';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -431,7 +431,14 @@ const COURSE_SETS={
   {name:'古代迷走路',theme:'master',halfWidth:215,extraAnchors:[[1900,800],[3000,1100],[4300,850],[4450,1900],[3500,2350],[4600,3150],[3000,3500],[1600,3300],[1050,2300]],path:[[700,700],[1900,500],[3000,1050],[4300,500],[5100,1100],[4500,1850],[3300,1500],[2700,2200],[3500,2700],[4900,2400],[5200,3300],[4000,3900],[2600,3500],[1300,3900],[600,3000],[1100,2300],[600,1500]]},
   {name:'遺跡ダウンヒル',theme:'master',pointToPoint:true,halfWidth:225,extraAnchors:[[1450,800],[2150,1150],[1700,1600],[2750,1950],[2200,2400],[3400,2750],[2950,3250],[4200,3500]],path:[[650,550],[1500,550],[2200,900],[1650,1250],[2450,1600],[1800,2050],[2900,2350],[2250,2800],[3500,3100],[3000,3550],[4300,3800],[5200,3450]]}
  ],
- akina:[{name:'アキナ山・下り',theme:'autumn',pointToPoint:true,halfWidth:205,extraAnchors:[[1120,760],[1670,1040],[1260,1390],[1940,1710],[1520,2080],[2300,2400],[1830,2790],[2770,3060],[2350,3470],[3500,3630],[4100,3260],[4520,2820],[4070,2380],[4740,1960],[4300,1510],[5000,1160]],path:[[650,520],[1250,520],[1650,720],[1120,920],[1700,1160],[1180,1420],[2050,1680],[1450,2050],[2380,2330],[1750,2700],[2850,3000],[2250,3400],[3200,3750],[4050,3600],[4550,3250],[4050,2850],[4750,2500],[4100,2100],[4850,1750],[4250,1400],[5100,1080],[5350,650]]}],
+ akina:[{name:'アキナ山・下り',theme:'autumn',pointToPoint:true,halfWidth:185,
+ extraAnchors:[[4300,780],[3650,980],[3000,760],[2450,1180],[1800,1050],[1400,1550],[2150,1900],[2850,2050],[2100,2450],[1450,2850],[2100,3200],[1500,3550]],
+ path:[
+  [5350,520],[4850,620],[5050,850],[4550,720],[4300,1030],[3900,820],[3600,1120],[3250,900],[2900,1170],[2550,910],
+  [2200,1180],[1850,980],[1500,1250],[1300,1650],[1650,1850],[2350,1780],[3000,1950],[3300,2250],
+  [3000,2470],[2400,2350],[1850,2480],[1450,2760],[1700,3000],[2250,2920],[2500,3180],[2150,3400],
+  [1700,3300],[1350,3550],[1550,3820],[1150,4020],[700,3950],[520,3650]
+ ]}],
  master:[
   {name:'魔王環状路',theme:'master',path:[[2800,500],[3800,520],[5100,900],[5300,1700],[4700,2250],[3600,1900],[2900,2350],[3550,3000],[5000,3000],[5200,3450],[4100,3950],[2600,3850],[1250,3500],[600,2800],[700,1850],[1350,1250],[700,700],[2100,480]]},
   {name:'魔王の二択',theme:'master',branches:[[[1800,650],[2400,1450],[3300,1750],[4200,1150]],[[1800,650],[2100,2500],[3300,3000],[4450,2350],[4200,1150]]],path:[[700,650],[1800,650],[4200,1150],[5200,1800],[5000,3400],[3500,3950],[1600,3700],[600,2600]]}
@@ -772,11 +779,11 @@ function drawGrassBlades(){
 }
 function drawLily(x,y,r){ctx.save();ctx.translate(x,y);ctx.fillStyle='#4aa74c';ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.lineTo(0,0);ctx.arc(0,0,r,-.48,.48,true);ctx.closePath();ctx.fill();ctx.fillStyle='#8cd45d';ctx.beginPath();ctx.arc(-r*.22,-r*.18,r*.22,0,Math.PI*2);ctx.fill();if(r>65){ctx.fillStyle='#f5bfd4';for(let i=0;i<6;i++){let a=i*Math.PI/3;ctx.beginPath();ctx.ellipse(Math.cos(a)*r*.18,Math.sin(a)*r*.18,r*.16,r*.07,a,0,Math.PI*2);ctx.fill()}ctx.fillStyle='#ffd86b';ctx.beginPath();ctx.arc(0,0,r*.08,0,Math.PI*2);ctx.fill()}ctx.restore()}
 function drawTree(x,y){ctx.fillStyle='#714624';ctx.fillRect(x-10,y-8,20,72);ctx.fillStyle='#247b3c';ctx.beginPath();ctx.arc(x,y-20,34,0,Math.PI*2);ctx.fill();ctx.fillStyle='#8bd85d';ctx.beginPath();ctx.arc(x-10,y-30,14,0,Math.PI*2);ctx.fill()}
-let currentWingSpecial=false,currentWingRed=false,currentWingBurning=false;
+let currentWingSpecial=false,currentWingRed=false,currentWingBurning=false,currentWingTakumi=false;
 function angelWing(x,y,side,scale=1,tilt=0){
  // One connected angel-wing silhouette. Broad at the shoulder, tapered into layered feather tips.
  ctx.save();ctx.translate(x,y);ctx.scale(side*scale,scale);ctx.rotate(tilt);
- ctx.fillStyle=currentWingBurning?'#d51f2f':(currentWingRed?'#d74c57':(currentWingSpecial?'#fff9d8':'#fffdf5'));ctx.strokeStyle=currentWingBurning?'#78131d':(currentWingRed?'#7e2530':(currentWingSpecial?'#e4b94f':'#c9d9dc'));ctx.lineWidth=2.2;ctx.lineJoin='round';
+ ctx.fillStyle=currentWingBurning?'#d51f2f':(currentWingRed?'#d74c57':(currentWingTakumi?'#f7f5e9':(currentWingSpecial?'#fff9d8':'#fffdf5')));ctx.strokeStyle=currentWingBurning?'#78131d':(currentWingRed?'#7e2530':(currentWingTakumi?'#242424':(currentWingSpecial?'#e4b94f':'#c9d9dc')));ctx.lineWidth=2.2;ctx.lineJoin='round';
  ctx.beginPath();
  ctx.moveTo(0,2);
  ctx.bezierCurveTo(12,-17,32,-27,55,-25);
@@ -791,9 +798,16 @@ function angelWing(x,y,side,scale=1,tilt=0){
  ctx.bezierCurveTo(8,31,3,18,0,2);
  ctx.closePath();ctx.fill();ctx.stroke();
  // restrained feather separators: keep the wing reading as one mass, not insect wings
- ctx.strokeStyle=currentWingBurning?'#ff5964':(currentWingRed?'#f19a9f':(currentWingSpecial?'#fff0a6':'#e2ecee'));ctx.lineWidth=1.8;
+ ctx.strokeStyle=currentWingBurning?'#ff5964':(currentWingRed?'#f19a9f':(currentWingTakumi?'#88857e':(currentWingSpecial?'#fff0a6':'#e2ecee')));ctx.lineWidth=1.8;
  for(const pts of [[[9,3],[33,-13],[55,-16]],[[10,9],[34,1],[59,1]],[[10,15],[31,13],[55,18]],[[9,21],[25,25],[41,31]]]){
   ctx.beginPath();ctx.moveTo(...pts[0]);ctx.quadraticCurveTo(...pts[1],...pts[2]);ctx.stroke();
+ }
+ if(currentWingTakumi&&!currentWingBurning){
+   // AE86-inspired black lower trim translated to the outer feather tips.
+   ctx.fillStyle='#171717';
+   for(const tip of [[[52,-24],[72,-2],[55,2],[42,-7]],[[55,3],[69,20],[50,20],[39,12]],[[42,20],[50,34],[31,30],[22,23]]]){
+     ctx.beginPath();ctx.moveTo(...tip[0]);for(let i=1;i<tip.length;i++)ctx.lineTo(...tip[i]);ctx.closePath();ctx.fill();
+   }
  }
  ctx.restore();
 }
@@ -898,7 +912,20 @@ function drawRacer(r){
  if(r.flight===2){let flap=Math.sin(now*18);ctx.scale(1+.035*flap,1-.025*flap);}
  // Glide: slight forward pitch / streamlined squash.
  if(r.flight===3){ctx.transform(1,0,-Math.sin(r.face)*.045,1,0,0);}
- currentWingSpecial=r.name==='Michael'||r.name==='Takumi';currentWingRed=r.name==='Kawazu';currentWingBurning=r.burningWing>0||r.highJump>0;if(dir==='down')frogFront(r);else if(dir==='up')frogBack(r);else frogSide(r,dir==='left');currentWingBurning=false;if(r.name==='Takumi'){ctx.save();ctx.fillStyle='#171717';if(dir==='down'||dir==='up'){ctx.fillRect(-22,8,8,25);ctx.fillRect(14,8,8,25);ctx.fillRect(-20,34,11,8);ctx.fillRect(9,34,11,8);}else{ctx.fillRect(-4,7,27,8);ctx.fillRect(-2,27,25,8);}ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-17,-15);ctx.lineTo(17,-15);ctx.stroke();ctx.restore();}if(r.name==='Kawazu'){ctx.save();if(dir==='down'){ctx.fillStyle='#f5eee1';ctx.beginPath();ctx.ellipse(0,13,9,15,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d8232e';ctx.beginPath();ctx.arc(-12,-39,5,0,Math.PI*2);ctx.arc(12,-39,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#2975a8';ctx.fillRect(-18,5,5,23);ctx.fillRect(13,5,5,23);ctx.fillStyle='#f28a28';ctx.beginPath();ctx.arc(-12,40,7,0,Math.PI*2);ctx.arc(12,40,7,0,Math.PI*2);ctx.fill();}ctx.restore();}
+ currentWingSpecial=r.name==='Michael';currentWingRed=r.name==='Kawazu';currentWingTakumi=r.name==='Takumi';currentWingBurning=r.burningWing>0||r.highJump>0;if(dir==='down')frogFront(r);else if(dir==='up')frogBack(r);else frogSide(r,dir==='left');currentWingBurning=false;currentWingTakumi=false;if(r.name==='Takumi'){ctx.save();ctx.fillStyle='#171717';
+ if(dir==='down'){
+   // black bumper / rocker trim, black forearms and feet
+   ctx.fillRect(-19,24,38,7);ctx.fillRect(-26,8,7,21);ctx.fillRect(19,8,7,21);ctx.fillRect(-18,34,12,7);ctx.fillRect(6,34,12,7);
+   // small black hood cue between the eyes, leaving the frog face readable
+   ctx.beginPath();ctx.roundRect(-15,-31,30,7,3);ctx.fill();
+ }else if(dir==='up'){
+   ctx.fillRect(-20,21,40,8);ctx.fillRect(-24,8,7,22);ctx.fillRect(17,8,7,22);ctx.fillRect(-18,34,12,7);ctx.fillRect(6,34,12,7);
+   ctx.fillRect(-17,-12,34,7);
+ }else{
+   // long black lower-body stripe evokes the black lower half of the hatchback
+   ctx.fillRect(-9,17,35,8);ctx.fillRect(0,31,23,7);ctx.fillRect(-7,-28,25,6);
+ }
+ ctx.restore();}if(r.name==='Kawazu'){ctx.save();if(dir==='down'){ctx.fillStyle='#f5eee1';ctx.beginPath();ctx.ellipse(0,13,9,15,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d8232e';ctx.beginPath();ctx.arc(-12,-39,5,0,Math.PI*2);ctx.arc(12,-39,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#2975a8';ctx.fillRect(-18,5,5,23);ctx.fillRect(13,5,5,23);ctx.fillStyle='#f28a28';ctx.beginPath();ctx.arc(-12,40,7,0,Math.PI*2);ctx.arc(12,40,7,0,Math.PI*2);ctx.fill();}ctx.restore();}
  // Wing-flap speed lines on stage 2 and on successful maintenance taps.
  if(r.flight===2 || r.wing>0){ctx.save();ctx.globalAlpha=.28;ctx.strokeStyle='#ffffff';ctx.lineWidth=4;for(const side of [-1,1]){for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(side*(35+i*5),-12+i*8);ctx.lineTo(side*(52+i*7),-17+i*8);ctx.stroke()}}ctx.restore();}
  // Glide-maintenance warning: starts before the ideal window, becomes fast near expiry.
