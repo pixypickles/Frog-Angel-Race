@@ -172,13 +172,13 @@ function showPlace(place){
     actions.appendChild(b);
   }else{
     const p=document.createElement('div');p.className='homeBox';
-    p.innerHTML='<b>'+(place==='forest'?'森':'池')+'の交流イベント</b><p>円形コースで相手を追い、泡弾で減速させて舌で1回捕まえるとスキルを教わります。</p>';
+    p.innerHTML='<b>'+(place==='forest'?'森':'池')+'の交流イベント</b><p>円形コース＋中央の十字通路で相手を追い、泡弾で減速させて舌で1回捕まえるとスキルを教わります。</p>';
     let any=false;for(const n of (saveData.encountered||[])){if(!LEARNABLE_SKILLS[n])continue;any=true;const q=document.createElement('button');q.className='menuBtn';let list=LEARNABLE_SKILLS[n],done=list.every(x=>saveData.unlockedSkills.includes(x[0]));q.textContent=(CHARACTER_DATA[n]?.jp||n)+(done?'（習得済み）':'を舌で捕まえて教わる');q.disabled=done;q.onclick=()=>startLearningRace(n,place);p.appendChild(q)}if(!any)p.innerHTML+='<p>まだスキルを教えてくれる相手と対戦していません。</p>';
     if(place==='pond'){
       const sep=document.createElement('div');sep.className='panelNote';
       if(!saveData.kawazuUnlocked)sep.textContent='池の奥には、まだ入れない場所があるようだ……（クリア後に解禁）';
       else if(!saveData.timeLagUnlocked){
-        sep.textContent='アスモデウスさんが、円形コースの捕獲訓練を待っている。';
+        sep.textContent='アスモデウスさんが、円形＋十字コースの捕獲訓練を待っている。';
         const q=document.createElement('button');q.className='menuBtn';q.textContent='アスモデウスさんを捕まえる：タイムラグ';
         q.onclick=()=>startShootingSkillEvent('pond','timeLag');p.appendChild(q);
       }else sep.textContent='池の時間イベント：タイムラグ習得済み。';
@@ -206,6 +206,14 @@ function makeShootingCourse(place){
   for(let i=0;i<32;i++){let a=i*Math.PI*2/32;pts.push({x:cx+Math.cos(a)*rx,y:cy+Math.sin(a)*ry});}
   return pts;
 }
+function makeCaptureCross(){
+  // Two full chords through the ring. They make a literal + shaped shortcut:
+  // chase around the rim, reverse, or cut through the middle to intercept.
+  return [
+    [{x:950,y:2200},{x:5050,y:2200}],
+    [{x:3000,y:750},{x:3000,y:3650}]
+  ];
+}
 function buildObjectsForPath(pp){
   return {anchors:[],lilies:[]};
 }
@@ -217,14 +225,14 @@ function startCaptureTraining(opt){
   const forest=place==='forest';
   const enemyName=opponent||(skillId==='timeLag'?'Asmodeus':skillId==='timeStop'?'Belial':forest?'Azazel':'Leviathan');
   const title=opt.title||(skillId==='burningWing'?'バーニングウィング':skillId==='highJump'?'バーニングクライム':skillId==='timeLag'?'タイムラグ':'時間停止');
-  const pp=makeShootingCourse(place),cx=3000,cy=2200,rx=2050,ry=1450;
+  const pp=makeShootingCourse(place),cross=makeCaptureCross(),cx=3000,cy=2200,rx=2050,ry=1450;
   const playerName=(skillId==='timeStop'&&saveData.kawazuUnlocked)?'Kawazu':'Michael';
   shootingEvent={
     mode:'capture',place,skillId,opponent,title,enemyName,enemyCreature:!opponent,
     catches:0,need:1,time:48,shots:[],ended:false,bubbleCd:0,tongueCd:0,tongueFx:0,
     slow:0,reverseCd:2.5,enemyDir:Math.random()<.5?1:-1,cx,cy,rx,ry,
     playerAngle:Math.PI,enemyAngle:0,
-    path:pp,anchors:[],lilies:[],theme:forest?'forest':'water',
+    path:pp,branches:cross,halfWidth:255,anchors:[],lilies:[],theme:forest?'forest':'water',
     player:makeRacer(playerName,CHARACTER_DATA[playerName].color,0,cx-rx,cy),
     enemy:makeRacer(enemyName,CHARACTER_DATA[enemyName].color,1,cx+rx,cy)
   };
@@ -235,7 +243,7 @@ function startCaptureTraining(opt){
   ui.lap.textContent='CATCH 0/1';ui.who.textContent='操作：'+(CHARACTER_DATA[q.player.name]?.jp||q.player.name);
   ui.a.innerHTML='A<small>泡弾</small>';ui.b.innerHTML='B<small>泡弾</small>';
   ui.jump.innerHTML='泡弾<small>命中で減速</small>';ui.tongue.innerHTML='舌<small>近距離で自動補正</small>';
-  msg((CHARACTER_DATA[enemyName]?.jp||enemyName)+'を舌で1回捕まえろ！ 泡弾で動きを遅くできる');
+  msg((CHARACTER_DATA[enemyName]?.jp||enemyName)+'を舌で1回捕まえろ！ 十字路を使って先回りできる');
 }
 function startShootingSkillEvent(place,skillId){startCaptureTraining({place,skillId});}
 function shootingFire(){
@@ -275,11 +283,16 @@ function endShootingEvent(ok){
 }
 function nearestOnEventPath(q,px,py){
   let best={d:1e9,qx:px,qy:py};
-  for(let i=0;i<q.path.length;i++){
-    let a=q.path[i],b=q.path[(i+1)%q.path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy||1;
-    let t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);
-    if(d<best.d)best={d,qx,qy};
-  }
+  const scan=(pts,closed)=>{
+    const count=closed?pts.length:pts.length-1;
+    for(let i=0;i<count;i++){
+      let a=pts[i],b=pts[(i+1)%pts.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy||1;
+      let t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);
+      if(d<best.d)best={d,qx,qy};
+    }
+  };
+  scan(q.path,true);
+  for(const br of (q.branches||[]))scan(br,false);
   return best;
 }
 function updateShooting(dt){
@@ -289,7 +302,7 @@ function updateShooting(dt){
   const r=q.player,o=q.enemy;
   let kx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),ky=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0),dx=joy.x||kx,dy=joy.y||ky,m=Math.hypot(dx,dy);
   if(m>.08){dx/=m;dy/=m;r.face=Math.atan2(dy,dx);r.x+=dx*930*dt;r.y+=dy*930*dt;}
-  // Keep the player in the annular race lane, but softly; chase or turn back are both valid.
+  // Keep the player on either the ring or the + shaped inner shortcuts, softly.
   let near=nearestOnEventPath(q,r.x,r.y),lane=360;
   if(near.d>lane){let px=near.qx-r.x,py=near.qy-r.y,pd=Math.hypot(px,py)||1,pull=Math.min(near.d-lane,1450*dt);r.x+=px/pd*pull;r.y+=py/pd*pull;}
   r.x=Math.max(300,Math.min(world.w-300,r.x));r.y=Math.max(300,Math.min(world.h-300,r.y));
@@ -334,8 +347,9 @@ function drawEventCreature(r,name){
 }
 function drawShooting(){
   const q=shootingEvent;if(!q)return;
-  const oldPath=path,oldAnchors=anchors,oldLilies=lilies,oldTheme=courseTheme;
-  path=q.path;anchors=[];lilies=[];courseTheme=q.theme;
+  const oldPath=path,oldBranches=courseBranches,oldAnchors=anchors,oldLilies=lilies,oldTheme=courseTheme,oldHalf=courseHalfWidth,oldCourse=activeCourse;
+  path=q.path;courseBranches=q.branches||[];anchors=[];lilies=[];courseTheme=q.theme;courseHalfWidth=q.halfWidth||255;
+  activeCourse={...oldCourse,pointToPoint:false,noWalls:false};
   const viewW=3100,viewH=viewW*(H/W),scale=W/viewW;
   let cx=Math.max(0,Math.min(world.w-viewW,q.player.x-viewW/2));
   let cy=Math.max(0,Math.min(world.h-viewH,q.player.y-viewH/2));
@@ -350,7 +364,7 @@ function drawShooting(){
     ctx.save();ctx.strokeStyle='#e86a91';ctx.lineWidth=10;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(m.x,m.y);ctx.quadraticCurveTo((m.x+o.x)/2,(m.y+o.y)/2+18,o.x,o.y);ctx.stroke();ctx.restore();
   }
   ctx.restore();
-  path=oldPath;anchors=oldAnchors;lilies=oldLilies;courseTheme=oldTheme;
+  path=oldPath;courseBranches=oldBranches;anchors=oldAnchors;lilies=oldLilies;courseTheme=oldTheme;courseHalfWidth=oldHalf;activeCourse=oldCourse;
   ctx.fillStyle='rgba(15,38,34,.86)';ctx.fillRect(W/2-205,14,410,48);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 18px sans-serif';
   ctx.fillText(`CATCH ${q.catches}/${q.need}　TIME ${Math.max(0,q.time).toFixed(1)}${q.slow>0?'　SLOW':''}`,W/2,45);
 }
@@ -552,15 +566,30 @@ function rebuildCourseObjects(){
    const threshold=courseTheme==='akina'?.72:.38;
    if(angle>threshold){
      let side=Math.sign(cross)||1;
-     // Inside of the bend, just beyond the apex. Akina trees are visual/tongue aids only at real hairpins.
-     let bisx=ix+ox,bisy=iy+oy,bl=Math.hypot(bisx,bisy);
-     if(bl<.12){bisx=-iy*side;bisy=ix*side;bl=1;}
-     bisx/=bl;bisy/=bl;
-     // For a left turn, inside is left of travel; for right turn, right of travel.
-     let nx=-bisy*side,ny=bisx*side;
-     let inward=courseTheme==='akina'?Math.max(120,courseHalfWidth*.72):(angle>1.05?255:225);
-     let forward=courseTheme==='akina'?35:(angle>1.05?300:245);
-     const ax=b.x+bisx*forward+nx*inward,ay=b.y+bisy*forward+ny*inward;
+     // True inside normal of the corner: average the incoming/outgoing LEFT normals,
+     // then flip it for a right-hand bend.
+     let nx=(-iy-oy)*side,ny=(ix+ox)*side,nl=Math.hypot(nx,ny);
+     if(nl<.12){nx=-iy*side;ny=ix*side;nl=1;}
+     nx/=nl;ny/=nl;
+
+     let ax,ay;
+     if(courseTheme==='akina'){
+       // Akina trees must be in the INNER GRASS, never on the asphalt.
+       // Start beyond the inside road edge and, because nearby switchbacks can be close,
+       // walk farther inward until the candidate is clear of every road segment.
+       const clear=courseHalfWidth+85;
+       let found=false;
+       for(let extra=135;extra<=900;extra+=75){
+         const inward=courseHalfWidth+extra;
+         const tx=b.x+nx*inward,ty=b.y+ny*inward;
+         if(trackDistance(tx,ty)>clear){ax=tx;ay=ty;found=true;break;}
+       }
+       if(!found)continue; // no visible tree means no invisible tongue anchor either
+     }else{
+       let bisx=ix+ox,bisy=iy+oy,bl=Math.hypot(bisx,bisy)||1;bisx/=bl;bisy/=bl;
+       let inward=angle>1.05?255:225,forward=angle>1.05?300:245;
+       ax=b.x+bisx*forward+nx*inward;ay=b.y+bisy*forward+ny*inward;
+     }
      if(Math.hypot(ax-path[0].x,ay-path[0].y)>360){
        if(courseTheme!=='akina'||!lastAkinaTree||Math.hypot(ax-lastAkinaTree.x,ay-lastAkinaTree.y)>520){
          anchors.push({x:ax,y:ay,corner:i});if(courseTheme==='akina')lastAkinaTree={x:ax,y:ay};
