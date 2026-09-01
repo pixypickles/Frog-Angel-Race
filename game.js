@@ -512,8 +512,8 @@ const world={w:6000,h:4400};const DEFAULT_WORLD={w:6000,h:4400};
 const COURSE_SETS={
  arena1:[
   {name:'風のオーバル',theme:'wind',halfWidth:300,path:[[850,850],[2800,520],[4750,850],[5250,2100],[4750,3450],[2800,3800],[850,3450],[450,2100]]},
-  {name:'風切りトライアングル',theme:'wind',halfWidth:235,path:[[650,3500],[2850,500],[5150,3500],[4450,3950],[3350,3250],[2850,2450],[2300,3250],[1250,3950]]},
-  {name:'空原クローバーリング',theme:'wind',halfWidth:230,path:[[2850,550],[4100,550],[5150,1450],[4450,2150],[5150,3050],[4050,3950],[2850,3400],[1650,3950],[550,3050],[1250,2150],[550,1350],[1650,550]]},
+  {name:'風切りトライアングル',theme:'wind',halfWidth:210,path:[[650,3550],[2850,450],[5150,3550],[4300,4050],[2850,3350],[1400,4050]]},
+  {name:'空原クローバーリング',theme:'wind',halfWidth:205,path:[[700,2100],[900,900],[2100,450],[3000,950],[3900,450],[5100,1000],[5000,2100],[5100,3300],[3900,4050],[3000,3500],[2100,4050],[850,3300]]},
   {name:'風車ヘアピン峠',theme:'wind',halfWidth:165,path:[[650,350],[5200,350],[5200,1450],[900,1450],[900,2550],[5000,2550],[5000,3650],[650,3650],[650,4550],[5200,4550]]}
  ],
  arena2:[
@@ -526,7 +526,7 @@ const COURSE_SETS={
   {name:'森の三日月',theme:'forest',halfWidth:270,path:[[650,2100],[900,900],[2200,500],[3900,650],[5000,1500],[4300,2100],[5000,2900],[3900,3800],[2100,3900],[900,3350]]},
   {name:'森の牙',theme:'forest',halfWidth:215,path:[[600,650],[2700,500],[5100,650],[3500,1550],[5000,2200],[3300,2850],[5100,3650],[2850,4000],[600,3650],[2200,2800],[650,2200],[2300,1500]]},
   {name:'トンボ原ダウンヒル',theme:'forest',pointToPoint:true,halfWidth:270,path:[[650,600],[1800,950],[900,1450],[2600,1850],[4800,1350],[5100,2200],[3400,2550],[1300,2350],[700,3150],[2500,3550],[5000,3300],[5250,4000]]},
-  {name:'巨木の８の字',theme:'forest',halfWidth:235,extraAnchors:[[1750,850],[4050,850],[4050,3300],[1750,3300]],path:[[650,700],[1800,500],[3000,1800],[4300,500],[5200,1200],[3800,2200],[5200,3350],[4200,4000],[3000,2650],[1750,4000],[550,3300],[1900,2200],[550,1300]]}
+  {name:'巨木ダブルベイ',theme:'forest',halfWidth:210,extraAnchors:[[1600,850],[4200,850],[4200,3500],[1600,3500]],path:[[650,2100],[900,850],[2200,500],[3000,1200],[3850,500],[5100,900],[5000,1900],[4050,2300],[5000,3150],[4200,4050],[3000,3350],[1800,4050],[650,3350],[1550,2300]]}
  ],
  arena4:[
   {name:'雲海ハイスピードリング',theme:'wind',halfWidth:300,path:[[600,1900],[900,800],[2600,450],[4500,700],[5300,1800],[5000,3000],[3600,3900],[1700,3750],[650,3000]]},
@@ -538,7 +538,7 @@ const COURSE_SETS={
   {name:'遺跡スクエア・四連直角',theme:'master',halfWidth:245,path:[[650,650],[5100,650],[5100,1750],[3300,1750],[3300,2850],[5100,2850],[5100,3950],[650,3950],[650,2850],[2350,2850],[2350,1750],[650,1750]]},
   {name:'石門トリプルルート',theme:'master',halfWidth:225,branches:[[[1100,700],[1900,1450],[2900,1850],[3900,1450],[4700,700]],[[1100,700],[1500,2550],[2900,3300],[4300,2550],[4700,700]]],extraAnchors:[[1900,1380],[2900,1780],[3900,1380],[2900,3200]],path:[[650,700],[1100,700],[4700,700],[5250,1550],[5000,3500],[3800,4050],[1900,3900],[600,3100],[500,1800]]},
   {name:'崩落ノコギリ',theme:'master',halfWidth:205,path:[[550,700],[1500,500],[2100,1400],[2700,500],[3300,1400],[3900,500],[5000,900],[4400,1900],[5100,2700],[4200,3500],[3000,4000],[2300,3050],[1600,4000],[600,3500],[1200,2550],[500,1800]]},
-  {name:'古代迷宮スパイラル',theme:'master',pointToPoint:true,halfWidth:180,path:[[450,450],[5250,450],[5250,4150],[450,4150],[450,1250],[4650,1250],[4650,3400],[1150,3400],[1150,1950],[4000,1950],[4000,2900],[1850,2900],[1850,2400],[3200,2400]]},
+  {name:'古代迷宮スパイラル',theme:'master',pointToPoint:true,halfWidth:170,path:[[450,450],[5250,450],[5250,4150],[450,4150],[450,1300],[4550,1300],[4550,3350],[1250,3350],[1250,2050],[3900,2050],[3900,2850],[2050,2850],[2050,2450],[3000,2450],[3000,1850],[3550,1850]]},
   {name:'遺跡ダウンヒル',theme:'master',pointToPoint:true,halfWidth:225,extraAnchors:[[1450,800],[2150,1150],[1700,1600],[2750,1950],[2200,2400],[3400,2750],[2950,3250],[4200,3500]],path:[[650,550],[1500,550],[2200,900],[1650,1250],[2450,1600],[1800,2050],[2900,2350],[2250,2800],[3500,3100],[3000,3550],[4300,3800],[5200,3450]]}
  ],
  akina:[{name:'アキナ山・下り（113点精密稿）',theme:'akina',pointToPoint:true,halfWidth:190,
@@ -1035,11 +1035,17 @@ function updateCheckpoint(r){
  const long0=(x0-p0.x)*tx+(y0-p0.y)*ty,long1=(x1-p0.x)*tx+(y1-p0.y)*ty;
  if(activeCourse.pointToPoint){
    let crossed=false;
-   if(long0<=0&&long1>0){let den=long1-long0,u=Math.abs(den)<1e-6?0:-long0/den,cx=x0+(x1-x0)*u,cy=y0+(y1-y0)*u,lat=(cx-p0.x)*nx+(cy-p0.y)*ny;crossed=Math.abs(lat)<=Math.max(520,courseHalfWidth+260);}
-   // CPU-only finish tolerance: reaching the last route section is enough. This prevents a
-   // competent CPU from circling the final gate forever due to a tiny lateral miss.
-   if(r.ai&&!crossed&&r.aiPathIndex>=path.length-5&&Math.hypot(r.x-p0.x,r.y-p0.y)<Math.max(760,courseHalfWidth*2.8))crossed=true;
-   if(crossed){r.finished=true;r.speed=0;if(!finished){finished=true;msg((r===racers[controlledIndex]?'YOU WIN! ':'')+(CHARACTER_DATA[r.name]?.jp||r.name)+' アキナ山ゴール！');setTimeout(()=>showRaceResult(r===racers[controlledIndex]),1300);}}
+   const near=nearestTrackSegment(r.x,r.y);
+   // A geometric finish-line crossing is valid ONLY after reaching the final route section.
+   // Nearby parallel lanes can therefore never finish the race early.
+   const finalProgress=near.i>=Math.max(0,path.length-3);
+   if(finalProgress&&long0<=0&&long1>0){
+     let den=long1-long0,u=Math.abs(den)<1e-6?0:-long0/den,cx=x0+(x1-x0)*u,cy=y0+(y1-y0)*u,lat=(cx-p0.x)*nx+(cy-p0.y)*ny;
+     crossed=Math.abs(lat)<=Math.max(300,courseHalfWidth+90);
+   }
+   // CPU tolerance is also restricted to the actual final route section.
+   if(r.ai&&!crossed&&r.aiPathIndex>=path.length-3&&near.i>=path.length-4&&Math.hypot(r.x-p0.x,r.y-p0.y)<Math.max(420,courseHalfWidth*1.8))crossed=true;
+   if(crossed){r.finished=true;r.speed=0;if(!finished){finished=true;msg((r===racers[controlledIndex]?'YOU WIN! ':'')+(CHARACTER_DATA[r.name]?.jp||r.name)+' ゴール！');setTimeout(()=>showRaceResult(r===racers[controlledIndex]),1300);}}
    return;
  }
  if((long0<=0&&long1>0)||(long0>=0&&long1<0)){const denom=long1-long0,u=Math.abs(denom)<1e-6?0:(-long0/denom),crossX=x0+(x1-x0)*u,crossY=y0+(y1-y0)*u,lateral=(crossX-p0.x)*nx+(crossY-p0.y)*ny,gateHalf=Math.max(520,courseHalfWidth+260);if(Math.abs(lateral)<=gateHalf){if(long0<=0&&long1>0){r.lap++;if(r.lap>RACE_LAPS){r.finished=true;r.speed=0;if(!finished){finished=true;msg((r===racers[controlledIndex]?'YOU WIN! ':'')+(CHARACTER_DATA[r.name]?.jp||r.name)+' ゴール！');setTimeout(()=>showRaceResult(r===racers[controlledIndex]),1300);}}else if(r===racers[controlledIndex])msg('LAP '+r.lap+' / '+RACE_LAPS);}else{const before=r.lap;r.lap=Math.max(1,r.lap-1);if(r===racers[controlledIndex]&&r.lap<before)msg('逆走でゴール通過：LAP -1 → '+r.lap+'/'+RACE_LAPS);}}}r.startLineLong=long1;
