@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.38';
+const VERSION='v2.40';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -163,7 +163,7 @@ function showPlace(place){
     pond:['🪷 池','ピラニアのリヴァイアさん、ザリガニのアスモデウスさんがいる池。'],
     master:['👑 マスタークラス','ベルゼブブさんが待つ高難度クラス。'],
     kawazu:['🐸 カワズさん','クリア後に現れる謎の高速カエル。'],
-    akina:saveData.takumiUnlocked?['🍁 アキナ山','左下スタートの長い一本道・峠コース。下から上へ連続ヘアピンを抜け、タクミさんとゴールを競います。']:['❓ ？？？','地図に名前のない一本道。白黒の翼を持つ速いカエルが待っている……。']
+    akina:saveData.takumiUnlocked?['🍁 アキナ山','左下原点の10000×10000座標第一稿をそのまま使用した一本道。形状確認用で、細部は今後さらに詰めます。']:['❓ ？？？','地図に名前のない一本道。白黒の翼を持つ速いカエルが待っている……。']
   }[place];
   document.querySelector('#placeTitle').textContent=data[0];
   document.querySelector('#placeDesc').textContent=data[1];
@@ -434,25 +434,26 @@ const COURSE_SETS={
   {name:'古代迷走路',theme:'master',halfWidth:215,extraAnchors:[[1900,800],[3000,1100],[4300,850],[4450,1900],[3500,2350],[4600,3150],[3000,3500],[1600,3300],[1050,2300]],path:[[700,700],[1900,500],[3000,1050],[4300,500],[5100,1100],[4500,1850],[3300,1500],[2700,2200],[3500,2700],[4900,2400],[5200,3300],[4000,3900],[2600,3500],[1300,3900],[600,3000],[1100,2300],[600,1500]]},
   {name:'遺跡ダウンヒル',theme:'master',pointToPoint:true,halfWidth:225,extraAnchors:[[1450,800],[2150,1150],[1700,1600],[2750,1950],[2200,2400],[3400,2750],[2950,3250],[4200,3500]],path:[[650,550],[1500,550],[2200,900],[1650,1250],[2450,1600],[1800,2050],[2900,2350],[2250,2800],[3500,3100],[3000,3550],[4300,3800],[5200,3450]]}
  ],
- akina:[{name:'アキナ山・下り',theme:'akina',pointToPoint:true,halfWidth:165,
- worldOverride:{w:12000,h:18000},extraAnchors:[],
+ akina:[{name:'アキナ山・下り（座標第一稿）',theme:'akina',pointToPoint:true,halfWidth:165,
+ worldOverride:{w:10000,h:10000},originBottomLeft:true,courseDraft:true,extraAnchors:[],
  path:[
-  /* SECTION 1 / 下部 */
-  [900,17400],[950,16800],[1050,16150],[950,15550],[700,15100],[500,14700],[650,14300],[1100,14000],
-  [1700,13800],[2200,13600],[1800,13350],[1300,13100],[1100,12850],[1450,12600],[2100,12350],[2700,12100],
-  [3000,11850],[2850,11600],[2500,11350],[2350,11100],[2700,10850],[3300,10600],[4000,10200],[4700,9800],
-  [5400,9400],
-  /* SECTION 2 / 中部 */
-  [5900,9100],[5600,8800],[5000,8650],[4300,8600],[3500,8650],[2800,8800],[2200,9000],[1800,9250],
-  [1700,8900],[1850,8500],[2400,8300],[3100,8200],[3800,8150],[4500,8000],[5200,7750],[5800,7400],
-  [6100,7000],
-  /* SECTION 3 / 上部 */
-  [6100,6900],[5800,6650],[6000,6400],[6300,6150],[6100,5900],[5700,5650],[5500,5400],[5750,5150],
-  [6200,4900],[6500,4650],[6400,4400],[6100,4150],[5800,3950],[6000,3750],[6400,3600],[6000,3450],
-  [5500,3400],[5000,3450],[4700,3600],[4550,3400],[4650,3150],[5100,3000],[5650,2950],[6200,3000],
-  [6750,2850],[7100,2600],[7300,2500],[7100,2250],[6800,2050],[7000,1850],[7400,1750],[7650,1900],
-  [7850,2100],[8150,2050],[8400,1850],[8550,1600],[8800,1450],[9000,1600],[9250,1750],[9500,1650],
-  [9700,1400],[9900,1150],[10250,950],[10800,800],[11400,650]
+  [900,0],[1050,450],[1200,950],[1450,1450],[1700,1900],[1450,2200],[1050,2500],
+  [750,2850],[650,3200],[800,3500],[1100,3650],[1450,3450],[1750,3150],[2050,2850],
+  [2250,2600],[2300,2350],[2150,2200],[1950,2300],[1800,2600],[1850,2950],[2050,3250],
+  [2300,3450],[2500,3600],[2650,3450],[2550,3150],[2400,2900],[2750,3300],[3200,3550],
+  [3650,3800],[4100,4050],[4550,4200],[4850,4400],[5000,4650],[4850,4900],[4450,5100],
+  [3950,5200],[3400,5250],[2900,5250],[2450,5200],[2200,5000],[2100,4700],[2200,4450],
+  [2450,4350],[2800,4500],[3200,4550],[3600,4500],[4000,4550],[4300,4450],[4650,4250],
+  [5000,4100],[5300,4150],[5450,4350],[5300,4600],[5000,4800],[4750,5000],[4650,5350],
+  [4550,5700],[4300,5900],[4050,6050],[3950,6300],[4000,6600],[4200,6750],[4350,6600],
+  [4300,6400],[4150,6250],[3950,6350],[3850,6600],[3900,6900],[4050,7050],[4200,6950],
+  [4250,6750],[4400,6650],[4550,6800],[4500,7050],[4650,7300],[4800,7550],[5000,7850],
+  [5200,8200],[5400,8550],[5450,8900],[5300,9200],[4950,9400],[4500,9500],[4000,9550],
+  [3650,9500],[3450,9350],[3500,9150],[3800,9000],[4200,8900],[4650,8800],[5000,8650],
+  [5250,8400],[5350,8100],[5550,7900],[5850,8000],[6100,8200],[6350,8050],[6550,7700],
+  [6750,7450],[6950,7550],[7150,7900],[7350,8150],[7550,8000],[7750,7650],[7950,7400],
+  [8150,7550],[8300,7900],[8450,8250],[8600,8400],[8750,8200],[8850,7850],[9000,7650],
+  [9150,7800],[9300,8050],[9500,8250],[9750,8350],[10000,8400]
  ]}],
  master:[
   {name:'魔王環状路',theme:'master',path:[[2800,500],[3800,520],[5100,900],[5300,1700],[4700,2250],[3600,1900],[2900,2350],[3550,3000],[5000,3000],[5200,3450],[4100,3950],[2600,3850],[1250,3500],[600,2800],[700,1850],[1350,1250],[700,700],[2100,480]]},
@@ -499,7 +500,8 @@ function selectCourse(place,round=0){
  let set=COURSE_SETS[place]||COURSE_SETS.arena1,order=COURSE_ORDER[place]||set.map((_,i)=>i),idx=order[round%order.length]%set.length;
  activeCourse=set[idx];courseTheme=activeCourse.theme;courseHalfWidth=activeCourse.halfWidth||195;courseNoWalls=false;
  world.w=activeCourse.worldOverride?.w||DEFAULT_WORLD.w;world.h=activeCourse.worldOverride?.h||DEFAULT_WORLD.h;
- courseBranches=(activeCourse.branches||[]).map(br=>br.map(([x,y])=>({x,y})));path=activeCourse.path.map(([x,y])=>({x,y}));rebuildCourseObjects();
+ const cv=([x,y])=>({x,y:activeCourse.originBottomLeft?world.h-y:y});
+ courseBranches=(activeCourse.branches||[]).map(br=>br.map(cv));path=activeCourse.path.map(cv);rebuildCourseObjects();
 }
 rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false,raceStartDelay=0;
@@ -961,7 +963,25 @@ function drawRacer(r){
  ctx.fillStyle='#17352d';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(CHARACTER_DATA[r.name]?.jp||r.name,r.x,r.y-68-lift*.45);
 }
 function drawEffect(e){if(e.kind==='poisonMist'){ctx.save();ctx.globalAlpha=.18+.25*(e.t/e.max);ctx.fillStyle='#9b4bd1';for(let i=0;i<8;i++){let a=i*.9+(e.age||0)*.35,rr=20+(i%3)*17;ctx.beginPath();ctx.arc(e.x+Math.cos(a)*rr,e.y+Math.sin(a)*rr,24+(i%2)*12,0,Math.PI*2);ctx.fill();}ctx.restore();}else if(e.kind==='poison'){ctx.fillStyle='#9e49d6';ctx.strokeStyle='#d6a4ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,18,0,Math.PI*2);ctx.fill();ctx.stroke();}else if(e.kind==='airball'){ctx.save();ctx.globalAlpha=.6;ctx.strokeStyle='#e9ffff';ctx.lineWidth=5;ctx.beginPath();ctx.arc(e.x,e.y,16,0,Math.PI*2);ctx.stroke();ctx.restore();}else if(e.kind==='bewitch'){ctx.save();ctx.translate(e.x,e.y);ctx.globalAlpha=.75;ctx.fillStyle='#f04478';for(let i=0;i<4;i++){let a=(e.age||0)*5+i*Math.PI/2;ctx.beginPath();ctx.arc(Math.cos(a)*12,Math.sin(a)*12,8,0,Math.PI*2);ctx.fill();}ctx.restore();}else if(e.kind==='rock'){let h=Math.sin(Math.min(1,(e.age||0)/1.1)*Math.PI)*38;ctx.save();ctx.translate(e.x,e.y-h);ctx.rotate((e.age||0)*7);ctx.fillStyle='#8a765e';ctx.strokeStyle='#493f34';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-20,-11);ctx.lineTo(-5,-23);ctx.lineTo(18,-14);ctx.lineTo(22,8);ctx.lineTo(4,20);ctx.lineTo(-18,13);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}else if(e.kind==='bubble'){ctx.fillStyle='#bcecffaa';ctx.strokeStyle='#4eaeeb';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,17,0,Math.PI*2);ctx.fill();ctx.stroke()}else{let len=e.kind==='laser'?640:(e.kind==='waterBoost'?175:120);ctx.strokeStyle=e.kind==='laser'?'#baf5ff':'#7bd7ff';ctx.lineWidth=e.kind==='laser'?7:(e.kind==='waterBoost'?20:15);ctx.globalAlpha=Math.max(.15,e.t/e.max);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(e.a)*len,e.y+Math.sin(e.a)*len);ctx.stroke();ctx.globalAlpha=1}}
-function drawMini(){let sx=185/world.w,sy=118/world.h,ox=18,oy=58;ctx.fillStyle='#102820c9';ctx.fillRect(ox,oy,185,118);ctx.strokeStyle='#2f713c';ctx.lineWidth=17;ctx.beginPath();ctx.moveTo(ox+path[0].x*sx,oy+path[0].y*sy);for(let i=1;i<path.length;i++)ctx.lineTo(ox+path[i].x*sx,oy+path[i].y*sy);if(!activeCourse.pointToPoint)ctx.closePath();ctx.stroke();ctx.strokeStyle='#78d1df';ctx.lineWidth=10;ctx.stroke();for(const r of racers){ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(ox+r.x*sx,oy+r.y*sy,5,0,Math.PI*2);ctx.fill()}}
+function drawMini(){
+ const ox=18,oy=58,mw=185,mh=118,pad=9;
+ ctx.fillStyle='#102820c9';ctx.fillRect(ox,oy,mw,mh);
+ // Fit the ACTUAL path bounds with one common scale. The old mini-map used separate X/Y
+ // scales from the whole world size, which stretched Akina and made its shape look different.
+ let xs=path.map(p=>p.x),ys=path.map(p=>p.y),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+ for(const br of courseBranches)for(const p of br){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y)}
+ let bw=Math.max(1,maxX-minX),bh=Math.max(1,maxY-minY),scale=Math.min((mw-pad*2)/bw,(mh-pad*2)/bh);
+ let drawW=bw*scale,drawH=bh*scale,baseX=ox+(mw-drawW)/2-minX*scale,baseY=oy+(mh-drawH)/2-minY*scale;
+ const mx=x=>baseX+x*scale,my=y=>baseY+y*scale;
+ const route=(pts,closed)=>{ctx.beginPath();ctx.moveTo(mx(pts[0].x),my(pts[0].y));for(let i=1;i<pts.length;i++)ctx.lineTo(mx(pts[i].x),my(pts[i].y));if(closed)ctx.closePath();ctx.stroke();};
+ ctx.strokeStyle=courseTheme==='akina'?'#27633b':'#2f713c';ctx.lineWidth=8;route(path,!activeCourse.pointToPoint);for(const br of courseBranches)route(br,false);
+ ctx.strokeStyle=courseTheme==='akina'?'#9a9da0':'#78d1df';ctx.lineWidth=4;route(path,!activeCourse.pointToPoint);for(const br of courseBranches)route(br,false);
+ if(activeCourse.pointToPoint){
+   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(mx(path[0].x),my(path[0].y),4.5,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#ffd45a';ctx.beginPath();ctx.arc(mx(path[path.length-1].x),my(path[path.length-1].y),4.5,0,Math.PI*2);ctx.fill();
+ }
+ for(const r of racers){ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(mx(r.x),my(r.y),4,0,Math.PI*2);ctx.fill()}
+}
 function updateHud(r){ui.lap.textContent=activeCourse.pointToPoint?'POINT TO POINT':('LAP '+Math.min(r.lap,RACE_LAPS)+'/'+RACE_LAPS);ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Takumi'){al='溝走り';bl='コーナー脱出加速（AUTO）'}else if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){let aid=r.customSkillA||'airSwim',bid=r.customSkillB||'wallKick';al=skillLabel(aid)+' ∞';bl=skillLabel(bid)+' ∞'}else if(r.name==='Michael'){let aid=r.customSkillA||'punch',bid=r.customSkillB||'bubble';al=skillLabel(aid)+(aid==='burningWing'?' '+r.burnWingUses+'/3':aid==='highJump'?' '+r.burnClimbUses+'/3':'');bl=skillLabel(bid)+(bid==='burningWing'?' '+r.burnWingUses+'/3':bid==='highJump'?' '+r.burnClimbUses+'/3':'')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
 function msg(t){ui.status.textContent=t;clearTimeout(msg.timer);msg.timer=setTimeout(()=>ui.status.textContent='ジャンプ3回＋舌ターンで最速を狙え！',2200)}
 function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;if(appState==='race'){
