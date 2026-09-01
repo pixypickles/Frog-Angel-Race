@@ -146,9 +146,7 @@ function showHome(){
 }
 let eventChallenge=null;
 function startLearningRace(name,place){
-  eventChallenge={opponent:name,place,racePlace:place==='forest'?'arena3':'arena2'};
-  tournament=null;
-  startRaceRound(name,true);
+  startCaptureTraining({place,opponent:name,title:(CHARACTER_DATA[name]?.jp||name)+'のスキル'});
 }
 function showPlace(place){
   appState='place';currentPlace=place;hideAllScreens();document.querySelector('#fieldScreen')?.classList.remove('hidden');document.querySelector('#placePanel')?.classList.remove('hidden');
@@ -174,14 +172,14 @@ function showPlace(place){
     actions.appendChild(b);
   }else{
     const p=document.createElement('div');p.className='homeBox';
-    p.innerHTML='<b>'+(place==='forest'?'森':'池')+'の交流イベント</b><p>対戦したことのある相手とイベントレースをして、勝つとその相手のスキルを教わります。</p>';
-    let any=false;for(const n of (saveData.encountered||[])){if(!LEARNABLE_SKILLS[n])continue;any=true;const q=document.createElement('button');q.className='menuBtn';let list=LEARNABLE_SKILLS[n],done=list.every(x=>saveData.unlockedSkills.includes(x[0]));q.textContent=(CHARACTER_DATA[n]?.jp||n)+(done?'（習得済み）':'とレースして教わる');q.disabled=done;q.onclick=()=>startLearningRace(n,place);p.appendChild(q)}if(!any)p.innerHTML+='<p>まだスキルを教えてくれる相手と対戦していません。</p>';
+    p.innerHTML='<b>'+(place==='forest'?'森':'池')+'の交流イベント</b><p>円形コースで相手を追い、泡弾で減速させて舌で3回捕まえるとスキルを教わります。</p>';
+    let any=false;for(const n of (saveData.encountered||[])){if(!LEARNABLE_SKILLS[n])continue;any=true;const q=document.createElement('button');q.className='menuBtn';let list=LEARNABLE_SKILLS[n],done=list.every(x=>saveData.unlockedSkills.includes(x[0]));q.textContent=(CHARACTER_DATA[n]?.jp||n)+(done?'（習得済み）':'を舌で捕まえて教わる');q.disabled=done;q.onclick=()=>startLearningRace(n,place);p.appendChild(q)}if(!any)p.innerHTML+='<p>まだスキルを教えてくれる相手と対戦していません。</p>';
     if(place==='pond'){
       const sep=document.createElement('div');sep.className='panelNote';
       if(!saveData.kawazuUnlocked)sep.textContent='池の奥には、まだ入れない場所があるようだ……（クリア後に解禁）';
       else if(!saveData.timeLagUnlocked){
-        sep.textContent='アスモデウスさんが、時間の流れを乱す射撃訓練を待っている。';
-        const q=document.createElement('button');q.className='menuBtn';q.textContent='アスモデウスさんとシューティング：タイムラグ';
+        sep.textContent='アスモデウスさんが、円形コースの捕獲訓練を待っている。';
+        const q=document.createElement('button');q.className='menuBtn';q.textContent='アスモデウスさんを捕まえる：タイムラグ';
         q.onclick=()=>startShootingSkillEvent('pond','timeLag');p.appendChild(q);
       }else sep.textContent='池の時間イベント：タイムラグ習得済み。';
       p.appendChild(sep);
@@ -190,97 +188,171 @@ function showPlace(place){
       const sep=document.createElement('div');sep.className='panelNote';
       if(saveData.selectedCharacter==='Kawazu'){
         sep.textContent='ベリアルさんの糸の間だけ、時間が止まって見える……。';
-        const q=document.createElement('button');q.className='menuBtn';q.textContent='ベリアルさんとシューティング：時間停止';
+        const q=document.createElement('button');q.className='menuBtn';q.textContent='ベリアルさんを捕まえる：時間停止';
         q.onclick=()=>startShootingSkillEvent('forest','timeStop');p.appendChild(q);
       }else sep.textContent='タイムラグの先に、カワズさんだけが気づける何かが森にあるようだ。';
       p.appendChild(sep);
     }else if(place==='forest'&&saveData.timeStopUnlocked){
       const sep=document.createElement('div');sep.className='panelNote';sep.textContent='森の時間イベント：時間停止習得済み。';p.appendChild(sep);
     }
-    if(place==='forest'&&!saveData.unlockedSkills.includes('burningWing')){const q=document.createElement('button');q.className='menuBtn';q.textContent='森のシューティングイベント：バーニングウィング';q.onclick=()=>startShootingSkillEvent('forest','burningWing');p.appendChild(q);}
-    if(place==='pond'&&!saveData.unlockedSkills.includes('highJump')){const q=document.createElement('button');q.className='menuBtn';q.textContent='池のシューティングイベント：バーニングクライム';q.onclick=()=>startShootingSkillEvent('pond','highJump');p.appendChild(q);}
+    if(place==='forest'&&!saveData.unlockedSkills.includes('burningWing')){const q=document.createElement('button');q.className='menuBtn';q.textContent='森の捕獲イベント：バーニングウィング';q.onclick=()=>startShootingSkillEvent('forest','burningWing');p.appendChild(q);}
+    if(place==='pond'&&!saveData.unlockedSkills.includes('highJump')){const q=document.createElement('button');q.className='menuBtn';q.textContent='池の捕獲イベント：バーニングクライム';q.onclick=()=>startShootingSkillEvent('pond','highJump');p.appendChild(q);}
     actions.appendChild(p);
   }
 }
 let shootingEvent=null;
 function makeShootingCourse(place){
-  return place==='forest'
-    ?[{x:900,y:850},{x:5100,y:850},{x:5100,y:3550},{x:900,y:3550}]
-    :[{x:1000,y:2200},{x:1350,y:1050},{x:3000,y:650},{x:4650,y:1050},{x:5000,y:2200},{x:4650,y:3350},{x:3000,y:3750},{x:1350,y:3350}];
+  const cx=3000,cy=2200,rx=2050,ry=1450,pts=[];
+  for(let i=0;i<32;i++){let a=i*Math.PI*2/32;pts.push({x:cx+Math.cos(a)*rx,y:cy+Math.sin(a)*ry});}
+  return pts;
 }
 function buildObjectsForPath(pp){
-  let aa=[];for(let i=1;i<pp.length;i++){let a=pp[i-1],b=pp[i],c=pp[(i+1)%pp.length],v1={x:a.x-b.x,y:a.y-b.y},v2={x:c.x-b.x,y:c.y-b.y},l1=Math.hypot(v1.x,v1.y)||1,l2=Math.hypot(v2.x,v2.y)||1,bx=v1.x/l1+v2.x/l2,by=v1.y/l1+v2.y/l2,bl=Math.hypot(bx,by)||1;aa.push({x:b.x+bx/bl*250,y:b.y+by/bl*250});}
-  let ll=[];for(let i=0;i<14;i++)ll.push({x:360+(i*977)%5250,y:330+(i*613)%3700,r:48+(i%4)*10});
-  return {anchors:aa,lilies:ll};
+  return {anchors:[],lilies:[]};
 }
-function startShootingSkillEvent(place,skillId){
-  const forest=place==='forest',enemyName=skillId==='timeLag'?'Asmodeus':skillId==='timeStop'?'Belial':forest?'Azazel':'Leviathan';
-  const pp=makeShootingCourse(place),objs=buildObjectsForPath(pp);
+function capturePointOnRing(q,a){
+  return {x:q.cx+Math.cos(a)*q.rx,y:q.cy+Math.sin(a)*q.ry};
+}
+function startCaptureTraining(opt){
+  const place=opt.place,skillId=opt.skillId||null,opponent=opt.opponent||null;
+  const forest=place==='forest';
+  const enemyName=opponent||(skillId==='timeLag'?'Asmodeus':skillId==='timeStop'?'Belial':forest?'Azazel':'Leviathan');
+  const title=opt.title||(skillId==='burningWing'?'バーニングウィング':skillId==='highJump'?'バーニングクライム':skillId==='timeLag'?'タイムラグ':'時間停止');
+  const pp=makeShootingCourse(place),cx=3000,cy=2200,rx=2050,ry=1450;
+  const playerName=(skillId==='timeStop'&&saveData.kawazuUnlocked)?'Kawazu':'Michael';
   shootingEvent={
-    place,skillId,title:skillId==='burningWing'?'バーニングウィング':skillId==='highJump'?'バーニングクライム':skillId==='timeLag'?'タイムラグ':'時間停止',
-    enemyName,hits:0,time:18,enemyClock:.7,shots:[],enemyShots:[],ended:false,
-    path:pp,anchors:objs.anchors,lilies:objs.lilies,theme:forest?'forest':'water',
-    player:makeRacer((skillId==='timeStop'&&saveData.kawazuUnlocked)?'Kawazu':'Michael',CHARACTER_DATA[(skillId==='timeStop'&&saveData.kawazuUnlocked)?'Kawazu':'Michael'].color,0,1500,2200),
-    enemy:makeRacer(enemyName,CHARACTER_DATA[enemyName].color,1,4450,2200)
+    mode:'capture',place,skillId,opponent,title,enemyName,enemyCreature:!opponent,
+    catches:0,need:3,time:48,shots:[],ended:false,bubbleCd:0,tongueCd:0,tongueFx:0,
+    slow:0,reverseCd:2.5,enemyDir:Math.random()<.5?1:-1,cx,cy,rx,ry,
+    playerAngle:Math.PI,enemyAngle:0,
+    path:pp,anchors:[],lilies:[],theme:forest?'forest':'water',
+    player:makeRacer(playerName,CHARACTER_DATA[playerName].color,0,cx-rx,cy),
+    enemy:makeRacer(enemyName,CHARACTER_DATA[enemyName].color,1,cx+rx,cy)
   };
-  const q=shootingEvent;q.player.ai=false;q.enemy.ai=true;q.player.flight=3;q.player.onGround=false;q.player.speed=0;q.player.face=0;q.enemy.flight=3;q.enemy.onGround=false;q.enemy.speed=0;q.enemy.face=Math.PI;
+  const q=shootingEvent;
+  q.player.ai=false;q.player.flight=3;q.player.onGround=false;q.player.speed=0;q.player.face=0;
+  q.enemy.ai=true;q.enemy.flight=3;q.enemy.onGround=false;q.enemy.speed=0;q.enemy.face=Math.PI;
   appState='shooting';hideAllScreens();document.querySelector('#raceUi')?.classList.remove('hidden');
-  ui.lap.textContent=forest?'FOREST SHOOT':'POND SHOOT';ui.who.textContent='操作：'+(CHARACTER_DATA[q.player.name]?.jp||q.player.name);ui.a.textContent='泡弾';ui.b.textContent='泡弾';ui.jump.textContent='泡弾';ui.tongue.textContent='泡弾';
-  msg((CHARACTER_DATA[enemyName]?.jp||enemyName)+'との空中射撃！ 泡弾を6発当てろ');
+  ui.lap.textContent='CATCH 0/3';ui.who.textContent='操作：'+(CHARACTER_DATA[q.player.name]?.jp||q.player.name);
+  ui.a.innerHTML='A<small>泡弾</small>';ui.b.innerHTML='B<small>泡弾</small>';
+  ui.jump.innerHTML='泡弾<small>命中で減速</small>';ui.tongue.innerHTML='舌<small>近距離で自動補正</small>';
+  msg((CHARACTER_DATA[enemyName]?.jp||enemyName)+'を舌で3回捕まえろ！ 泡弾で動きを遅くできる');
 }
+function startShootingSkillEvent(place,skillId){startCaptureTraining({place,skillId});}
 function shootingFire(){
-  const q=shootingEvent;if(!q||q.ended)return;const r=q.player,o=q.enemy,aim=Math.atan2(o.y-r.y,o.x-r.x);
-  q.shots.push({kind:'bubble',x:r.x,y:r.y,vx:Math.cos(aim)*1250,vy:Math.sin(aim)*1250,owner:r,t:1.65});
+  const q=shootingEvent;if(!q||q.ended||q.bubbleCd>0)return;
+  q.bubbleCd=.48;const r=q.player,o=q.enemy,aim=Math.atan2(o.y-r.y,o.x-r.x);
+  q.shots.push({kind:'bubble',x:r.x,y:r.y,vx:Math.cos(aim)*1150,vy:Math.sin(aim)*1150,owner:r,t:2});
+}
+function shootingTongue(){
+  const q=shootingEvent;if(!q||q.ended||q.tongueCd>0)return;
+  const r=q.player,o=q.enemy,dx=o.x-r.x,dy=o.y-r.y,d=Math.hypot(dx,dy);
+  const range=700;
+  if(d>range){q.tongueCd=.18;msg('まだ舌が届かない！');return;}
+  // Auto-aim assist: within range the tongue always corrects toward the target.
+  q.tongueCd=.85;q.tongueFx=.34;q.catches++;
+  q.enemyDir*=-1;q.reverseCd=1.6;q.slow=Math.max(q.slow,1.0);
+  ui.lap.textContent='CATCH '+q.catches+'/'+q.need;
+  if(q.catches>=q.need){endShootingEvent(true);return;}
+  msg('舌で捕まえた！ '+q.catches+'/'+q.need+'　相手が切り返した！');
 }
 function endShootingEvent(ok){
   const q=shootingEvent;if(!q||q.ended)return;q.ended=true;
-  if(ok){if(!saveData.unlockedSkills.includes(q.skillId))saveData.unlockedSkills.push(q.skillId);if(q.skillId==='timeLag')saveData.timeLagUnlocked=true;if(q.skillId==='timeStop')saveData.timeStopUnlocked=true;saveGame();rebuildSkillSelects();msg(q.title+' 習得！');setTimeout(()=>{ui.jump.textContent='ジャンプ';ui.tongue.textContent='舌';shootingEvent=null;showPlace(q.place)},900);}
-  else{msg('時間切れ！');setTimeout(()=>{ui.jump.textContent='ジャンプ';ui.tongue.textContent='舌';shootingEvent=null;showPlace(q.place)},800);}
+  if(ok){
+    if(q.opponent){
+      const got=learnFromOpponent(q.opponent);
+      msg(got&&got.length?(got.join('・')+'を習得！'):'習得済み');
+    }else{
+      if(!saveData.unlockedSkills.includes(q.skillId))saveData.unlockedSkills.push(q.skillId);
+      if(q.skillId==='timeLag')saveData.timeLagUnlocked=true;
+      if(q.skillId==='timeStop')saveData.timeStopUnlocked=true;
+      saveGame();rebuildSkillSelects();msg(q.title+' 習得！');
+    }
+    setTimeout(()=>{ui.jump.textContent='ジャンプ';ui.tongue.textContent='舌';shootingEvent=null;showPlace(q.place)},950);
+  }else{
+    msg('時間切れ！ もう一度追いかけよう');
+    setTimeout(()=>{ui.jump.textContent='ジャンプ';ui.tongue.textContent='舌';shootingEvent=null;showPlace(q.place)},850);
+  }
+}
+function nearestOnEventPath(q,px,py){
+  let best={d:1e9,qx:px,qy:py};
+  for(let i=0;i<q.path.length;i++){
+    let a=q.path[i],b=q.path[(i+1)%q.path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy||1;
+    let t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);
+    if(d<best.d)best={d,qx,qy};
+  }
+  return best;
 }
 function updateShooting(dt){
-  const q=shootingEvent;if(!q||q.ended)return;q.time-=dt;if(q.time<=0){endShootingEvent(false);return;}
-  const r=q.player,o=q.enemy;let kx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),ky=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0),dx=joy.x||kx,dy=joy.y||ky,m=Math.hypot(dx,dy);
-  if(m>.08){dx/=m;dy/=m;r.face=Math.atan2(dy,dx);r.x+=dx*1200*dt;r.y+=dy*1200*dt;}
-  r.x=Math.max(350,Math.min(world.w-350,r.x));r.y=Math.max(350,Math.min(world.h-350,r.y));
-  let t=performance.now()/1000;o.x=4050+Math.cos(t*.85)*900;o.y=2200+Math.sin(t*1.15)*1200;o.face=Math.atan2(r.y-o.y,r.x-o.x);
-  q.enemyClock-=dt;if(q.enemyClock<=0){q.enemyClock=.9+Math.random()*.55;let ax=Math.atan2(r.y-o.y,r.x-o.x);q.enemyShots.push({kind:'bubble',x:o.x,y:o.y,vx:Math.cos(ax)*780,vy:Math.sin(ax)*780,owner:o,t:2.2});}
-  for(let i=q.shots.length-1;i>=0;i--){let e=q.shots[i];e.x+=e.vx*dt;e.y+=e.vy*dt;e.t-=dt;if(Math.hypot(e.x-o.x,e.y-o.y)<120){q.shots.splice(i,1);q.hits++;if(q.hits>=6){endShootingEvent(true);return;}}else if(e.t<=0)q.shots.splice(i,1);}
-  for(let i=q.enemyShots.length-1;i>=0;i--){let e=q.enemyShots[i];e.x+=e.vx*dt;e.y+=e.vy*dt;e.t-=dt;if(Math.hypot(e.x-r.x,e.y-r.y)<110){q.enemyShots.splice(i,1);q.time=Math.max(0,q.time-.8);}else if(e.t<=0)q.enemyShots.splice(i,1);}
+  const q=shootingEvent;if(!q||q.ended)return;
+  q.time-=dt;q.bubbleCd=Math.max(0,q.bubbleCd-dt);q.tongueCd=Math.max(0,q.tongueCd-dt);q.tongueFx=Math.max(0,q.tongueFx-dt);q.slow=Math.max(0,q.slow-dt);q.reverseCd=Math.max(0,q.reverseCd-dt);
+  if(q.time<=0){endShootingEvent(false);return;}
+  const r=q.player,o=q.enemy;
+  let kx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),ky=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0),dx=joy.x||kx,dy=joy.y||ky,m=Math.hypot(dx,dy);
+  if(m>.08){dx/=m;dy/=m;r.face=Math.atan2(dy,dx);r.x+=dx*930*dt;r.y+=dy*930*dt;}
+  // Keep the player in the annular race lane, but softly; chase or turn back are both valid.
+  let near=nearestOnEventPath(q,r.x,r.y),lane=360;
+  if(near.d>lane){let px=near.qx-r.x,py=near.qy-r.y,pd=Math.hypot(px,py)||1,pull=Math.min(near.d-lane,1450*dt);r.x+=px/pd*pull;r.y+=py/pd*pull;}
+  r.x=Math.max(300,Math.min(world.w-300,r.x));r.y=Math.max(300,Math.min(world.h-300,r.y));
+
+  // Target runs around the same ring. It occasionally reverses, especially when the player gets close.
+  let pd=Math.hypot(o.x-r.x,o.y-r.y);
+  if(q.reverseCd<=0&&pd<1050&&Math.random()<dt*.75){q.enemyDir*=-1;q.reverseCd=2.2;}
+  let enemySpeed=(q.slow>0?0.43:1)*(opponentSpeed(q.enemyName));
+  q.enemyAngle+=q.enemyDir*enemySpeed*dt;
+  let ep=capturePointOnRing(q,q.enemyAngle);o.x=ep.x;o.y=ep.y;
+  let tangent=q.enemyAngle+q.enemyDir*Math.PI/2;o.face=tangent;
+
+  for(let i=q.shots.length-1;i>=0;i--){
+    let e=q.shots[i];e.x+=e.vx*dt;e.y+=e.vy*dt;e.t-=dt;
+    if(Math.hypot(e.x-o.x,e.y-o.y)<115){q.shots.splice(i,1);q.slow=Math.max(q.slow,2.7);msg('泡弾ヒット！ 相手の動きが遅くなった');}
+    else if(e.t<=0)q.shots.splice(i,1);
+  }
+}
+function opponentSpeed(name){
+  if(name==='Azazel')return .58;if(name==='Belial')return .47;if(name==='Asmodeus')return .43;if(name==='Leviathan')return .52;
+  if(name==='Raphael')return .50;if(name==='Uriel')return .46;if(name==='Lucifer'||name==='Lilith'||name==='Beelzebub')return .52;
+  return .48;
 }
 function drawEventCreature(r,name){
  ctx.save();ctx.translate(r.x,r.y);ctx.rotate(r.face||0);ctx.lineWidth=5;ctx.strokeStyle='#263c37';
- if(name==='Leviathan'){ // piranha
+ if(name==='Leviathan'){
    ctx.fillStyle='#e45a4f';ctx.beginPath();ctx.ellipse(0,0,58,37,0,0,Math.PI*2);ctx.fill();ctx.stroke();
    ctx.beginPath();ctx.moveTo(-48,0);ctx.lineTo(-92,-38);ctx.lineTo(-88,38);ctx.closePath();ctx.fill();ctx.stroke();
    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(28,-14,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#111';ctx.beginPath();ctx.arc(32,-14,4,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle='#fff';for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(45,-13+i*9);ctx.lineTo(62,-8+i*9);ctx.lineTo(46,-3+i*9);ctx.fill();}
- }else if(name==='Asmodeus'){ // crayfish
+ }else if(name==='Asmodeus'){
    ctx.fillStyle='#d64b35';ctx.beginPath();ctx.ellipse(0,0,52,27,0,0,Math.PI*2);ctx.fill();ctx.stroke();
    for(const sy of [-1,1]){ctx.beginPath();ctx.moveTo(35,sy*18);ctx.lineTo(72,sy*42);ctx.lineTo(91,sy*29);ctx.lineTo(78,sy*12);ctx.closePath();ctx.fill();ctx.stroke();}
-   for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(-10+i*12,-22);ctx.lineTo(-22+i*12,-45);ctx.moveTo(-10+i*12,22);ctx.lineTo(-22+i*12,45);ctx.stroke();}
- }else if(name==='Azazel'){ // dragonfly
+ }else if(name==='Azazel'){
    ctx.fillStyle='#52a96b';ctx.beginPath();ctx.ellipse(0,0,55,14,0,0,Math.PI*2);ctx.fill();ctx.stroke();
    ctx.fillStyle='rgba(210,245,255,.9)';for(const sy of [-1,1])for(const bx of [-8,20]){ctx.beginPath();ctx.ellipse(bx,sy*28,37,13,sy*.45,0,Math.PI*2);ctx.fill();ctx.stroke();}
-   ctx.fillStyle='#73c95f';ctx.beginPath();ctx.arc(48,0,20,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#172';ctx.beginPath();ctx.arc(55,-8,5,0,Math.PI*2);ctx.arc(55,8,5,0,Math.PI*2);ctx.fill();
- }else{ // Belial: spider
+   ctx.fillStyle='#73c95f';ctx.beginPath();ctx.arc(48,0,20,0,Math.PI*2);ctx.fill();ctx.stroke();
+ }else{
    ctx.fillStyle='#49324f';ctx.beginPath();ctx.arc(0,0,34,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(38,0,24,0,Math.PI*2);ctx.fill();ctx.stroke();
    for(const sy of [-1,1])for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(-18+i*18,sy*22);ctx.lineTo(-35+i*22,sy*(42+i*5));ctx.lineTo(-18+i*25,sy*62);ctx.stroke();}
-   ctx.fillStyle='#f3eaff';ctx.beginPath();ctx.arc(48,-8,5,0,Math.PI*2);ctx.arc(48,8,5,0,Math.PI*2);ctx.fill();
  }
  ctx.restore();
 }
 function drawShooting(){
   const q=shootingEvent;if(!q)return;
   const oldPath=path,oldAnchors=anchors,oldLilies=lilies,oldTheme=courseTheme;
-  path=q.path;anchors=q.anchors;lilies=q.lilies;courseTheme=q.theme;
-  // Keep the exact race renderer, but use a closer camera instead of shrinking the whole 6000x4400 world.
-  const viewW=2700,viewH=viewW*(H/W),scale=W/viewW;
+  path=q.path;anchors=[];lilies=[];courseTheme=q.theme;
+  const viewW=3100,viewH=viewW*(H/W),scale=W/viewW;
   let cx=Math.max(0,Math.min(world.w-viewW,q.player.x-viewW/2));
   let cy=Math.max(0,Math.min(world.h-viewH,q.player.y-viewH/2));
   ctx.clearRect(0,0,W,H);ctx.save();ctx.scale(scale,scale);ctx.translate(-cx,-cy);
-  drawWorld();for(const e of q.shots)drawEffect(e);for(const e of q.enemyShots)drawEffect(e);drawRacer(q.player);drawEventCreature(q.enemy,q.enemyName);ctx.restore();
+  drawWorld();
+  for(const e of q.shots)drawEffect(e);
+  drawRacer(q.player);
+  if(q.enemyCreature)drawEventCreature(q.enemy,q.enemyName);else drawRacer(q.enemy);
+  if(q.slow>0){ctx.save();ctx.globalAlpha=.45;ctx.strokeStyle='#83e6ff';ctx.lineWidth=6;ctx.beginPath();ctx.arc(q.enemy.x,q.enemy.y,76,0,Math.PI*2);ctx.stroke();ctx.restore();}
+  if(q.tongueFx>0){
+    let m=tongueMouthPoint(q.player),o=q.enemy;
+    ctx.save();ctx.strokeStyle='#e86a91';ctx.lineWidth=10;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(m.x,m.y);ctx.quadraticCurveTo((m.x+o.x)/2,(m.y+o.y)/2+18,o.x,o.y);ctx.stroke();ctx.restore();
+  }
+  ctx.restore();
   path=oldPath;anchors=oldAnchors;lilies=oldLilies;courseTheme=oldTheme;
-  ctx.fillStyle='rgba(15,38,34,.84)';ctx.fillRect(W/2-155,14,310,46);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 19px sans-serif';ctx.fillText(`HIT ${q.hits}/6　TIME ${Math.max(0,q.time).toFixed(1)}`,W/2,44);
+  ctx.fillStyle='rgba(15,38,34,.86)';ctx.fillRect(W/2-205,14,410,48);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 18px sans-serif';
+  ctx.fillText(`CATCH ${q.catches}/${q.need}　TIME ${Math.max(0,q.time).toFixed(1)}${q.slow>0?'　SLOW':''}`,W/2,45);
 }
 function applySelectedCharacter(){
   controlledIndex=saveData.selectedCharacter==='Michael'?0:1;
@@ -1247,9 +1319,9 @@ function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;if(appState===
 }else{ctx.clearRect(0,0,W,H);}requestAnimationFrame(loop)}
 function norm(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a}function approach(a,b,d){return a<b?Math.min(b,a+d):Math.max(b,a-d)}function lerpAngle(a,b,t){return a+norm(b-a)*t}
 // input
-addEventListener('keydown',e=>{keys[e.key]=true;if(e.code==='Space'){e.preventDefault();if(appState==='shooting')shootingFire();else pressJump(racers[controlledIndex])}if(e.key==='e'){if(appState==='shooting')shootingFire();else startTongue(racers[controlledIndex]);}if(e.key==='j'){if(appState==='shooting')shootingFire();else useA(racers[controlledIndex]);}if(e.key==='k'){if(appState==='shooting')shootingFire();else{let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r);}}});addEventListener('keyup',e=>{keys[e.key]=false;if(e.key==='e')endTongue(racers[controlledIndex]);if(e.key==='k'&&racers[controlledIndex].name==='Lucifer')releaseChargeBoost(racers[controlledIndex])});
+addEventListener('keydown',e=>{keys[e.key]=true;if(e.code==='Space'){e.preventDefault();if(appState==='shooting')shootingFire();else pressJump(racers[controlledIndex])}if(e.key==='e'){if(appState==='shooting')shootingTongue();else startTongue(racers[controlledIndex]);}if(e.key==='j'){if(appState==='shooting')shootingFire();else useA(racers[controlledIndex]);}if(e.key==='k'){if(appState==='shooting')shootingFire();else{let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r);}}});addEventListener('keyup',e=>{keys[e.key]=false;if(e.key==='e')endTongue(racers[controlledIndex]);if(e.key==='k'&&racers[controlledIndex].name==='Lucifer')releaseChargeBoost(racers[controlledIndex])});
 function bindPress(el,down,up){el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture?.(e.pointerId);down()});el.addEventListener('pointerup',e=>{e.preventDefault();up?.()});el.addEventListener('pointercancel',()=>up?.())}
-bindPress(ui.jump,()=>appState==='shooting'?shootingFire():pressJump(racers[controlledIndex]));bindPress(ui.tongue,()=>appState==='shooting'?shootingFire():startTongue(racers[controlledIndex]),()=>{if(appState!=='shooting')endTongue(racers[controlledIndex])});bindPress(ui.a,()=>appState==='shooting'?shootingFire():useA(racers[controlledIndex]));bindPress(ui.b,()=>{if(appState==='shooting')shootingFire();else{let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r)}},()=>{if(appState!=='shooting'){let r=racers[controlledIndex];if(r.name==='Lucifer')releaseChargeBoost(r)}});
+bindPress(ui.jump,()=>appState==='shooting'?shootingFire():pressJump(racers[controlledIndex]));bindPress(ui.tongue,()=>appState==='shooting'?shootingTongue():startTongue(racers[controlledIndex]),()=>{if(appState!=='shooting')endTongue(racers[controlledIndex])});bindPress(ui.a,()=>appState==='shooting'?shootingFire():useA(racers[controlledIndex]));bindPress(ui.b,()=>{if(appState==='shooting')shootingFire();else{let r=racers[controlledIndex];if(r.name==='Lucifer')startChargeBoost(r);else useB(r)}},()=>{if(appState!=='shooting'){let r=racers[controlledIndex];if(r.name==='Lucifer')releaseChargeBoost(r)}});
 ui.stick.addEventListener('pointerdown',e=>{joy.id=e.pointerId;ui.stick.setPointerCapture(e.pointerId);setJoy(e)});ui.stick.addEventListener('pointermove',e=>{if(e.pointerId===joy.id)setJoy(e)});ui.stick.addEventListener('pointerup',e=>{if(e.pointerId===joy.id){joy={id:null,x:0,y:0};moveKnob()}});ui.stick.addEventListener('pointercancel',()=>{joy={id:null,x:0,y:0};moveKnob()});
 function setJoy(e){let r=ui.stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=e.clientX-cx,dy=e.clientY-cy,m=Math.hypot(dx,dy),rad=r.width*.36;if(m>rad){dx*=rad/m;dy*=rad/m}joy.x=dx/rad;joy.y=dy/rad;moveKnob(dx,dy)}function moveKnob(dx=0,dy=0){let i=ui.stick.querySelector('i');i.style.transform=`translate(${dx}px,${dy}px)`}
 requestAnimationFrame(loop);
