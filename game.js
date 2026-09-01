@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.41';
+const VERSION='v2.42';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -434,23 +434,23 @@ const COURSE_SETS={
   {name:'古代迷走路',theme:'master',halfWidth:215,extraAnchors:[[1900,800],[3000,1100],[4300,850],[4450,1900],[3500,2350],[4600,3150],[3000,3500],[1600,3300],[1050,2300]],path:[[700,700],[1900,500],[3000,1050],[4300,500],[5100,1100],[4500,1850],[3300,1500],[2700,2200],[3500,2700],[4900,2400],[5200,3300],[4000,3900],[2600,3500],[1300,3900],[600,3000],[1100,2300],[600,1500]]},
   {name:'遺跡ダウンヒル',theme:'master',pointToPoint:true,halfWidth:225,extraAnchors:[[1450,800],[2150,1150],[1700,1600],[2750,1950],[2200,2400],[3400,2750],[2950,3250],[4200,3500]],path:[[650,550],[1500,550],[2200,900],[1650,1250],[2450,1600],[1800,2050],[2900,2350],[2250,2800],[3500,3100],[3000,3550],[4300,3800],[5200,3450]]}
  ],
- akina:[{name:'アキナ山・下り（座標第一稿）',theme:'akina',pointToPoint:true,halfWidth:92,
- worldOverride:{w:10000,h:10000},originBottomLeft:true,courseDraft:true,extraAnchors:[],
+ akina:[{name:'アキナ山・下り（座標第二稿）',theme:'akina',pointToPoint:true,halfWidth:170,
+ worldOverride:{w:20000,h:20000},originBottomLeft:true,courseDraft:true,courseScale:2,extraAnchors:[],
  path:[
   [900,0],[1050,450],[1200,950],[1450,1450],[1700,1900],[1450,2200],[1050,2500],
   [750,2850],[650,3200],[800,3500],[1100,3650],[1450,3450],[1750,3150],[2050,2850],
-  [2250,2600],[2300,2350],[2150,2200],[1950,2300],[1800,2600],[1850,2950],[2050,3250],
-  [2300,3450],[2500,3600],[2650,3450],[2550,3150],[2400,2900],[2750,3300],[3200,3550],
+  [2250,2600],[2300,2350],[2150,2200],[1950,2400],[1800,2700],[1850,3050],[2050,3350],
+  [2300,3550],[2500,3700],[2650,3450],[2550,3150],[2400,2900],[2750,3300],[3200,3550],
   [3650,3800],[4100,4050],[4550,4200],[4850,4400],[5000,4650],[4850,4900],[4450,5100],
   [3950,5200],[3400,5250],[2900,5250],[2450,5200],[2200,5000],[2100,4700],[2200,4450],
-  [2450,4350],[2800,4500],[3200,4550],[3600,4500],[4000,4550],[4300,4450],[4650,4250],
-  [5000,4100],[5300,4150],[5450,4350],[5300,4600],[5000,4800],[4750,5000],[4650,5350],
-  [4550,5700],[4300,5900],[4050,6050],[3950,6300],[4000,6600],[4200,6750],[4350,6600],
-  [4300,6400],[4150,6250],[3950,6350],[3850,6600],[3900,6900],[4050,7050],[4200,6950],
+  [2450,4350],[2800,4500],[3200,4550],[3700,4200],[4100,4250],[4400,4150],[4750,3950],
+  [5100,3800],[5400,3850],[5450,4350],[5300,4600],[5000,4800],[4750,5000],[4650,5350],
+  [4550,5700],[4300,5900],[4050,6050],[3950,6300],[4000,6600],[4200,6750],[4250,6600],
+  [4200,6400],[4050,6250],[3850,6350],[3750,6600],[3800,6900],[4050,7050],[4200,6950],
   [4250,6750],[4400,6650],[4550,6800],[4500,7050],[4650,7300],[4800,7550],[5000,7850],
   [5200,8200],[5400,8550],[5450,8900],[5300,9200],[4950,9400],[4500,9500],[4000,9550],
-  [3650,9500],[3450,9350],[3500,9150],[3800,9000],[4200,8900],[4650,8800],[5000,8650],
-  [5250,8400],[5350,8100],[5550,7900],[5850,8000],[6100,8200],[6350,8050],[6550,7700],
+  [3650,9500],[3450,9350],[3500,9150],[3800,9000],[4200,8900],[4850,8900],[5200,8750],
+  [5450,8500],[5550,8200],[5750,8000],[6050,8100],[6100,8200],[6350,8050],[6550,7700],
   [6750,7450],[6950,7550],[7150,7900],[7350,8150],[7550,8000],[7750,7650],[7950,7400],
   [8150,7550],[8300,7900],[8450,8250],[8600,8400],[8750,8200],[8850,7850],[9000,7650],
   [9150,7800],[9300,8050],[9500,8250],[9750,8350],[10000,8400]
@@ -500,7 +500,8 @@ function selectCourse(place,round=0){
  let set=COURSE_SETS[place]||COURSE_SETS.arena1,order=COURSE_ORDER[place]||set.map((_,i)=>i),idx=order[round%order.length]%set.length;
  activeCourse=set[idx];courseTheme=activeCourse.theme;courseHalfWidth=activeCourse.halfWidth||195;courseNoWalls=false;
  world.w=activeCourse.worldOverride?.w||DEFAULT_WORLD.w;world.h=activeCourse.worldOverride?.h||DEFAULT_WORLD.h;
- const cv=([x,y])=>({x,y:activeCourse.originBottomLeft?world.h-y:y});
+ const cs=activeCourse.courseScale||1,sourceH=activeCourse.originBottomLeft?(world.h/cs):world.h;
+ const cv=([x,y])=>({x:x*cs,y:(activeCourse.originBottomLeft?(sourceH-y):y)*cs});
  courseBranches=(activeCourse.branches||[]).map(br=>br.map(cv));path=activeCourse.path.map(cv);rebuildCourseObjects();
 }
 rebuildCourseObjects();
@@ -772,7 +773,7 @@ function drawWorld(){
  const drawRoute=(pts,closed=true)=>{ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);if(closed)ctx.closePath();ctx.stroke();};
  // Every race corridor has a visible inner frame. Courses that were "open" are framed again
  // because losing the inside boundary makes the route unreadable and creates accidental cuts.
- ctx.strokeStyle=pal.grass;ctx.lineWidth=courseHalfWidth*2+(courseTheme==='akina'?22:70);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
+ ctx.strokeStyle=pal.grass;ctx.lineWidth=courseHalfWidth*2+(courseTheme==='akina'?36:70);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
  ctx.strokeStyle=pal.inner;ctx.lineWidth=courseHalfWidth*2;drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
  drawGrassBlades();
  ctx.strokeStyle=courseTheme==='akina'?'rgba(245,245,235,.72)':'rgba(255,255,255,.16)';ctx.lineWidth=courseTheme==='akina'?5:3;ctx.setLineDash(courseTheme==='akina'?[34,42]:[18,46]);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);ctx.setLineDash([]);
@@ -933,7 +934,8 @@ function drawRacer(r){
  ctx.save();ctx.globalAlpha=r.flight===0?.18:.11;ctx.fillStyle='#163e35';ctx.beginPath();ctx.ellipse(r.x,r.y+27,28+(r.flight?4:0),11,0,0,Math.PI*2);ctx.fill();ctx.restore();
  ctx.save();
  ctx.translate(r.x + Math.cos(r.face)*lean, r.y + Math.sin(r.face)*lean - lift);
- ctx.scale(poseScale,poseScale);
+ const courseCharScale=courseTheme==='akina'?.78:1;
+ ctx.scale(poseScale*courseCharScale,poseScale*courseCharScale);
  let a=norm(r.face),dir=Math.abs(a)<Math.PI/4?'right':Math.abs(a)>Math.PI*3/4?'left':a<0?'up':'down';
  // During the second jump, make the entire wing/body silhouette pulse with rapid flaps.
  if(r.flight===2){let flap=Math.sin(now*18);ctx.scale(1+.035*flap,1-.025*flap);}
