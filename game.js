@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.29';
+const VERSION='v2.30';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
