@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.44';
+const VERSION='v2.45';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -434,22 +434,29 @@ const COURSE_SETS={
   {name:'古代迷走路',theme:'master',halfWidth:215,extraAnchors:[[1900,800],[3000,1100],[4300,850],[4450,1900],[3500,2350],[4600,3150],[3000,3500],[1600,3300],[1050,2300]],path:[[700,700],[1900,500],[3000,1050],[4300,500],[5100,1100],[4500,1850],[3300,1500],[2700,2200],[3500,2700],[4900,2400],[5200,3300],[4000,3900],[2600,3500],[1300,3900],[600,3000],[1100,2300],[600,1500]]},
   {name:'遺跡ダウンヒル',theme:'master',pointToPoint:true,halfWidth:225,extraAnchors:[[1450,800],[2150,1150],[1700,1600],[2750,1950],[2200,2400],[3400,2750],[2950,3250],[4200,3500]],path:[[650,550],[1500,550],[2200,900],[1650,1250],[2450,1600],[1800,2050],[2900,2350],[2250,2800],[3500,3100],[3000,3550],[4300,3800],[5200,3450]]}
  ],
- akina:[{name:'アキナ山・下り（座標第三稿）',theme:'akina',pointToPoint:true,halfWidth:170,
- worldOverride:{w:20000,h:20000},originBottomLeft:true,courseDraft:true,courseScale:2,extraAnchors:[],
+ akina:[{name:'アキナ山・下り（113点精密稿）',theme:'akina',pointToPoint:true,halfWidth:58,
+ worldOverride:{w:20000,h:20000},originBottomLeft:true,courseDraft:true,
+ spline:'centripetal',splineAlpha:.5,splineTension:.38,splineSteps:7,extraAnchors:[],
  path:[
-  [900,0],[950,500],[1050,1000],[1200,1450],[1500,1900],[1250,2150],[900,2400],
-  [700,2650],[650,2850],[850,3050],[1200,3200],[1550,3350],[1900,3500],[2200,3650],
-  [2050,3800],[1800,3950],[1900,4100],[2200,4250],[2600,4400],[3100,4550],[3600,4700],
-  [4100,4850],[4550,5000],[4900,5150],[5000,5300],[4800,5450],[4400,5550],[3950,5600],
-  [3500,5650],[3050,5700],[2600,5750],[2300,5850],[2150,6000],[2300,6150],[2650,6250],
-  [3100,6300],[3550,6350],[4000,6400],[4450,6450],[4850,6500],[5200,6600],[5050,6750],
-  [4750,6875],[4550,7000],[4400,7125],[4550,7250],[4750,7375],[4600,7500],[4350,7625],
-  [4500,7750],[4750,7875],[5000,8000],[5200,8125],[5400,8250],[5550,8375],[5450,8500],
-  [5200,8625],[4850,8750],[4450,8875],[4050,8950],[3700,9025],[3500,9150],[3650,9275],
-  [4000,9350],[4400,9400],[4850,9450],[5250,9500],[5550,9400],[5850,9250],[6150,9100],
-  [6400,8950],[6650,8800],[6900,8650],[7150,8500],[7400,8350],[7650,8200],[7900,8050],
-  [8150,7900],[8400,7750],[8650,7650],[8900,7700],[9150,7850],[9400,8050],[9650,8250],
-  [10000,8400]
+  [2662,1000],[2762,1615],[3609,3078],[3659,3410],[3510,3643],[2712,4274],
+  [2197,4906],[2064,5471],[2263,5986],[2446,5903],[2429,5421],[2629,5055],
+  [3360,4391],[4191,4058],[4324,3842],[4374,3460],[4524,3443],[4590,3510],
+  [4540,4025],[4158,4706],[3925,6285],[4058,6501],[4590,6917],[5139,7848],
+  [5288,7947],[5488,7898],[5321,7332],[5504,7332],[8263,9078],[9676,9476],
+  [10008,9693],[10125,9875],[10008,10141],[9576,10391],[9443,10740],[9327,10839],
+  [8546,10640],[7798,10740],[7183,10573],[6867,10573],[6418,10673],[6069,11072],
+  [5837,11172],[5521,11039],[5321,10756],[5155,10839],[5305,11222],[5604,11404],
+  [6285,11488],[6784,11720],[7233,11820],[8778,11720],[9643,11920],[10474,11471],
+  [11155,11321],[11620,11039],[11853,11055],[11687,11371],[11188,11670],[10424,11953],
+  [10224,12119],[10158,12285],[10208,13116],[10091,13283],[8911,13432],[8629,13798],
+  [8546,15011],[8596,15593],[8745,15659],[8911,15560],[8994,15859],[9161,15925],
+  [9343,15343],[9526,15310],[9576,15593],[9443,16357],[9875,17321],[10125,17338],
+  [10141,16789],[10208,16640],[10357,16640],[10623,17371],[11338,18019],[11271,18235],
+  [10274,18452],[9842,18668],[9759,18751],[9759,18900],[9925,19000],[10524,19000],
+  [13349,18468],[13565,18269],[13648,17870],[13233,17321],[13183,16640],[13266,16307],
+  [13399,16224],[13748,16224],[14463,16773],[14795,16740],[15028,16557],[15609,15460],
+  [15792,15294],[15942,15310],[16075,15460],[16141,16075],[16640,17105],[16839,17105],
+  [17139,15975],[17338,15792],[17488,15776],[17687,15892],[17936,16540]
  ]}],
  master:[
   {name:'魔王環状路',theme:'master',path:[[2800,500],[3800,520],[5100,900],[5300,1700],[4700,2250],[3600,1900],[2900,2350],[3550,3000],[5000,3000],[5200,3450],[4100,3950],[2600,3850],[1250,3500],[600,2800],[700,1850],[1350,1250],[700,700],[2100,480]]},
@@ -492,13 +499,43 @@ const COURSE_ORDER={
  kawazu:[0],
  akina:[0]
 };
+
+function sampleCentripetalPath(ctrl,steps=7,alpha=.5,tension=.38){
+  if(!ctrl||ctrl.length<2)return ctrl||[];
+  const out=[];
+  const distPow=(a,b)=>Math.pow(Math.max(1e-6,Math.hypot(b.x-a.x,b.y-a.y)),alpha);
+  const lerpPt=(a,b,t)=>({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
+  for(let i=0;i<ctrl.length-1;i++){
+    const p0=ctrl[Math.max(0,i-1)],p1=ctrl[i],p2=ctrl[i+1],p3=ctrl[Math.min(ctrl.length-1,i+2)];
+    const t0=0,t1=t0+distPow(p0,p1),t2=t1+distPow(p1,p2),t3=t2+distPow(p2,p3);
+    if(i===0)out.push({x:p1.x,y:p1.y});
+    for(let k=1;k<=steps;k++){
+      const u=k/steps,t=t1+(t2-t1)*u;
+      const A1=(t1-t0)<1e-8?{...p1}:lerpPt(p0,p1,(t-t0)/(t1-t0));
+      const A2=lerpPt(p1,p2,(t-t1)/(t2-t1));
+      const A3=(t3-t2)<1e-8?{...p2}:lerpPt(p2,p3,(t-t2)/(t3-t2));
+      const B1=lerpPt(A1,A2,(t-t0)/(t2-t0));
+      const B2=lerpPt(A2,A3,(t-t1)/(t3-t1));
+      let C=lerpPt(B1,B2,(t-t1)/(t2-t1));
+      // Blend back toward the original chord to limit overshoot in tight hairpins.
+      const chord=lerpPt(p1,p2,u),blend=Math.max(0,Math.min(1,tension));
+      C={x:chord.x+(C.x-chord.x)*blend,y:chord.y+(C.y-chord.y)*blend};
+      out.push(C);
+    }
+  }
+  return out;
+}
 function selectCourse(place,round=0){
  let set=COURSE_SETS[place]||COURSE_SETS.arena1,order=COURSE_ORDER[place]||set.map((_,i)=>i),idx=order[round%order.length]%set.length;
  activeCourse=set[idx];courseTheme=activeCourse.theme;courseHalfWidth=activeCourse.halfWidth||195;courseNoWalls=false;
  world.w=activeCourse.worldOverride?.w||DEFAULT_WORLD.w;world.h=activeCourse.worldOverride?.h||DEFAULT_WORLD.h;
- const cs=activeCourse.courseScale||1,sourceH=activeCourse.originBottomLeft?(world.h/cs):world.h;
- const cv=([x,y])=>({x:x*cs,y:(activeCourse.originBottomLeft?(sourceH-y):y)*cs});
- courseBranches=(activeCourse.branches||[]).map(br=>br.map(cv));path=activeCourse.path.map(cv);rebuildCourseObjects();
+ const cv=([x,y])=>({x,y:activeCourse.originBottomLeft?world.h-y:y});
+ courseBranches=(activeCourse.branches||[]).map(br=>br.map(cv));
+ const control=activeCourse.path.map(cv);
+ path=activeCourse.spline==='centripetal'
+   ?sampleCentripetalPath(control,activeCourse.splineSteps||7,activeCourse.splineAlpha??.5,activeCourse.splineTension??.38)
+   :control;
+ rebuildCourseObjects();
 }
 rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false,raceStartDelay=0;
@@ -769,7 +806,7 @@ function drawWorld(){
  const drawRoute=(pts,closed=true)=>{ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);if(closed)ctx.closePath();ctx.stroke();};
  // Every race corridor has a visible inner frame. Courses that were "open" are framed again
  // because losing the inside boundary makes the route unreadable and creates accidental cuts.
- ctx.strokeStyle=pal.grass;ctx.lineWidth=courseHalfWidth*2+(courseTheme==='akina'?36:70);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
+ ctx.strokeStyle=pal.grass;ctx.lineWidth=courseHalfWidth*2+(courseTheme==='akina'?14:70);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
  ctx.strokeStyle=pal.inner;ctx.lineWidth=courseHalfWidth*2;drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
  drawGrassBlades();
  ctx.strokeStyle=courseTheme==='akina'?'rgba(245,245,235,.72)':'rgba(255,255,255,.16)';ctx.lineWidth=courseTheme==='akina'?5:3;ctx.setLineDash(courseTheme==='akina'?[34,42]:[18,46]);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);ctx.setLineDash([]);
