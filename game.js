@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.47';
+const VERSION='v2.48';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -764,8 +764,26 @@ function draw(){
  let me=racers[controlledIndex],timeFx=globalTimeStop>0?'stop':(globalTimeLag>0?'lag':'');
  camera.x=approach(camera.x,me.x-W/2,.16*W);camera.y=approach(camera.y,me.y-H/2,.16*H);camera.x=Math.max(0,Math.min(world.w-W,camera.x));camera.y=Math.max(0,Math.min(world.h-H,camera.y));ctx.clearRect(0,0,W,H);
  ctx.save();ctx.translate(-camera.x,-camera.y);
- if(timeFx){ctx.save();ctx.filter=timeFx==='stop'?'grayscale(88%) saturate(45%) hue-rotate(165deg) brightness(.88)':'grayscale(45%) saturate(65%) hue-rotate(155deg) brightness(.94)';drawWorld();for(const e of effects)if(e.owner!==me)drawEffect(e);for(const r of racers)if(r!==me)drawRacer(r);ctx.restore();for(const e of effects)if(e.owner===me)drawEffect(e);drawRacer(me);}
- else{drawWorld();for(const e of effects)drawEffect(e);for(const r of racers)drawRacer(r);}
+ if(timeFx){
+   // Do NOT use Canvas ctx.filter here. On large courses (especially Akina) filter
+   // forces expensive full-scene raster processing and makes the controllable racer
+   // appear to move in frame-steps. Draw the frozen/slowed world normally instead.
+   drawWorld();
+   for(const e of effects)if(e.owner!==me)drawEffect(e);
+   for(const r of racers)if(r!==me)drawRacer(r);
+
+   // Tint only the already-drawn surroundings/opponent. The player is drawn AFTER
+   // this veil, so its color and animation remain completely normal and smooth.
+   ctx.save();
+   ctx.fillStyle=timeFx==='stop'?'rgba(24,73,130,.30)':'rgba(45,96,145,.18)';
+   ctx.fillRect(camera.x,camera.y,W,H);
+   ctx.restore();
+
+   for(const e of effects)if(e.owner===me)drawEffect(e);
+   drawRacer(me);
+ }else{
+   drawWorld();for(const e of effects)drawEffect(e);for(const r of racers)drawRacer(r);
+ }
  ctx.restore();
  if(timeFx)drawTimeEffectOverlay(timeFx);
  drawMini();updateHud(me);
@@ -773,17 +791,12 @@ function draw(){
 }
 function drawTimeEffectOverlay(mode){
  ctx.save();
- const stop=mode==='stop',pulse=.5+.5*Math.sin(performance.now()/(stop?90:150));
- ctx.fillStyle=stop?`rgba(30,90,160,${.12+.06*pulse})`:`rgba(65,125,185,${.07+.035*pulse})`;ctx.fillRect(0,0,W,H);
- ctx.strokeStyle=stop?`rgba(205,235,255,${.52+.25*pulse})`:`rgba(210,240,255,${.26+.14*pulse})`;ctx.lineWidth=stop?5:3;
+ const stop=mode==='stop';
+ ctx.strokeStyle=stop?'rgba(205,235,255,.68)':'rgba(210,240,255,.38)';ctx.lineWidth=stop?5:3;
  ctx.strokeRect(7,7,W-14,H-14);
  ctx.font=stop?'bold 28px sans-serif':'bold 21px sans-serif';ctx.textAlign='center';ctx.textBaseline='top';
- ctx.fillStyle=stop?'rgba(235,248,255,.94)':'rgba(232,247,255,.72)';
+ ctx.fillStyle=stop?'rgba(235,248,255,.96)':'rgba(232,247,255,.78)';
  ctx.fillText(stop?'TIME STOP':'TIME LAG',W/2,18);
- if(stop){
-   ctx.globalAlpha=.22+.12*pulse;
-   for(let i=0;i<7;i++){let y=70+i*(H-140)/6;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
- }
  ctx.restore();
 }
 function drawWorld(){
