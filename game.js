@@ -870,6 +870,7 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
        let side=a.turnSide||1,nx=-Math.sin(fa)*side,ny=Math.cos(fa)*side;
        const edge=Math.max(42,Math.min(courseHalfWidth*.62,150));
        let tx=ns.qx+Math.cos(fa)*82+nx*edge,ty=ns.qy+Math.sin(fa)*82+ny*edge;
+       if(!Number.isFinite(tx)||!Number.isFinite(ty)){tx=r.x+Math.cos(fa)*70+nx*edge;ty=r.y+Math.sin(fa)*70+ny*edge;}
        let dd=Math.hypot(tx-r.x,ty-r.y)||1;
        if(dd>220){tx=r.x+(tx-r.x)/dd*220;ty=r.y+(ty-r.y)/dd*220;}
        a.x+=(tx-a.x)*Math.min(1,dt*7);a.y+=(ty-a.y)*Math.min(1,dt*7);
@@ -1031,44 +1032,56 @@ function useMichaelSkill(r,id,slot){
  return false;
 }
 function useA(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Takumi'){if(r.skillCdA>0)return;
-   // 溝落とし: determine the bend from AGGREGATED heading change over road distance.
-   // Akina uses a dense spline, so checking one sampled segment at a time can report
-   // almost zero turn even in a hairpin and made the skill appear completely dead.
-   let ns=nearestTrackSegment(r.x,r.y),n=path.length,best=null;
-   let i=ns.i,p0=path[i],p1=path[activeCourse.pointToPoint?Math.min(n-1,i+1):(i+1)%n];
-   let entryAng=Math.atan2(p1.y-p0.y,p1.x-p0.x),travel=0,last=i;
-   for(let step=1;step<=36;step++){
-     let ni=activeCourse.pointToPoint?Math.min(n-2,i+step):(i+step)%n;
-     if(activeCourse.pointToPoint&&ni>=n-1)break;
-     let a0=path[ni],b0=path[activeCourse.pointToPoint?Math.min(n-1,ni+1):(ni+1)%n];
+   // 溝落とし: ALWAYS create a local tongue grip.  Bend detection is used only
+   // to decide which side is "inside"; it must never be allowed to cancel the skill.
+   let ns=nearestTrackSegment(r.x,r.y),n=path.length,i=ns.i;
+   let ni=activeCourse.pointToPoint?Math.min(n-1,i+1):(i+1)%n;
+   let p0=path[i],p1=path[ni];
+   if(!p0||!p1)return;
+   let entryAng=Math.atan2(p1.y-p0.y,p1.x-p0.x);
+   let totalTurn=0,travel=0,lastAng=entryAng,lastPt={x:ns.qx,y:ns.qy};
+
+   // Accumulate many tiny spline turns. This works on both ordinary courses and
+   // Akina's very dense Catmull-Rom samples.
+   for(let step=0;step<72&&travel<1400;step++){
+     let si=activeCourse.pointToPoint?Math.min(n-2,i+step):(i+step)%n;
+     if(activeCourse.pointToPoint&&si>=n-1)break;
+     let a0=path[si],sj=activeCourse.pointToPoint?Math.min(n-1,si+1):(si+1)%n,b0=path[sj];
      if(!a0||!b0)break;
-     if(step>1){
-       let prev=path[last],cur=a0;
-       travel+=Math.hypot(cur.x-prev.x,cur.y-prev.y);
-     }else{
-       travel+=Math.hypot(a0.x-ns.qx,a0.y-ns.qy);
-     }
-     last=ni;
-     let outAng=Math.atan2(b0.y-a0.y,b0.x-a0.x),turn=norm(outAng-entryAng);
-     if(travel>=90&&Math.abs(turn)>.12){best={i:ni,turn,ia:entryAng,oa:outAng};break;}
-     if(travel>760)break;
+     let ang=Math.atan2(b0.y-a0.y,b0.x-a0.x);
+     if(step>0)totalTurn+=norm(ang-lastAng);
+     travel+=Math.hypot(a0.x-lastPt.x,a0.y-lastPt.y);
+     lastAng=ang;lastPt=a0;
+     if(Math.abs(totalTurn)>.28&&travel>120)break;
    }
-   if(!best){
-     // Always give immediate feedback, but do not create an unsafe fake grab on a straight.
-     r.skillCdA=.18;msg('溝落とし：カーブの内側で使う！');return;
+
+   let side=Math.sign(totalTurn);
+   if(!side){
+     // On a nearly straight section, use the player's intended steering side so
+     // pressing A still visibly responds instead of feeling broken.
+     let inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),steer=norm(want-entryAng);
+     side=Math.sign(steer)||1;
    }
-   let side=Math.sign(best.turn)||1;
-   let ex=-Math.sin(entryAng)*side,ey=Math.cos(entryAng)*side;
-   // The tongue itself stays very local and visible even though bend detection looks ahead.
-   let along=72;
-   let tx=r.x+Math.cos(entryAng)*along+ex*Math.max(38,Math.min(courseHalfWidth*.56,132));
-   let ty=r.y+Math.sin(entryAng)*along+ey*Math.max(38,Math.min(courseHalfWidth*.56,132));
+
+   const nx=-Math.sin(entryAng)*side,ny=Math.cos(entryAng)*side;
+   const edge=Math.max(36,Math.min(courseHalfWidth*.54,126));
+   let tx=r.x+Math.cos(entryAng)*70+nx*edge;
+   let ty=r.y+Math.sin(entryAng)*70+ny*edge;
    let td=Math.hypot(tx-r.x,ty-r.y)||1;
-   if(td>190){tx=r.x+(tx-r.x)/td*190;ty=r.y+(ty-r.y)/td*190;}
+   if(td>185){tx=r.x+(tx-r.x)/td*185;ty=r.y+(ty-r.y)/td*185;}
+
    let target={x:tx,y:ty,virtualWall:true,slide:true,turnSide:side};
-   r.skillCdA=.72;r.tongue={kind:'gutter',target,started:performance.now()-220,side:side>0?-1:1};
-   r.speed=Math.max(r.speed,485);r.wallGrace=Math.max(r.wallGrace,.18);msg('溝落とし！ 内側を舌で滑らせる！');
-   setTimeout(()=>{if(r.tongue?.kind==='gutter'&&r.tongue.target===target){r.boost=.28;r.tongue=null;}},700);
+   r.skillCdA=.70;
+   r.tongue={kind:'gutter',target,started:performance.now()-180,side:side>0?-1:1};
+   r.speed=Math.max(r.speed,480);
+   r.wallGrace=Math.max(r.wallGrace,.20);
+   msg('溝落とし！ 内側を舌で滑らせる！');
+
+   setTimeout(()=>{
+     if(r.tongue?.kind==='gutter'&&r.tongue.target===target){
+       r.boost=.26;r.tongue=null;
+     }
+   },720);
    return;}if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillA||(r.name==='Kawazu'?'airSwim':'punch'),'A');return;}if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
  if(r.name==='Gabriel'){waterBoost(r,false);return;}
  if(r.name==='Beelzebub'){r.skillCdA=1.45;let o=racers[1-r.index],aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'poison',x:r.x,y:r.y,vx:Math.cos(aim)*980,vy:Math.sin(aim)*980,owner:r,t:1.65,age:0});msg('毒液！');return;}
