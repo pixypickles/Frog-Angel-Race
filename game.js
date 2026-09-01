@@ -163,7 +163,7 @@ function showPlace(place){
     pond:['🪷 池','ピラニアのリヴァイアさん、ザリガニのアスモデウスさんがいる池。'],
     master:['👑 マスタークラス','ベルゼブブさんが待つ高難度クラス。'],
     kawazu:['🐸 カワズさん','クリア後に現れる謎の高速カエル。'],
-    akina:saveData.takumiUnlocked?['🍁 アキナ山','左下原点10000×10000の座標第一稿。近接する道路が十字路に見えないよう、アキナ山だけ道幅を細く調整しています。']:['❓ ？？？','地図に名前のない一本道。白黒の翼を持つ速いカエルが待っている……。']
+    akina:saveData.takumiUnlocked?['🍁 アキナ山','あのコースを思わせる、長い下りの峠道。高速コーナーと連続ヘアピンが待っている。']:['❓ ？？？','地図に名前のない一本道。白黒の翼を持つ速いカエルが待っている……。']
   }[place];
   document.querySelector('#placeTitle').textContent=data[0];
   document.querySelector('#placeDesc').textContent=data[1];
@@ -721,7 +721,7 @@ rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false,raceStartDelay=0;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
-function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0,aiPathIndex:0,aiWallHits:0,aiWallHitTimer:0,aiBend:0,aiAssist:0,wingSnap:0,drifting:false,driftCharge:0,driftMoveFace:0,driftSide:0,driftFxClock:0,driftGhosts:[],gutterPullX:0,gutterPullY:0};}
+function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,glideExtendStock:false,glideExtendUsed:false,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0,aiPathIndex:0,aiWallHits:0,aiWallHitTimer:0,aiBend:0,aiAssist:0,wingSnap:0,drifting:false,driftCharge:0,driftMoveFace:0,driftSide:0,driftFxClock:0,driftGhosts:[],gutterPullX:0,gutterPullY:0};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
 function reset(opponentName='Plain'){
  globalTimeStop=0;globalTimeLag=0;
@@ -755,11 +755,18 @@ function reset(opponentName='Plain'){
 function snapWings(r){if(r)r.wingSnap=.19;}
 function pressJump(r){if(appState==='race'&&raceStartDelay>0)return;if(r.finished)return;snapWings(r);if(r.flight===0){r.flight=1;r.onGround=false;r.speed=Math.max(r.speed,285);r.wing=.2;r.jumpAge=0;r.flapAge=0;msg('ジャンプ！ もう一度で羽ばたき');}
 else if(r.flight===1){r.flight=2;r.speed=Math.max(r.speed,405);r.wing=.55;r.flapAge=0;msg('羽ばたき加速！ もう一度で滑空');}
-else if(r.flight===2){r.flight=3;r.glideClock=0;r.glideGrace=0;r.speed=Math.max(r.speed,520);r.wing=1;r.flapAge=0;msg('滑空！ 最高速へ');}
-else { // maintenance: generous window centered around five seconds
- if(r.glideClock>=3.8&&r.glideClock<=5.9){r.glideClock=0;r.glideGrace=0;r.speed=Math.max(r.speed,550);r.wing=.45;r.flapAge=0;msg('羽ばたき成功！ 滑空延長');}
- else if(r.glideClock>5.9){r.glideClock=0;r.glideGrace=0;r.speed=Math.max(r.speed,510);r.wing=.45;r.flapAge=0;msg('遅めの羽ばたき。少し速度ロス');}
- else {r.wing=.2;msg('まだ羽ばたきには早い');}
+else if(r.flight===2){r.flight=3;r.glideClock=0;r.glideGrace=0;r.glideExtendStock=false;r.glideExtendUsed=false;r.speed=Math.max(r.speed,520);r.wing=1;r.flapAge=0;msg('滑空！ 最高速へ');}
+else {
+ // During a glide, Jump can reserve ONE full glide extension.
+ // Repeated presses do not stack extra seconds, and the reserve can only be used once
+ // until the racer lands and starts a fresh 3-step glide.
+ if(!r.glideExtendUsed&&!r.glideExtendStock){
+   r.glideExtendStock=true;r.wing=.35;r.flapAge=0;
+   msg('滑空延長を1回ストック！');
+ }else{
+   r.wing=.16;
+   msg(r.glideExtendUsed?'この滑空では延長を使用済み':'滑空延長はストック済み');
+ }
 }}
 
 function aiForwardSegment(r){
@@ -867,6 +874,11 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
    r.speed=approach(r.speed,r.name==='Takumi'?485:aiFlap,260*dt);
  }else {
    r.glideClock+=dt;
+   if(r.glideClock>=5.65&&r.glideExtendStock&&!r.glideExtendUsed){
+     r.glideExtendStock=false;r.glideExtendUsed=true;r.glideClock=0;r.glideGrace=0;
+     r.speed=Math.max(r.speed,510);r.wing=Math.max(r.wing,.42);r.flapAge=0;
+     if(!r.ai)msg('ストック消費！ 滑空時間を延長');
+   }
    if(r.glideClock<5.65){
      const aiCruise=r.ai?(r.name==='Plain'?600:(r.name==='Bunta'||r.name==='Takumi'||r.name==='Kawazu'?maxSpeed:615)):maxSpeed;
      r.speed=approach(r.speed,r.name==='Kawazu'?maxSpeed+65:r.name==='Takumi'?maxSpeed+55:aiCruise,glideAccel*dt);
@@ -874,7 +886,7 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
      r.glideGrace+=dt;
      const tiredTarget=(r.ai&&r.name!=='Plain'&&r.name!=='Bunta'&&r.name!=='Kawazu'&&r.name!=='Takumi')?260:245;
      r.speed=approach(r.speed,r.name==='Takumi'?280:tiredTarget,82*dt);
-     if(r.speed<300){r.flight=0;r.onGround=true;r.glideClock=0;r.landAge=.28;}
+     if(r.speed<300){r.flight=0;r.onGround=true;r.glideClock=0;r.glideExtendStock=false;r.glideExtendUsed=false;r.landAge=.28;}
    }
  }
  if(r.name==='Bunta'){
