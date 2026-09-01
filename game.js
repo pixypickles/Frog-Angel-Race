@@ -555,7 +555,7 @@ rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false,raceStartDelay=0;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
-function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0,aiPathIndex:0,aiWallHits:0,aiWallHitTimer:0};}
+function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0,aiPathIndex:0,aiWallHits:0,aiWallHitTimer:0,aiBend:0,aiAssist:0};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
 function reset(opponentName='Plain'){
  globalTimeStop=0;globalTimeLag=0;
@@ -606,7 +606,11 @@ function aiForwardSegment(r){
 function aiLookTarget(r,seg){
   const n=path.length;
   // Use distance-based lookahead instead of a fixed +2 point jump.
-  let i=seg.i,remain=170+r.speed*.42,x=path[(i+1)%n].x,y=path[(i+1)%n].y;
+  let i=seg.i,remain=150+r.speed*.34,x=path[(i+1)%n].x,y=path[(i+1)%n].y;
+  const i1=activeCourse.pointToPoint?Math.min(n-2,seg.i):seg.i;
+  const i2=activeCourse.pointToPoint?Math.min(n-2,i1+5):(i1+5)%n;
+  const a1=path[i1],b1=path[(i1+1)%n],a2=path[i2],b2=path[(i2+1)%n];
+  r.aiBend=Math.abs(norm(Math.atan2(b2.y-a2.y,b2.x-a2.x)-Math.atan2(b1.y-a1.y,b1.x-a1.x)));
   while(remain>0){
     let a=path[i],ni=activeCourse.pointToPoint?Math.min(n-1,i+1):(i+1)%n,b=path[ni];
     let len=Math.hypot(b.x-a.x,b.y-a.y)||1;
@@ -626,7 +630,7 @@ function updateRacer(r,dt){
   r.tongueBoostTimer=Math.max(0,(r.tongueBoostTimer||0)-dt);
   if(r.tongueBoostTimer>0)r.speed=Math.min(maxSpeed+130,r.speed+360*dt);
 r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.aiWallHitTimer=Math.max(0,(r.aiWallHitTimer||0)-dt);if(r.aiWallHitTimer<=0)r.aiWallHits=0;r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrace||0)-dt);r.wallEscape=Math.max(0,(r.wallEscape||0)-dt);r.highJump=Math.max(0,(r.highJump||0)-dt);r.normalHighJump=Math.max(0,(r.normalHighJump||0)-dt);r.confuse=Math.max(0,(r.confuse||0)-dt);r.burningWing=Math.max(0,(r.burningWing||0)-dt);if(r.charging)r.charge=Math.min(1.8,(r.charge||0)+dt);if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
- const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),turn=(turnGround*(1-ratio)+turnFast*ratio)*dt*(r.name==='Raphael'?1.22:1)*(r.highJump>0?.28:1);
+ const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),aiTurn=r.ai?(1.28+Math.min(.55,(r.aiBend||0)*.42)):1,turn=(turnGround*(1-ratio)+turnFast*ratio)*dt*(r.name==='Raphael'?1.22:1)*(r.highJump>0?.28:1)*aiTurn;
  if(Math.abs(diff)<turn)r.face=want;else r.face+=Math.sign(diff)*turn;
  // AI flight rhythm
  if(r.ai){if(r.flight<3&&Math.random()<dt*2.8)pressJumpSilent(r);if(r.flight===3&&r.glideClock>4.55&&r.glideClock<5.45)pressJumpSilent(r);}
@@ -636,6 +640,12 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.aiWallHitTimer=Math.ma
  else if(r.highJump>0)r.speed=approach(r.speed,maxSpeed+70,300*dt);
  else if(r.boost>0)r.speed=Math.min(maxSpeed+45,r.speed+210*dt);
  if(r.bump>0)r.speed=Math.min(r.speed,360);
+ if(r.ai){
+   const bend=r.aiBend||0;
+   if(bend>.95)r.speed=Math.min(r.speed,335);
+   else if(bend>.62)r.speed=Math.min(r.speed,400);
+   else if(bend>.38)r.speed=Math.min(r.speed,470);
+ }
  if(r.name==='Takumi'){
    let ns=nearestTrackSegment(r.x,r.y),i=ns.i,n1=path[Math.min(path.length-1,i+1)],n2=path[Math.min(path.length-1,i+2)];
    if(!activeCourse.pointToPoint){n1=path[(i+1)%path.length];n2=path[(i+2)%path.length];}
@@ -646,6 +656,13 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.aiWallHitTimer=Math.ma
  // Tongue anchor overrides ordinary turn. Player/rival overlap never affects anchor tongue.
  if(r.tongue&&(r.tongue.kind==='anchor'||r.tongue.kind==='gutter')){let a=r.tongue.target,dx=a.x-r.x,dy=a.y-r.y,d=Math.hypot(dx,dy)||1,tan=Math.atan2(dy,dx)+(r.tongue.side>0?Math.PI/2:-Math.PI/2);let hold=(performance.now()-r.tongue.started)/1000,gutter=r.tongue.kind==='gutter';r.face=lerpAngle(r.face,tan,Math.min(1,dt*(gutter?13.5:7.5)));if(gutter){r.speed=Math.max(r.speed,Math.min(maxSpeed+35,555));}else if(hold>1.05)r.speed=Math.max(220,r.speed-250*dt);else r.speed=Math.max(r.speed,Math.min(maxSpeed,520));}
  r.vx=Math.cos(r.face)*r.speed;r.vy=Math.sin(r.face)*r.speed;r.x+=r.vx*dt;r.y+=r.vy*dt;
+ if(r.ai){
+   let rs=aiForwardSegment(r),dx=rs.qx-r.x,dy=rs.qy-r.y,d=Math.hypot(dx,dy)||1;
+   // Invisible CPU-only lane assist. It is a small continuous force, never a position snap.
+   // Stronger only when the CPU has drifted close to/outside the corridor.
+   const soft=Math.max(0,d-courseHalfWidth*.36),assist=Math.min(d,soft*1.9*dt);
+   if(assist>0){r.x+=dx/d*assist;r.y+=dy/d*assist;}
+ }
  if(r.ai&&r.wallEscape>0){
    let rs=aiForwardSegment(r),dx=rs.qx-r.x,dy=rs.qy-r.y,d=Math.hypot(dx,dy)||1;
    let nudge=Math.min(d,150*dt);r.x+=dx/d*nudge;r.y+=dy/d*nudge;
@@ -664,8 +681,11 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.aiWallHitTimer=Math.ma
  }else if(r.highJump<=0&&hit.d>courseHalfWidth+3){
    // A Burning Climb can cross the grass. If it expires outside, walk back as before.
    if((r.wasHighJump||0)>0){
-     r.courseWalk=6;r.flight=0;r.onGround=true;r.speed=105;r.tongue=null;
-     if(!r.ai)msg('コースアウト！ 歩いて復帰…');
+     if(r.ai){
+       r.courseWalk=0;r.flight=1;r.onGround=false;r.speed=Math.max(170,Math.min(r.speed,235));r.wallEscape=.7;r.tongue=null;
+     }else{
+       r.courseWalk=6;r.flight=0;r.onGround=true;r.speed=105;r.tongue=null;msg('コースアウト！ 歩いて復帰…');
+     }
    }else{
      let aiSeg=r.ai?aiForwardSegment(r):null;
      const seg=r.ai?aiSeg.i:(hit.i??nearestTrackSegment(hit.qx,hit.qy).i);
@@ -721,7 +741,12 @@ function updateCheckpoint(r){
  const g=finishGate(),p0=g.p0,tx=g.tx,ty=g.ty,nx=g.nx,ny=g.ny,x0=r.lapPrevX??r.x,y0=r.lapPrevY??r.y,x1=r.x,y1=r.y;r.lapPrevX=x1;r.lapPrevY=y1;
  const long0=(x0-p0.x)*tx+(y0-p0.y)*ty,long1=(x1-p0.x)*tx+(y1-p0.y)*ty;
  if(activeCourse.pointToPoint){
-   if(long0<=0&&long1>0){let den=long1-long0,u=Math.abs(den)<1e-6?0:-long0/den,cx=x0+(x1-x0)*u,cy=y0+(y1-y0)*u,lat=(cx-p0.x)*nx+(cy-p0.y)*ny;if(Math.abs(lat)<=Math.max(520,courseHalfWidth+260)){r.finished=true;r.speed=0;if(!finished){finished=true;msg((r===racers[controlledIndex]?'YOU WIN! ':'')+(CHARACTER_DATA[r.name]?.jp||r.name)+' アキナ山ゴール！');setTimeout(()=>showRaceResult(r===racers[controlledIndex]),1300);}}}
+   let crossed=false;
+   if(long0<=0&&long1>0){let den=long1-long0,u=Math.abs(den)<1e-6?0:-long0/den,cx=x0+(x1-x0)*u,cy=y0+(y1-y0)*u,lat=(cx-p0.x)*nx+(cy-p0.y)*ny;crossed=Math.abs(lat)<=Math.max(520,courseHalfWidth+260);}
+   // CPU-only finish tolerance: reaching the last route section is enough. This prevents a
+   // competent CPU from circling the final gate forever due to a tiny lateral miss.
+   if(r.ai&&!crossed&&r.aiPathIndex>=path.length-5&&Math.hypot(r.x-p0.x,r.y-p0.y)<Math.max(760,courseHalfWidth*2.8))crossed=true;
+   if(crossed){r.finished=true;r.speed=0;if(!finished){finished=true;msg((r===racers[controlledIndex]?'YOU WIN! ':'')+(CHARACTER_DATA[r.name]?.jp||r.name)+' アキナ山ゴール！');setTimeout(()=>showRaceResult(r===racers[controlledIndex]),1300);}}
    return;
  }
  if((long0<=0&&long1>0)||(long0>=0&&long1<0)){const denom=long1-long0,u=Math.abs(denom)<1e-6?0:(-long0/denom),crossX=x0+(x1-x0)*u,crossY=y0+(y1-y0)*u,lateral=(crossX-p0.x)*nx+(crossY-p0.y)*ny,gateHalf=Math.max(520,courseHalfWidth+260);if(Math.abs(lateral)<=gateHalf){if(long0<=0&&long1>0){r.lap++;if(r.lap>RACE_LAPS){r.finished=true;r.speed=0;if(!finished){finished=true;msg((r===racers[controlledIndex]?'YOU WIN! ':'')+(CHARACTER_DATA[r.name]?.jp||r.name)+' ゴール！');setTimeout(()=>showRaceResult(r===racers[controlledIndex]),1300);}}else if(r===racers[controlledIndex])msg('LAP '+r.lap+' / '+RACE_LAPS);}else{const before=r.lap;r.lap=Math.max(1,r.lap-1);if(r===racers[controlledIndex]&&r.lap<before)msg('逆走でゴール通過：LAP -1 → '+r.lap+'/'+RACE_LAPS);}}}r.startLineLong=long1;
@@ -889,7 +914,7 @@ function drawWorld(){
  ctx.strokeStyle=pal.inner;ctx.lineWidth=courseHalfWidth*2;drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
  if(courseTheme!=='akina')drawGrassBlades();
  ctx.strokeStyle=courseTheme==='akina'?'rgba(245,245,235,.72)':'rgba(255,255,255,.16)';ctx.lineWidth=courseTheme==='akina'?5:3;ctx.setLineDash(courseTheme==='akina'?[34,42]:[18,46]);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);ctx.setLineDash([]);
- if(courseTheme!=='akina')for(const a of anchors)drawTree(a.x,a.y);
+ for(const a of anchors)drawTree(a.x,a.y);
  // start gate across the water corridor
  {const gates=activeCourse.pointToPoint?[startGate(),finishGate()]:[finishGate()];for(const g of gates){ctx.save();ctx.translate(g.p0.x,g.p0.y);ctx.rotate(Math.atan2(g.ty,g.tx)+Math.PI/2);let gh=Math.max(190,courseHalfWidth+55);for(let i=-4;i<=4;i++){ctx.fillStyle=i%2?'#fff':'#252525';ctx.fillRect(i*20,-gh,20,gh*2)}ctx.restore();}}
 }
