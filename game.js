@@ -871,7 +871,7 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
  if(r.name==='Bunta'&&r.ai&&!r.bump){
    // Secret boss cruising floor. Keep him outrageously fast even after ordinary
    // glide/boost code has tried to settle toward normal character limits.
-   const bend=r.aiBend||0,target=bend>.95?455:bend>.62?500:bend>.38?565:655;
+   const bend=r.aiBend||0,target=bend>.95?455:bend>.62?500:bend>.38?565:680;
    r.speed=approach(r.speed,target,470*dt);
  }
  if(r.bump>0)r.speed=Math.min(r.speed,r.name==='Bunta'?430:360);
