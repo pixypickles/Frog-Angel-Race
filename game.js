@@ -1367,7 +1367,12 @@ function drawDriftFlightFx(r){
    ctx.restore();
  }
  if(!r.drifting)return;
- const move=r.driftMoveFace||r.face,side=Math.sign(norm(r.face-move))||1;
+ // Visual trails follow the ACTUAL velocity vector, not the stored drift heading.
+ // This keeps the two long lines behind Takumi even while steering, wall nudges or
+ // gutter forces bend the real movement direction.
+ const actualSpeed=Math.hypot(r.vx||0,r.vy||0);
+ const move=actualSpeed>20?Math.atan2(r.vy,r.vx):(r.driftMoveFace||r.face);
+ const slip=norm(r.face-move),side=Math.sign(slip)||1;
  const charge=Math.min(1,(r.driftCharge||0)/1.35),now=performance.now()/1000;
  ctx.save();
  // Air-cut slashes: angled across the actual slide direction so sideways drift reads clearly.
@@ -1385,16 +1390,22 @@ function drawDriftFlightFx(r){
    ctx.lineTo(bx+Math.cos(slash)*28,by+Math.sin(slash)*28);
    ctx.stroke();
  }
- // Two longer stream lines show inertia direction independently of body heading.
+ // Two wake lines are locked to the real velocity vector. A tiny bend is allowed
+ // only in the same direction as the body's slip, so they can never visually point
+ // somewhere Takumi is not actually travelling.
  ctx.globalAlpha=.55+.25*charge;ctx.lineWidth=5;
+ const wakeLen=120+55*charge,bend=Math.max(-10,Math.min(10,slip*9));
  for(const off of [-18,18]){
    let ox=Math.cos(move+Math.PI/2)*off,oy=Math.sin(move+Math.PI/2)*off;
+   const sx=r.x-Math.cos(move)*18+ox,sy=r.y-Math.sin(move)*18+oy;
+   const ex=r.x-Math.cos(move)*wakeLen+ox,ey=r.y-Math.sin(move)*wakeLen+oy;
    ctx.beginPath();
-   ctx.moveTo(r.x-Math.cos(move)*18+ox,r.y-Math.sin(move)*18+oy);
-   ctx.quadraticCurveTo(r.x-Math.cos(move)*80+ox+Math.cos(move+Math.PI/2)*side*18,
-                        r.y-Math.sin(move)*80+oy+Math.sin(move+Math.PI/2)*side*18,
-                        r.x-Math.cos(move)*(120+55*charge)+ox,
-                        r.y-Math.sin(move)*(120+55*charge)+oy);
+   ctx.moveTo(sx,sy);
+   ctx.quadraticCurveTo(
+     r.x-Math.cos(move)*(wakeLen*.58)+ox+Math.cos(move+Math.PI/2)*bend,
+     r.y-Math.sin(move)*(wakeLen*.58)+oy+Math.sin(move+Math.PI/2)*bend,
+     ex,ey
+   );
    ctx.stroke();
  }
  ctx.restore();
