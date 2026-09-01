@@ -574,17 +574,25 @@ function rebuildCourseObjects(){
 
      let ax,ay;
      if(courseTheme==='akina'){
-       // Akina trees must be in the INNER GRASS, never on the asphalt.
-       // Start beyond the inside road edge and, because nearby switchbacks can be close,
-       // walk farther inward until the candidate is clear of every road segment.
-       const clear=courseHalfWidth+85;
+       // Akina: first try the true corner pocket (inside BOTH road legs), not an arbitrary
+       // normal offset.  The previous version could put a tree between nearby switchbacks.
+       const leftIn={x:-iy*side,y:ix*side},leftOut={x:-oy*side,y:ox*side};
+       let pocketX=leftIn.x+leftOut.x,pocketY=leftIn.y+leftOut.y,pocketL=Math.hypot(pocketX,pocketY);
+       if(pocketL<.12){pocketX=nx;pocketY=ny;pocketL=1;}
+       pocketX/=pocketL;pocketY/=pocketL;
+       const treeR=42,roadClear=courseHalfWidth+treeR+18;
        let found=false;
-       for(let extra=135;extra<=900;extra+=75){
-         const inward=courseHalfWidth+extra;
-         const tx=b.x+nx*inward,ty=b.y+ny*inward;
-         if(trackDistance(tx,ty)>clear){ax=tx;ay=ty;found=true;break;}
+       // Search from just outside the inside edge toward the apex pocket.
+       for(let off=courseHalfWidth+treeR+22;off<=courseHalfWidth+520;off+=34){
+         const tx=b.x+pocketX*off,ty=b.y+pocketY*off;
+         if(trackDistance(tx,ty)>=roadClear){ax=tx;ay=ty;found=true;break;}
        }
-       if(!found)continue; // no visible tree means no invisible tongue anchor either
+       if(!found){
+         // Tight switchbacks may have no grass pocket at all. In that case place the tree
+         // on the INSIDE road edge, never in the middle of the lane.
+         const edge=courseHalfWidth-treeR-8;
+         ax=b.x+pocketX*Math.max(28,edge);ay=b.y+pocketY*Math.max(28,edge);
+       }
      }else{
        let bisx=ix+ox,bisy=iy+oy,bl=Math.hypot(bisx,bisy)||1;bisx/=bl;bisy/=bl;
        let inward=angle>1.05?255:225,forward=angle>1.05?300:245;
