@@ -172,7 +172,7 @@ function showPlace(place){
     actions.appendChild(b);
   }else{
     const p=document.createElement('div');p.className='homeBox';
-    p.innerHTML='<b>'+(place==='forest'?'森':'池')+'の交流イベント</b><p>円形コースで相手を追い、泡弾で減速させて舌で3回捕まえるとスキルを教わります。</p>';
+    p.innerHTML='<b>'+(place==='forest'?'森':'池')+'の交流イベント</b><p>円形コースで相手を追い、泡弾で減速させて舌で1回捕まえるとスキルを教わります。</p>';
     let any=false;for(const n of (saveData.encountered||[])){if(!LEARNABLE_SKILLS[n])continue;any=true;const q=document.createElement('button');q.className='menuBtn';let list=LEARNABLE_SKILLS[n],done=list.every(x=>saveData.unlockedSkills.includes(x[0]));q.textContent=(CHARACTER_DATA[n]?.jp||n)+(done?'（習得済み）':'を舌で捕まえて教わる');q.disabled=done;q.onclick=()=>startLearningRace(n,place);p.appendChild(q)}if(!any)p.innerHTML+='<p>まだスキルを教えてくれる相手と対戦していません。</p>';
     if(place==='pond'){
       const sep=document.createElement('div');sep.className='panelNote';
@@ -221,7 +221,7 @@ function startCaptureTraining(opt){
   const playerName=(skillId==='timeStop'&&saveData.kawazuUnlocked)?'Kawazu':'Michael';
   shootingEvent={
     mode:'capture',place,skillId,opponent,title,enemyName,enemyCreature:!opponent,
-    catches:0,need:3,time:48,shots:[],ended:false,bubbleCd:0,tongueCd:0,tongueFx:0,
+    catches:0,need:1,time:48,shots:[],ended:false,bubbleCd:0,tongueCd:0,tongueFx:0,
     slow:0,reverseCd:2.5,enemyDir:Math.random()<.5?1:-1,cx,cy,rx,ry,
     playerAngle:Math.PI,enemyAngle:0,
     path:pp,anchors:[],lilies:[],theme:forest?'forest':'water',
@@ -232,10 +232,10 @@ function startCaptureTraining(opt){
   q.player.ai=false;q.player.flight=3;q.player.onGround=false;q.player.speed=0;q.player.face=0;
   q.enemy.ai=true;q.enemy.flight=3;q.enemy.onGround=false;q.enemy.speed=0;q.enemy.face=Math.PI;
   appState='shooting';hideAllScreens();document.querySelector('#raceUi')?.classList.remove('hidden');
-  ui.lap.textContent='CATCH 0/3';ui.who.textContent='操作：'+(CHARACTER_DATA[q.player.name]?.jp||q.player.name);
+  ui.lap.textContent='CATCH 0/1';ui.who.textContent='操作：'+(CHARACTER_DATA[q.player.name]?.jp||q.player.name);
   ui.a.innerHTML='A<small>泡弾</small>';ui.b.innerHTML='B<small>泡弾</small>';
   ui.jump.innerHTML='泡弾<small>命中で減速</small>';ui.tongue.innerHTML='舌<small>近距離で自動補正</small>';
-  msg((CHARACTER_DATA[enemyName]?.jp||enemyName)+'を舌で3回捕まえろ！ 泡弾で動きを遅くできる');
+  msg((CHARACTER_DATA[enemyName]?.jp||enemyName)+'を舌で1回捕まえろ！ 泡弾で動きを遅くできる');
 }
 function startShootingSkillEvent(place,skillId){startCaptureTraining({place,skillId});}
 function shootingFire(){
@@ -1253,14 +1253,13 @@ function drawMini(){
 }
 
 function upcomingCurveGuide(r){
-  const n=path.length;if(n<4)return {text:'直線',cls:'straight'};
+  const n=path.length;if(n<4)return {text:'↑',cls:'straight'};
   let near=nearestTrackSegment(r.x,r.y),start=near.i;
   const closed=!activeCourse.pointToPoint;
   const segAt=i=>{
-    let a=path[(i+n)%n],b=path[(i+1+n)%n],dx=b.x-a.x,dy=b.y-a.y;
+    let ii=(i+n)%n,a=path[ii],b=path[(ii+1)%n],dx=b.x-a.x,dy=b.y-a.y;
     return {a,b,len:Math.hypot(dx,dy)||1,ang:Math.atan2(dy,dx)};
   };
-  // Inspect a fixed road-distance ahead, not just a fixed number of control points.
   const horizon=Math.max(900,Math.min(1900,950+r.speed*1.1));
   let samples=[],dist=0,i=start,guard=0,prev=segAt(i);
   while(dist<horizon&&guard<n-2){
@@ -1269,7 +1268,6 @@ function upcomingCurveGuide(r){
     samples.push({d:dist,delta,ang:cur.ang,i:ni});
     dist+=cur.len;i=ni;prev=cur;guard++;
   }
-  // Group neighboring heading changes into real bends. Very tiny spline noise is ignored.
   const minDelta=6*Math.PI/180;
   let groups=[],g=null;
   for(const q of samples){
@@ -1279,31 +1277,28 @@ function upcomingCurveGuide(r){
     }
     if(!g||q.d-g.lastD>300){
       if(g)groups.push(g);
-      g={startD:q.d,lastD:q.d,total:q.delta,count:1};
+      g={startD:q.d,lastD:q.d,total:q.delta,count:1,endAng:q.ang};
     }else{
-      g.total+=q.delta;g.lastD=q.d;g.count++;
+      g.total+=q.delta;g.lastD=q.d;g.count++;g.endAng=q.ang;
     }
   }
   if(g)groups.push(g);
   groups=groups.filter(x=>Math.abs(x.total)>10*Math.PI/180);
-  if(!groups.length)return {text:'↑ 直線',cls:'straight'};
+  if(!groups.length)return {text:'↑',cls:'straight'};
 
   const first=groups[0],deg=Math.abs(first.total)*180/Math.PI;
-  const dir=first.total>0?'左':'右',arrow=first.total>0?'↰':'↱';
-  let level,cls;
-  if(deg<=45){level='45°以下';cls='mild';}
-  else if(deg<=90){level='90°以下';cls='medium';}
-  else if(deg<145){level='90°以上';cls='hard';}
-  else{level='ヘアピン';cls='hairpin';}
+  let cls=deg<=45?'mild':deg<=90?'medium':deg<145?'hard':'hairpin';
 
-  // If another meaningful bend follows soon, show both directions as a sequence.
+  // The arrow is intentionally screen/world-relative, not "driver left/right".
+  // Canvas/world Y grows downward, so these sectors map directly to what the player sees.
+  const arrowFor=ang=>{
+    const step=Math.round(norm(ang)/(Math.PI/4));
+    return ({'-4':'←','-3':'↖','-2':'↑','-1':'↗','0':'→','1':'↘','2':'↓','3':'↙','4':'←'})[String(step)]||'→';
+  };
+  const firstArrow=arrowFor(first.endAng);
   let second=groups.find((x,k)=>k>0&&x.startD-first.lastD<650);
-  if(second){
-    const d2=second.total>0?'左':'右',a2=second.total>0?'↰':'↱';
-    return {text:`${arrow}${a2} 連続カーブ　${dir}→${d2}`,cls:'sequence'};
-  }
-  const meters=Math.max(0,Math.round(first.startD/50)*50);
-  return {text:`${arrow} ${dir} ${level}${meters>100?`　約${meters}`:''}`,cls};
+  if(second)return {text:`${firstArrow} ${arrowFor(second.endAng)}`,cls:'sequence'};
+  return {text:firstArrow,cls};
 }
 function updateHud(r){let cg=upcomingCurveGuide(r);if(ui.curve){ui.curve.textContent=cg.text;ui.curve.className='curveGuide '+cg.cls;}ui.lap.textContent=activeCourse.pointToPoint?'POINT TO POINT':('LAP '+Math.min(r.lap,RACE_LAPS)+'/'+RACE_LAPS);ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Takumi'){al='溝走り';bl='コーナー脱出加速（AUTO）'}else if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){let aid=r.customSkillA||'airSwim',bid=r.customSkillB||'wallKick';al=skillLabel(aid)+' ∞';bl=skillLabel(bid)+' ∞'}else if(r.name==='Michael'){let aid=r.customSkillA||'punch',bid=r.customSkillB||'bubble';al=skillLabel(aid)+(aid==='burningWing'?' '+r.burnWingUses+'/3':aid==='highJump'?' '+r.burnClimbUses+'/3':'');bl=skillLabel(bid)+(bid==='burningWing'?' '+r.burnWingUses+'/3':bid==='highJump'?' '+r.burnClimbUses+'/3':'')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
 function msg(t){ui.status.textContent=t;clearTimeout(msg.timer);msg.timer=setTimeout(()=>ui.status.textContent='ジャンプ3回＋舌ターンで最速を狙え！',2200)}
