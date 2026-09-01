@@ -148,3 +148,22 @@ linear-gradient(135deg,#7fcf73,#59a967);overflow:hidden}
   .mapSpot.home{left:7%;top:78%}
   .mapSpot.practice{left:27%;top:69%}
 }
+
+
+/* v2.54 upcoming-curve guide */
+.curveGuide{
+  position:absolute;z-index:18;top:72px;left:50%;transform:translateX(-50%);
+  min-width:180px;max-width:min(62vw,520px);padding:8px 16px;border-radius:22px;
+  text-align:center;font-weight:800;font-size:18px;letter-spacing:.02em;
+  color:#f6fff7;background:rgba(6,51,43,.82);border:2px solid rgba(235,255,225,.62);
+  box-shadow:0 3px 0 rgba(0,0,0,.24);pointer-events:none;
+}
+.curveGuide.mild{background:rgba(31,108,72,.84)}
+.curveGuide.medium{background:rgba(124,105,23,.86)}
+.curveGuide.hard{background:rgba(154,73,22,.88)}
+.curveGuide.hairpin{background:rgba(160,43,43,.90);font-size:20px}
+.curveGuide.sequence{background:rgba(98,49,145,.90)}
+@media (max-width:700px){
+  .curveGuide{top:68px;font-size:15px;padding:6px 11px;min-width:145px;max-width:64vw}
+  .curveGuide.hairpin{font-size:16px}
+}
