@@ -1031,31 +1031,44 @@ function useMichaelSkill(r,id,slot){
  return false;
 }
 function useA(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Takumi'){if(r.skillCdA>0)return;
-   // 溝落とし: find a nearby upcoming bend, then grab the INNER road edge.
-   // No tree is required. The virtual grab point is deliberately close and can
-   // slide along the inside edge while the tongue is held by the skill.
-   let ns=nearestTrackSegment(r.x,r.y),n=path.length,best=null,travel=0;
-   for(let off=0;off<10;off++){
-     let i=activeCourse.pointToPoint?Math.min(n-3,ns.i+off):(ns.i+off)%n;
-     let a0=path[i],b0=path[(i+1)%n],c0=path[(i+2)%n];
-     if(!a0||!b0||!c0)break;
-     let ia=Math.atan2(b0.y-a0.y,b0.x-a0.x),oa=Math.atan2(c0.y-b0.y,c0.x-b0.x),turn=norm(oa-ia);
-     if(Math.abs(turn)>.16){best={i,a:a0,b:b0,c:c0,turn,ia,oa};break;}
-     travel+=Math.hypot(b0.x-a0.x,b0.y-a0.y);if(travel>620)break;
+   // 溝落とし: determine the bend from AGGREGATED heading change over road distance.
+   // Akina uses a dense spline, so checking one sampled segment at a time can report
+   // almost zero turn even in a hairpin and made the skill appear completely dead.
+   let ns=nearestTrackSegment(r.x,r.y),n=path.length,best=null;
+   let i=ns.i,p0=path[i],p1=path[activeCourse.pointToPoint?Math.min(n-1,i+1):(i+1)%n];
+   let entryAng=Math.atan2(p1.y-p0.y,p1.x-p0.x),travel=0,last=i;
+   for(let step=1;step<=36;step++){
+     let ni=activeCourse.pointToPoint?Math.min(n-2,i+step):(i+step)%n;
+     if(activeCourse.pointToPoint&&ni>=n-1)break;
+     let a0=path[ni],b0=path[activeCourse.pointToPoint?Math.min(n-1,ni+1):(ni+1)%n];
+     if(!a0||!b0)break;
+     if(step>1){
+       let prev=path[last],cur=a0;
+       travel+=Math.hypot(cur.x-prev.x,cur.y-prev.y);
+     }else{
+       travel+=Math.hypot(a0.x-ns.qx,a0.y-ns.qy);
+     }
+     last=ni;
+     let outAng=Math.atan2(b0.y-a0.y,b0.x-a0.x),turn=norm(outAng-entryAng);
+     if(travel>=90&&Math.abs(turn)>.12){best={i:ni,turn,ia:entryAng,oa:outAng};break;}
+     if(travel>760)break;
    }
-   if(!best){msg('溝落とし：もう少しカーブへ近づけ！');return;}
+   if(!best){
+     // Always give immediate feedback, but do not create an unsafe fake grab on a straight.
+     r.skillCdA=.18;msg('溝落とし：カーブの内側で使う！');return;
+   }
    let side=Math.sign(best.turn)||1;
-   let ex=-Math.sin(best.ia)*side,ey=Math.cos(best.ia)*side;
-   // Initial visual grip is always local to Takumi, never derived from the distant apex.
-   let along=78;
-   let tx=r.x+Math.cos(best.ia)*along+ex*Math.max(42,Math.min(courseHalfWidth*.60,145));
-   let ty=r.y+Math.sin(best.ia)*along+ey*Math.max(42,Math.min(courseHalfWidth*.60,145));
+   let ex=-Math.sin(entryAng)*side,ey=Math.cos(entryAng)*side;
+   // The tongue itself stays very local and visible even though bend detection looks ahead.
+   let along=72;
+   let tx=r.x+Math.cos(entryAng)*along+ex*Math.max(38,Math.min(courseHalfWidth*.56,132));
+   let ty=r.y+Math.sin(entryAng)*along+ey*Math.max(38,Math.min(courseHalfWidth*.56,132));
    let td=Math.hypot(tx-r.x,ty-r.y)||1;
-   if(td>205){tx=r.x+(tx-r.x)/td*205;ty=r.y+(ty-r.y)/td*205;}
+   if(td>190){tx=r.x+(tx-r.x)/td*190;ty=r.y+(ty-r.y)/td*190;}
    let target={x:tx,y:ty,virtualWall:true,slide:true,turnSide:side};
-   r.skillCdA=.72;r.tongue={kind:'gutter',target,started:performance.now()-250,side:side>0?-1:1};
-   r.speed=Math.max(r.speed,490);r.wallGrace=Math.max(r.wallGrace,.18);msg('溝落とし！ 内側を舌で滑らせる！');
-   setTimeout(()=>{if(r.tongue?.kind==='gutter'&&r.tongue.target===target){r.boost=.28;r.tongue=null;}},650);
+   r.skillCdA=.72;r.tongue={kind:'gutter',target,started:performance.now()-220,side:side>0?-1:1};
+   r.speed=Math.max(r.speed,485);r.wallGrace=Math.max(r.wallGrace,.18);msg('溝落とし！ 内側を舌で滑らせる！');
+   setTimeout(()=>{if(r.tongue?.kind==='gutter'&&r.tongue.target===target){r.boost=.28;r.tongue=null;}},700);
    return;}if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillA||(r.name==='Kawazu'?'airSwim':'punch'),'A');return;}if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
  if(r.name==='Gabriel'){waterBoost(r,false);return;}
  if(r.name==='Beelzebub'){r.skillCdA=1.45;let o=racers[1-r.index],aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'poison',x:r.x,y:r.y,vx:Math.cos(aim)*980,vy:Math.sin(aim)*980,owner:r,t:1.65,age:0});msg('毒液！');return;}
