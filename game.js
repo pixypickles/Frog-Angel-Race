@@ -28,9 +28,10 @@ function randomTournamentOpponent(exclude=[]){
 }
 function buildTournament(place){
  if(place==='master')return ['Beelzebub'];if(place==='kawazu')return ['Kawazu'];if(place==='akina')return ['Takumi'];
- if(place==='arena4'||place==='arena5'){let a=randomTournamentOpponent(),b=randomTournamentOpponent([a]);return ['Plain',a,b];}
  return ['Plain',randomTournamentOpponent()];
 }
+const TOURNAMENT_LABELS=['A','B','C','D'];
+function tournamentKey(place,courseIndex){return place+'_'+TOURNAMENT_LABELS[courseIndex];}
 
 let appState='title';
 let currentPlace='field';
@@ -151,11 +152,11 @@ function startLearningRace(name,place){
 function showPlace(place){
   appState='place';currentPlace=place;hideAllScreens();document.querySelector('#fieldScreen')?.classList.remove('hidden');document.querySelector('#placePanel')?.classList.remove('hidden');
   const data={
-    arena1:['🏟️ 風の競技場','第1戦は道幅の広い木立の大回廊。木を使う舌ターン中心。'],
-    arena2:['🏟️ 水辺の競技場','第1戦から二股の水路ツインルート。左右の選択が重要。'],
-    arena3:['🏟️ 森の競技場','第1戦は大きなカーブ中心の森リング。見通しのよい入門型。'],
-    arena4:['☁️ 天空の競技場','第1戦は分岐する天使のリボン。3回戦の高速大会。'],
-    arena5:['🗿 遺跡の競技場','第1戦は四角い遺跡スクエア。3回戦の変則大会。'],
+    arena1:['🏟️ 風の競技場','4つのコースごとにA〜D大会。各大会は同じコースで2戦します。'],
+    arena2:['🏟️ 水辺の競技場','4つのコースごとにA〜D大会。各大会は同じコースで2戦します。'],
+    arena3:['🏟️ 森の競技場','4つのコースごとにA〜D大会。各大会は同じコースで2戦します。'],
+    arena4:['☁️ 天空の競技場','4つのコースごとにA〜D大会。各大会は同じコースで2戦します。'],
+    arena5:['🗿 遺跡の競技場','A〜Dの4大会。Bはショートカット判断、Cは長いジグザグが特徴。'],
     practice:['🎯 練習場','ジャンプ3段階、舌アンカー、スキルを自由に練習できます。'],
     forest:['🌲 森','トンボのアザゼルさん、クモのベリアルさんがいる森。'],
     pond:['🪷 池','ピラニアのリヴァイアさん、ザリガニのアスモデウスさんがいる池。'],
@@ -166,10 +167,22 @@ function showPlace(place){
   document.querySelector('#placeTitle').textContent=data[0];
   document.querySelector('#placeDesc').textContent=data[1];
   const actions=document.querySelector('#placeActions');actions.innerHTML='';
-  if(place==='practice'){const guide=document.createElement('button');guide.className='menuBtn';guide.textContent='📖 操作・加速システムの説明を見る';guide.onclick=()=>showTutorial('practice');actions.appendChild(guide);const box=document.createElement('div');box.className='homeBox';box.innerHTML='<b>練習相手を選択</b><p class="panelNote">これまで大会で対戦した相手から選べます。</p>';for(const n of (saveData.encountered||['Plain'])){const q=document.createElement('button');q.className='menuBtn';q.textContent=CHARACTER_DATA[n]?.jp||n;q.onclick=()=>{tournament=null;startRaceRound(n,true)};box.appendChild(q)}actions.appendChild(box);}else if(place.startsWith('arena')||place==='master'||place==='kawazu'||place==='akina'){
-    const b=document.createElement('button');b.className='menuBtn';b.textContent=place==='practice'?'練習を始める':(place==='master'?'ベルゼブブさんに挑戦':(place==='kawazu'?'カワズさんに挑戦':(place==='akina'?(saveData.takumiUnlocked?'タクミさんと峠バトル':'？？？に挑戦'):((place==='arena4'||place==='arena5')?'3回戦大会に参加':'2回戦大会に参加'))));
-    b.onclick=()=>startRace(place==='practice');
-    actions.appendChild(b);
+  if(place==='practice'){const guide=document.createElement('button');guide.className='menuBtn';guide.textContent='📖 操作・加速システムの説明を見る';guide.onclick=()=>showTutorial('practice');actions.appendChild(guide);const box=document.createElement('div');box.className='homeBox';box.innerHTML='<b>練習相手を選択</b><p class="panelNote">これまで大会で対戦した相手から選べます。</p>';for(const n of (saveData.encountered||['Plain'])){const q=document.createElement('button');q.className='menuBtn';q.textContent=CHARACTER_DATA[n]?.jp||n;q.onclick=()=>{tournament=null;startRaceRound(n,true)};box.appendChild(q)}actions.appendChild(box);}else if(place.startsWith('arena')){
+    const set=COURSE_SETS[place]||[];
+    const box=document.createElement('div');box.className='homeBox';
+    box.innerHTML='<b>A〜D大会</b><p class="panelNote">各大会は同じコースで2戦。1回戦はもぶさん、2回戦は他のキャラです。</p>';
+    for(let ci=0;ci<4;ci++){
+      const btn=document.createElement('button');btn.className='menuBtn';
+      const key=tournamentKey(place,ci),cleared=(saveData.tournamentWins?.[key]||0)>0;
+      btn.textContent=`${TOURNAMENT_LABELS[ci]}大会　${set[ci]?.name||('コース'+(ci+1))}${cleared?'　✓':''}`;
+      btn.onclick=()=>startRace(false,ci);box.appendChild(btn);
+    }
+    actions.appendChild(box);
+  }else if(place==='master'||place==='kawazu'||place==='akina'){
+    const btn=document.createElement('button');btn.className='menuBtn';
+    btn.textContent=place==='master'?'ベルゼブブさんに挑戦':(place==='kawazu'?'カワズさんに挑戦':(saveData.takumiUnlocked?'タクミさんと峠バトル':'？？？に挑戦'));
+    btn.onclick=()=>startRace(false);
+    actions.appendChild(btn);
   }else{
     const p=document.createElement('div');p.className='homeBox';
     p.innerHTML='<b>'+(place==='forest'?'森':'池')+'の交流イベント</b><p>円形コース＋中央の十字通路で相手を追い、泡弾で減速させて舌で1回捕まえるとスキルを教わります。</p>';
@@ -378,20 +391,21 @@ function applyMichaelSkills(){
   const kawazu=racers.find(r=>r.name==='Kawazu');
   if(kawazu){kawazu.customSkillA=saveData.kawazuSkillA;kawazu.customSkillB=saveData.kawazuSkillB;}
 }
-function startRace(practice=false){
+function startRace(practice=false,courseIndex=0){
   if(practice){tournament=null;startRaceRound('Plain',true);return;}
-  tournament={place:currentPlace,round:0,opponents:buildTournament(currentPlace)};
+  tournament={place:currentPlace,round:0,courseIndex:currentPlace.startsWith('arena')?courseIndex:0,opponents:buildTournament(currentPlace)};
   startRaceRound(tournament.opponents[0],false);
 }
 function startRaceRound(opponent,practice=false){
   appState='race';hideAllScreens();document.querySelector('#raceUi')?.classList.remove('hidden');
-  selectCourse(tournament?.place||eventChallenge?.racePlace||'arena1',tournament?.round||0);reset(opponent);applyMichaelSkills();finished=false;
+  selectCourse(tournament?.place||eventChallenge?.racePlace||'arena1',tournament?.courseIndex??tournament?.round??0);reset(opponent);applyMichaelSkills();finished=false;
   camera.x=Math.max(0,Math.min(world.w-W,racers[controlledIndex].x-W/2));
   camera.y=Math.max(0,Math.min(world.h-H,racers[controlledIndex].y-H/2));
   raceStartDelay=1.15;
   saveData.encountered=saveData.encountered||['Plain'];if(!saveData.encountered.includes(opponent)){saveData.encountered.push(opponent);saveGame();}
   racers.forEach(r=>{r.lap=1;r.cp=1;r.finished=false;r.speed=0;});if(activeCourse.pointToPoint)ui.lap.textContent='POINT TO POINT';
-  msg(practice?('練習開始！ '+activeCourse.name):('大会 '+(tournament.round+1)+'回戦 / '+tournament.opponents.length+'　'+activeCourse.name+'　VS '+(CHARACTER_DATA[opponent]?.jp||opponent)));
+  const cup=(tournament?.place||'').startsWith('arena')?(TOURNAMENT_LABELS[tournament.courseIndex]+'大会　'):'';
+  msg(practice?('練習開始！ '+activeCourse.name):(cup+(tournament.round+1)+'回戦 / '+tournament.opponents.length+'　'+activeCourse.name+'　VS '+(CHARACTER_DATA[opponent]?.jp||opponent)));
 }
 function showRaceResult(win){
  if(eventChallenge){
@@ -410,9 +424,10 @@ function showRaceResult(win){
    setTimeout(()=>startRaceRound(next,false),450);
  }else{
    saveData.tournamentWins=saveData.tournamentWins||{};
-   saveData.tournamentWins[tournament.place]=(saveData.tournamentWins[tournament.place]||0)+1;
-   const cleared=Object.keys(saveData.tournamentWins).filter(k=>k.startsWith('arena')&&saveData.tournamentWins[k]>0).length;
-   if(cleared>=5)saveData.masterUnlocked=true;
+   const winKey=tournament.place.startsWith('arena')?tournamentKey(tournament.place,tournament.courseIndex):tournament.place;
+   saveData.tournamentWins[winKey]=(saveData.tournamentWins[winKey]||0)+1;
+   let cleared=0;for(let ai=1;ai<=5;ai++)for(let ci=0;ci<4;ci++)if((saveData.tournamentWins[tournamentKey('arena'+ai,ci)]||0)>0)cleared++;
+   if(cleared>=20)saveData.masterUnlocked=true;
    saveGame();let wasMaster=tournament.place==='master';tournament=null;if(wasMaster&&!saveData.endingSeen){saveData.endingSeen=true;saveGame();setTimeout(()=>playStory('ending'),450);}else setTimeout(showField,450);
  }
 }
@@ -515,8 +530,8 @@ const COURSE_SETS={
  ],
  arena5:[
   {name:'遺跡スクエア',theme:'master',halfWidth:260,path:[[700,700],[4700,700],[5200,1200],[5200,3300],[4700,3800],[1000,3800],[550,3300],[550,1200]]},
-  {name:'石門ツインパス',theme:'master',branches:[[[1700,700],[2300,1300],[3200,1500],[4200,850]],[[1700,700],[2100,2600],[3200,3100],[4400,2500],[4200,850]]],path:[[650,700],[1700,700],[4200,850],[5200,1600],[5000,3400],[3500,3950],[1400,3650],[550,2500]]},
-  {name:'崩れた回廊',theme:'master',path:[[700,650],[2600,500],[4700,850],[5200,1800],[4400,2400],[5100,3300],[3900,3900],[2500,3400],[1100,3900],[550,2900],[1200,2100],[600,1400]]},
+  {name:'石門リスクルート',theme:'master',halfWidth:235,branches:[[[1450,720],[2050,1450],[2950,2050],[3900,1450],[4550,900]]],extraAnchors:[[2020,1360],[3000,1970],[3890,1360]],path:[[650,700],[1450,720],[4550,900],[5250,1450],[5200,3000],[4550,3850],[3300,4050],[1800,3900],[700,3250],[500,2100],[850,1250]]},
+  {name:'崩落ロングジグザグ',theme:'master',halfWidth:220,extraAnchors:[[1500,760],[2450,1170],[3500,700],[4550,1350],[3750,1900],[4700,2450],[3600,3000],[4550,3500],[3000,3900],[1900,3350],[950,2700],[1500,2100],[700,1500]],path:[[650,650],[1550,480],[2500,950],[3550,500],[4700,900],[5250,1550],[4300,2050],[5200,2550],[4300,3150],[5100,3650],[3900,4050],[2850,3600],[1800,4050],[800,3500],[500,2850],[1450,2350],[600,1800],[1150,1200]]},
   {name:'古代迷走路',theme:'master',halfWidth:215,extraAnchors:[[1900,800],[3000,1100],[4300,850],[4450,1900],[3500,2350],[4600,3150],[3000,3500],[1600,3300],[1050,2300]],path:[[700,700],[1900,500],[3000,1050],[4300,500],[5100,1100],[4500,1850],[3300,1500],[2700,2200],[3500,2700],[4900,2400],[5200,3300],[4000,3900],[2600,3500],[1300,3900],[600,3000],[1100,2300],[600,1500]]},
   {name:'遺跡ダウンヒル',theme:'master',pointToPoint:true,halfWidth:225,extraAnchors:[[1450,800],[2150,1150],[1700,1600],[2750,1950],[2200,2400],[3400,2750],[2950,3250],[4200,3500]],path:[[650,550],[1500,550],[2200,900],[1650,1250],[2450,1600],[1800,2050],[2900,2350],[2250,2800],[3500,3100],[3000,3550],[4300,3800],[5200,3450]]}
  ],
@@ -800,11 +815,11 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.aiWallHitTimer=Math.ma
  if(Math.abs(diff)<turn)r.face=want;else r.face+=Math.sign(diff)*turn;
  // AI flight rhythm
  if(r.ai){if(r.flight<3&&Math.random()<dt*2.8)pressJumpSilent(r);if(r.flight===3&&r.glideClock>4.55&&r.glideClock<5.45)pressJumpSilent(r);}
- if(r.flight===0){r.speed=approach(r.speed,groundSpeed*inp.m*(r.name==='Kawazu'?1.14:1),380*dt);}else if(r.flight===1){r.speed=approach(r.speed,330,230*dt);}else if(r.flight===2){r.speed=approach(r.speed,455,260*dt);}else {r.glideClock+=dt;if(r.glideClock<5.65)r.speed=approach(r.speed,r.name==='Kawazu'?maxSpeed+65:maxSpeed,glideAccel*dt);else{r.glideGrace+=dt;r.speed=approach(r.speed,245,82*dt);if(r.speed<300){r.flight=0;r.onGround=true;r.glideClock=0;r.landAge=.28;}}}
+ if(r.flight===0){r.speed=approach(r.speed,groundSpeed*inp.m*(r.name==='Kawazu'?1.14:r.name==='Takumi'?1.12:1),380*dt);}else if(r.flight===1){r.speed=approach(r.speed,r.name==='Takumi'?355:330,230*dt);}else if(r.flight===2){r.speed=approach(r.speed,r.name==='Takumi'?485:455,260*dt);}else {r.glideClock+=dt;if(r.glideClock<5.65)r.speed=approach(r.speed,r.name==='Kawazu'?maxSpeed+65:r.name==='Takumi'?maxSpeed+55:maxSpeed,glideAccel*dt);else{r.glideGrace+=dt;r.speed=approach(r.speed,r.name==='Takumi'?280:245,82*dt);if(r.speed<300){r.flight=0;r.onGround=true;r.glideClock=0;r.landAge=.28;}}}
  if(r.hitSlow>0)r.speed*=Math.pow(.78,dt*4);
  if(r.burningWing>0)r.speed=approach(r.speed,maxSpeed+205,720*dt);
  else if(r.highJump>0)r.speed=approach(r.speed,maxSpeed+70,300*dt);
- else if(r.boost>0)r.speed=Math.min(maxSpeed+45,r.speed+210*dt);
+ else if(r.boost>0)r.speed=Math.min(maxSpeed+(r.name==='Takumi'?120:45),r.speed+(r.name==='Takumi'?330:210)*dt);
  if(r.bump>0)r.speed=Math.min(r.speed,360);
  if(r.ai){
    const bend=r.aiBend||0;
@@ -817,7 +832,7 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.aiWallHitTimer=Math.ma
    if(!activeCourse.pointToPoint){n1=path[(i+1)%path.length];n2=path[(i+2)%path.length];}
    let bend=Math.abs(norm(Math.atan2(n2.y-n1.y,n2.x-n1.x)-Math.atan2(n1.y-r.y,n1.x-r.x)));
    if(bend>.48)r.takumiCornering=true;
-   else if(r.takumiCornering&&bend<.22&&r.takumiPassiveCd<=0){r.takumiCornering=false;r.takumiPassiveCd=1.25;r.speed=Math.min(maxSpeed+145,Math.max(r.speed+115,560));r.boost=.5;if(!r.ai)msg('コーナー脱出加速！');}
+   else if(r.takumiCornering&&bend<.22&&r.takumiPassiveCd<=0){r.takumiCornering=false;r.takumiPassiveCd=.95;r.speed=Math.min(maxSpeed+210,Math.max(r.speed+185,645));r.boost=.78;if(!r.ai)msg('コーナー脱出加速！');}
  }
  // Tongue anchor overrides ordinary turn. Player/rival overlap never affects anchor tongue.
  if(r.tongue&&(r.tongue.kind==='anchor'||r.tongue.kind==='gutter')){let a=r.tongue.target,dx=a.x-r.x,dy=a.y-r.y,d=Math.hypot(dx,dy)||1,tan=Math.atan2(dy,dx)+(r.tongue.side>0?Math.PI/2:-Math.PI/2);let hold=(performance.now()-r.tongue.started)/1000,gutter=r.tongue.kind==='gutter';r.face=lerpAngle(r.face,tan,Math.min(1,dt*(gutter?13.5:7.5)));if(gutter){r.speed=Math.max(r.speed,Math.min(maxSpeed+35,555));}else if(hold>1.05)r.speed=Math.max(220,r.speed-250*dt);else r.speed=Math.max(r.speed,Math.min(maxSpeed,520));}
