@@ -700,7 +700,7 @@ rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false,raceStartDelay=0;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
-function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0,aiPathIndex:0,aiWallHits:0,aiWallHitTimer:0,aiBend:0,aiAssist:0,wingSnap:0,drifting:false,driftCharge:0,driftMoveFace:0,driftSide:0};}
+function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0,aiPathIndex:0,aiWallHits:0,aiWallHitTimer:0,aiBend:0,aiAssist:0,wingSnap:0,drifting:false,driftCharge:0,driftMoveFace:0,driftSide:0,driftFxClock:0,driftGhosts:[]};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
 function reset(opponentName='Plain'){
  globalTimeStop=0;globalTimeLag=0;
@@ -818,6 +818,17 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
    let slip=Math.abs(norm(r.face-r.driftMoveFace));
    r.driftCharge=Math.min(1.8,(r.driftCharge||0)+dt*(.55+Math.min(1.1,slip)));
    r.wingSnap=Math.max(r.wingSnap,.06); // rapid little flaps while sliding
+   r.driftFxClock=(r.driftFxClock||0)-dt;
+   if(r.driftFxClock<=0){
+     r.driftFxClock=.075;
+     r.driftGhosts=r.driftGhosts||[];
+     r.driftGhosts.push({x:r.x,y:r.y,face:r.face,t:.28});
+     if(r.driftGhosts.length>5)r.driftGhosts.shift();
+   }
+ }
+ if(r.driftGhosts){
+   for(const g of r.driftGhosts)g.t-=dt;
+   r.driftGhosts=r.driftGhosts.filter(g=>g.t>0);
  }
  // AI flight rhythm
  if(r.ai){if(r.flight<3&&Math.random()<dt*2.8)pressJumpSilent(r);if(r.flight===3&&r.glideClock>4.55&&r.glideClock<5.45)pressJumpSilent(r);}
@@ -1058,14 +1069,14 @@ function useA(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Taku
 }
 function startTakumiDrift(r){
  if(r.name!=='Takumi'||r.drifting||r.skillCdB>0)return;
- r.drifting=true;r.driftCharge=0;r.driftMoveFace=r.face;r.driftSide=0;r.skillCdB=.12;
+ r.drifting=true;r.driftCharge=0;r.driftMoveFace=r.face;r.driftSide=0;r.driftFxClock=0;r.driftGhosts=[];r.skillCdB=.12;
  r.flight=Math.max(2,r.flight);r.onGround=false;r.speed=Math.max(r.speed,455);
  msg('ドリフト飛行！ B長押しで横滑り、離して加速');
 }
 function releaseTakumiDrift(r){
  if(!r||r.name!=='Takumi'||!r.drifting)return;
  let p=Math.min(1,(r.driftCharge||0)/1.35);
- r.drifting=false;r.skillCdB=.65;
+ r.drifting=false;r.skillCdB=.65;r.driftFxClock=0;
  if(p>.12){r.speed=Math.min(maxSpeed+225,Math.max(r.speed+95+190*p,610+110*p));r.boost=.42+.55*p;msg('ドリフト加速 '+Math.round(p*100)+'%！');}
  else msg('ドリフト解除');
  r.driftCharge=0;r.driftMoveFace=r.face;
@@ -1318,7 +1329,58 @@ function tongueMouthPoint(r){
     y:r.y+Math.sin(r.face)*lean-lift+oy*sc
   };
 }
+
+function drawDriftFlightFx(r){
+ if(r.name!=='Takumi')return;
+ const ghosts=r.driftGhosts||[];
+ if(ghosts.length){
+   ctx.save();
+   for(const g of ghosts){
+     let a=Math.max(0,Math.min(1,g.t/.28));
+     ctx.globalAlpha=.16*a;
+     ctx.translate(g.x,g.y);
+     ctx.rotate(g.face);
+     ctx.strokeStyle='#eafcff';ctx.lineWidth=5;
+     ctx.beginPath();ctx.ellipse(-8,0,30,17,0,0,Math.PI*2);ctx.stroke();
+     ctx.rotate(-g.face);ctx.translate(-g.x,-g.y);
+   }
+   ctx.restore();
+ }
+ if(!r.drifting)return;
+ const move=r.driftMoveFace||r.face,side=Math.sign(norm(r.face-move))||1;
+ const charge=Math.min(1,(r.driftCharge||0)/1.35),now=performance.now()/1000;
+ ctx.save();
+ // Air-cut slashes: angled across the actual slide direction so sideways drift reads clearly.
+ ctx.strokeStyle='rgba(230,250,255,.78)';
+ ctx.lineWidth=4;
+ ctx.lineCap='round';
+ for(let i=0;i<5;i++){
+   let back=38+i*24,lat=side*(22+i*8),pulse=Math.sin(now*15+i)*8;
+   let bx=r.x-Math.cos(move)*back+Math.cos(move+Math.PI/2)*(lat+pulse);
+   let by=r.y-Math.sin(move)*back+Math.sin(move+Math.PI/2)*(lat+pulse);
+   let slash=move+side*.78;
+   ctx.globalAlpha=.34+.08*i+.18*charge;
+   ctx.beginPath();
+   ctx.moveTo(bx-Math.cos(slash)*20,by-Math.sin(slash)*20);
+   ctx.lineTo(bx+Math.cos(slash)*28,by+Math.sin(slash)*28);
+   ctx.stroke();
+ }
+ // Two longer stream lines show inertia direction independently of body heading.
+ ctx.globalAlpha=.55+.25*charge;ctx.lineWidth=5;
+ for(const off of [-18,18]){
+   let ox=Math.cos(move+Math.PI/2)*off,oy=Math.sin(move+Math.PI/2)*off;
+   ctx.beginPath();
+   ctx.moveTo(r.x-Math.cos(move)*18+ox,r.y-Math.sin(move)*18+oy);
+   ctx.quadraticCurveTo(r.x-Math.cos(move)*80+ox+Math.cos(move+Math.PI/2)*side*18,
+                        r.y-Math.sin(move)*80+oy+Math.sin(move+Math.PI/2)*side*18,
+                        r.x-Math.cos(move)*(120+55*charge)+ox,
+                        r.y-Math.sin(move)*(120+55*charge)+oy);
+   ctx.stroke();
+ }
+ ctx.restore();
+}
 function drawRacer(r){
+ drawDriftFlightFx(r);
  if(r.highJump>0){ctx.save();ctx.globalAlpha=.22;ctx.strokeStyle='#ff5964';ctx.lineWidth=5;ctx.beginPath();ctx.arc(r.x,r.y,62,0,Math.PI*2);ctx.stroke();ctx.restore();}
  if(r.burningWing>0||r.highJump>0){
    ctx.save();let a=r.face||0,pulse=.5+.5*Math.sin(performance.now()/48);
@@ -1369,6 +1431,7 @@ function drawRacer(r){
  if(r.flight===2){let flap=Math.sin(now*18);ctx.scale(1+.035*flap,1-.025*flap);}
  // Glide: slight forward pitch / streamlined squash.
  if(r.flight===3){ctx.transform(1,0,-Math.sin(r.face)*.045,1,0,0);}
+ if(r.name==='Takumi'&&r.drifting){let slip=norm(r.face-(r.driftMoveFace||r.face));ctx.rotate(Math.max(-.22,Math.min(.22,slip*.22)));ctx.scale(1.03,.96);}
  currentWingSpecial=r.name==='Michael';currentWingRed=r.name==='Kawazu';currentWingTakumi=r.name==='Takumi';currentWingBurning=r.burningWing>0||r.highJump>0;currentWingFold=Math.min(1,(r.wingSnap||0)/.19);if(dir==='down')frogFront(r);else if(dir==='up')frogBack(r);else frogSide(r,dir==='left');currentWingBurning=false;currentWingTakumi=false;currentWingFold=0;if(r.name==='Takumi'){ctx.save();
  const black='#151515',white='#f5f3eb';
  if(dir==='down'){
