@@ -582,16 +582,23 @@ function rebuildCourseObjects(){
        pocketX/=pocketL;pocketY/=pocketL;
        const treeR=42,roadClear=courseHalfWidth+treeR+18;
        let found=false,anchorKind='tree';
-       // 1) Best case: tree in the open inner pocket near the apex.
+       // 1) Best case: inner grass, but bias sharp hairpins toward the ENTRANCE side
+       // instead of sitting exactly at the apex.
+       const apexBack=angle>1.35?Math.min(310,Math.max(150,il*.18)):Math.min(130,il*.08);
        for(let off=courseHalfWidth+treeR+22;off<=courseHalfWidth+520;off+=34){
-         const tx=b.x+pocketX*off,ty=b.y+pocketY*off;
+         const tx=b.x-ix*apexBack+pocketX*off,ty=b.y-iy*apexBack+pocketY*off;
          if(trackDistance(tx,ty)>=roadClear){ax=tx;ay=ty;found=true;break;}
        }
        // 2) If the apex pocket is occupied by a nearby switchback, prefer the ENTRANCE
        // side of the bend. Search backwards along the incoming road and outward from its
        // inside edge before considering any road-edge fallback.
        if(!found){
-         for(let back=90;back<=360&&!found;back+=45){
+         // Prefer noticeably earlier on the entrance leg. This keeps the anchor before
+         // the apex, where the player naturally wants to throw the tongue while braking.
+         const entranceBias=angle>1.35?1.0:.72;
+         const backStart=Math.max(150,Math.min(330,il*.20))*entranceBias;
+         const backEnd=Math.max(430,Math.min(720,il*.46));
+         for(let back=backStart;back<=backEnd&&!found;back+=42){
            for(let off=courseHalfWidth+treeR+18;off<=courseHalfWidth+360;off+=34){
              const tx=b.x-ix*back+leftIn.x*off,ty=b.y-iy*back+leftIn.y*off;
              if(trackDistance(tx,ty)>=roadClear){ax=tx;ay=ty;found=true;break;}
@@ -602,7 +609,7 @@ function rebuildCourseObjects(){
          // 3) No room for a full tree: use a slim tongue pole at the INSIDE EDGE,
          // biased toward the corner entrance. A pole needs far less lateral space and
          // avoids putting a bulky tree in the racing line.
-         const poleR=10,back=Math.min(250,Math.max(95,il*.24));
+         const poleR=10,back=Math.min(390,Math.max(170,il*.30));
          const edge=Math.max(35,courseHalfWidth-poleR-6);
          ax=b.x-ix*back+leftIn.x*edge;ay=b.y-iy*back+leftIn.y*edge;
          anchorKind='pole';
