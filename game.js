@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.45';
+const VERSION='v2.46';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -996,14 +996,26 @@ function drawRacer(r){
    ctx.fillStyle=eyeRed;ctx.beginPath();ctx.arc(-14,-39,10,0,Math.PI*2);ctx.arc(14,-39,10,0,Math.PI*2);ctx.fill();
    ctx.fillStyle=eyeDark;ctx.beginPath();ctx.arc(-12,-39,4,0,Math.PI*2);ctx.arc(12,-39,4,0,Math.PI*2);ctx.fill();
    ctx.fillStyle=sideBlue;ctx.fillRect(-18,5,5,23);ctx.fillRect(13,5,5,23);
-   ctx.fillStyle=orange;ctx.beginPath();ctx.arc(-23,12,7,0,Math.PI*2);ctx.arc(23,12,7,0,Math.PI*2);ctx.arc(-12,40,7,0,Math.PI*2);ctx.arc(12,40,7,0,Math.PI*2);ctx.fill();
+   // Keep every orange pad as an independent path. Consecutive arc() calls in one
+   // path draw connector polygons between the circles, which caused the mystery
+   // orange triangle/lines across Kawazu's body.
+   ctx.fillStyle=orange;
+   for(const [px,py,pr] of [[-23,12,7],[23,12,7],[-12,40,7],[12,40,7]]){ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.fill();}
+ }else if(dir==='up'){
+   // Back view: only the foot soles should show orange.
+   ctx.fillStyle=orange;
+   ctx.beginPath();ctx.ellipse(-11,40,9,5,.18,0,Math.PI*2);ctx.fill();
+   ctx.beginPath();ctx.ellipse(11,40,9,5,-.18,0,Math.PI*2);ctx.fill();
  }else if(dir==='left'||dir==='right'){
    const d=dir==='left'?-1:1;ctx.scale(d,1);
    ctx.fillStyle=belly;ctx.beginPath();ctx.ellipse(8,13,10,17,0,0,Math.PI*2);ctx.fill();
    ctx.fillStyle=eyeRed;ctx.beginPath();ctx.arc(15,-39,10,0,Math.PI*2);ctx.fill();
    ctx.fillStyle=eyeDark;ctx.beginPath();ctx.arc(18,-39,4,0,Math.PI*2);ctx.fill();
    ctx.fillStyle=sideBlue;ctx.beginPath();ctx.roundRect(-17,5,7,24,3);ctx.fill();
-   ctx.fillStyle=orange;ctx.beginPath();ctx.arc(-20,12,7,0,Math.PI*2);ctx.ellipse(-8,40,9,5,-.15,0,Math.PI*2);ctx.ellipse(12,40,9,5,.15,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=orange;
+   ctx.beginPath();ctx.arc(-20,12,7,0,Math.PI*2);ctx.fill();
+   ctx.beginPath();ctx.ellipse(-8,40,9,5,-.15,0,Math.PI*2);ctx.fill();
+   ctx.beginPath();ctx.ellipse(12,40,9,5,.15,0,Math.PI*2);ctx.fill();
  }
  ctx.restore();}
  // Wing-flap speed lines on stage 2 and on successful maintenance taps.
