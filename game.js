@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.28';
+const VERSION='v2.29';
 const RACE_LAPS=3;
 
 const CHARACTER_DATA={
@@ -84,10 +84,11 @@ function showField(){
     kb.addEventListener('click',()=>showPlace('kawazu'));document.querySelector('#fieldMap')?.appendChild(kb);
   }
   let ab=document.querySelector('.mapSpot.akina');
-  if(saveData.kawazuUnlocked&&!ab){
-    ab=document.createElement('button');ab.className='mapSpot akina';ab.dataset.place='akina';ab.innerHTML='🍁<b>アキナ山</b><small>一本道・峠バトル</small>';
+  if(!ab){
+    ab=document.createElement('button');ab.className='mapSpot akina';ab.dataset.place='akina';
     ab.addEventListener('click',()=>showPlace('akina'));document.querySelector('#fieldMap')?.appendChild(ab);
   }
+  ab.innerHTML=saveData.takumiUnlocked?'🍁<b>アキナ山</b><small>一本道・峠バトル</small>':'❓<b>？？？</b><small>謎の一本道</small>';
 }
 function updateFieldUi(){
   const n=CHARACTER_DATA[saveData.selectedCharacter]?.jp?.replace('さん','')||saveData.selectedCharacter;
@@ -162,13 +163,13 @@ function showPlace(place){
     pond:['🪷 池','ピラニアのリヴァイアさん、ザリガニのアスモデウスさんがいる池。'],
     master:['👑 マスタークラス','ベルゼブブさんが待つ高難度クラス。'],
     kawazu:['🐸 カワズさん','クリア後に現れる謎の高速カエル。'],
-    akina:['🍁 アキナ山','クリア後の一本道・峠コース。連続ヘアピンを下り、タクミさんとゴールを競います。']
+    akina:saveData.takumiUnlocked?['🍁 アキナ山','一本道の峠コース。連続ヘアピンを下り、タクミさんとゴールを競います。']:['❓ ？？？','地図に名前のない一本道。白黒の翼を持つ速いカエルが待っている……。']
   }[place];
   document.querySelector('#placeTitle').textContent=data[0];
   document.querySelector('#placeDesc').textContent=data[1];
   const actions=document.querySelector('#placeActions');actions.innerHTML='';
   if(place==='practice'){const guide=document.createElement('button');guide.className='menuBtn';guide.textContent='📖 操作・加速システムの説明を見る';guide.onclick=()=>showTutorial('practice');actions.appendChild(guide);const box=document.createElement('div');box.className='homeBox';box.innerHTML='<b>練習相手を選択</b><p class="panelNote">これまで大会で対戦した相手から選べます。</p>';for(const n of (saveData.encountered||['Plain'])){const q=document.createElement('button');q.className='menuBtn';q.textContent=CHARACTER_DATA[n]?.jp||n;q.onclick=()=>{tournament=null;startRaceRound(n,true)};box.appendChild(q)}actions.appendChild(box);}else if(place.startsWith('arena')||place==='master'||place==='kawazu'||place==='akina'){
-    const b=document.createElement('button');b.className='menuBtn';b.textContent=place==='practice'?'練習を始める':(place==='master'?'ベルゼブブさんに挑戦':(place==='kawazu'?'カワズさんに挑戦':(place==='akina'?'タクミさんと峠バトル':((place==='arena4'||place==='arena5')?'3回戦大会に参加':'2回戦大会に参加'))));
+    const b=document.createElement('button');b.className='menuBtn';b.textContent=place==='practice'?'練習を始める':(place==='master'?'ベルゼブブさんに挑戦':(place==='kawazu'?'カワズさんに挑戦':(place==='akina'?(saveData.takumiUnlocked?'タクミさんと峠バトル':'？？？に挑戦'):((place==='arena4'||place==='arena5')?'3回戦大会に参加':'2回戦大会に参加'))));
     b.onclick=()=>startRace(place==='practice');
     actions.appendChild(b);
   }else{
@@ -533,7 +534,7 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.airBarrier=Math.max(0,
    else if(r.takumiCornering&&bend<.22&&r.takumiPassiveCd<=0){r.takumiCornering=false;r.takumiPassiveCd=1.25;r.speed=Math.min(maxSpeed+145,Math.max(r.speed+115,560));r.boost=.5;if(!r.ai)msg('コーナー脱出加速！');}
  }
  // Tongue anchor overrides ordinary turn. Player/rival overlap never affects anchor tongue.
- if(r.tongue?.kind==='anchor'){let a=r.tongue.target,dx=a.x-r.x,dy=a.y-r.y,d=Math.hypot(dx,dy)||1,tan=Math.atan2(dy,dx)+(r.tongue.side>0?Math.PI/2:-Math.PI/2);let hold=(performance.now()-r.tongue.started)/1000;r.face=lerpAngle(r.face,tan,Math.min(1,dt*7.5));if(hold>1.05)r.speed=Math.max(220,r.speed-250*dt);else r.speed=Math.max(r.speed,Math.min(maxSpeed,520));}
+ if(r.tongue&&(r.tongue.kind==='anchor'||r.tongue.kind==='gutter')){let a=r.tongue.target,dx=a.x-r.x,dy=a.y-r.y,d=Math.hypot(dx,dy)||1,tan=Math.atan2(dy,dx)+(r.tongue.side>0?Math.PI/2:-Math.PI/2);let hold=(performance.now()-r.tongue.started)/1000,gutter=r.tongue.kind==='gutter';r.face=lerpAngle(r.face,tan,Math.min(1,dt*(gutter?13.5:7.5)));if(gutter){r.speed=Math.max(r.speed,Math.min(maxSpeed+35,555));}else if(hold>1.05)r.speed=Math.max(220,r.speed-250*dt);else r.speed=Math.max(r.speed,Math.min(maxSpeed,520));}
  r.vx=Math.cos(r.face)*r.speed;r.vy=Math.sin(r.face)*r.speed;r.x+=r.vx*dt;r.y+=r.vy*dt;
  // After a wall hit, bias a few frames toward the course center so acute V-corners cannot trap the racer.
  if(r.wallEscape>0&&r.highJump<=0){
@@ -631,7 +632,20 @@ function useMichaelSkill(r,id,slot){
  if(id==='poisonBoost'){r[cdKey]=2.5;r.speed=Math.min(maxSpeed+155,r.speed+150);r.boost=.72;effects.push({kind:'poisonMist',x:r.x-Math.cos(r.face)*35,y:r.y-Math.sin(r.face)*35,owner:r,t:4,max:4});msg('ポイズンブースト！');return true;}
  return false;
 }
-function useA(r){if(r.name==='Takumi'){if(r.skillCdA>0)return;let a=nearestAnchor(r,520);if(a){r.skillCdA=.65;let cross=Math.sin(norm(Math.atan2(a.y-r.y,a.x-r.x)-r.face));r.tongue={kind:'anchor',target:a,started:performance.now()-420,side:cross>0?-1:1};r.speed=Math.max(r.speed,545);msg('溝走り！ 内側へ舌を固定！');setTimeout(()=>{if(r.tongue?.target===a){r.boost=.28;r.tongue=null;}},520);}else msg('溝走り：コーナー内側へ近づけ！');return;}if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillA||(r.name==='Kawazu'?'airSwim':'punch'),'A');return;}if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
+function useA(r){if(r.name==='Takumi'){if(r.skillCdA>0)return;
+   let ns=nearestTrackSegment(r.x,r.y),i=ns.i;
+   let a=path[i],b=path[Math.min(path.length-1,i+1)],c=path[Math.min(path.length-1,i+2)];
+   if(!activeCourse.pointToPoint){b=path[(i+1)%path.length];c=path[(i+2)%path.length];}
+   if(!b||!c){msg('溝走り：コーナーがない');return;}
+   let iang=Math.atan2(b.y-a.y,b.x-a.x),oang=Math.atan2(c.y-b.y,c.x-b.x),turn=norm(oang-iang);
+   if(Math.abs(turn)<.22){msg('溝走り：コーナー内側へ近づけ！');return;}
+   let side=Math.sign(turn)||1,ox=Math.cos(oang+side*Math.PI/2),oy=Math.sin(oang+side*Math.PI/2);
+   // Virtual grab point is on the inside guard wall, slightly after the apex. No tree is required.
+   let target={x:b.x+Math.cos(oang)*150+ox*(courseHalfWidth+18),y:b.y+Math.sin(oang)*150+oy*(courseHalfWidth+18),virtualWall:true};
+   r.skillCdA=.65;r.tongue={kind:'gutter',target,started:performance.now()-320,side:side>0?-1:1};
+   r.speed=Math.max(r.speed,555);msg('溝走り！ 内側の壁を舌で掴んだ！');
+   setTimeout(()=>{if(r.tongue?.kind==='gutter'&&r.tongue.target===target){r.boost=.34;r.tongue=null;}},560);
+   return;}if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillA||(r.name==='Kawazu'?'airSwim':'punch'),'A');return;}if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
  if(r.name==='Gabriel'){waterBoost(r,false);return;}
  if(r.name==='Beelzebub'){r.skillCdA=1.45;let o=racers[1-r.index],aim=Math.atan2(o.y-r.y,o.x-r.x);effects.push({kind:'poison',x:r.x,y:r.y,vx:Math.cos(aim)*980,vy:Math.sin(aim)*980,owner:r,t:1.65,age:0});msg('毒液！');return;}
  if(r.name==='Kawazu'){r.skillCdA=1.15;r.speed=Math.min(maxSpeed+155,r.speed+105);r.boost=.42;effects.push({kind:'airball',x:r.x-Math.cos(r.face)*20,y:r.y-Math.sin(r.face)*20,vx:-Math.cos(r.face)*850,vy:-Math.sin(r.face)*850,owner:r,t:.9,age:0});msg('エアースイム！');return;}
