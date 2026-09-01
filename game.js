@@ -19,7 +19,8 @@ const CHARACTER_DATA={
  Leviathan:{jp:'リヴァイアさん',color:'#d65a48'},
  Asmodeus:{jp:'アスモデウスさん',color:'#d64b35'},
  Belial:{jp:'ベリアルさん',color:'#49324f'},
- Takumi:{jp:'タクミさん',color:'#f4f3ec',wing:'special'}
+ Takumi:{jp:'タクミさん',color:'#f4f3ec',wing:'special'},
+ Bunta:{jp:'ブンタさん',color:'#2456b8',wing:'blue'}
 };
 const TOURNAMENT_ROSTER=['Gabriel','Raphael','Uriel','Lucifer','Lilith'];
 function randomTournamentOpponent(exclude=[]){
@@ -183,6 +184,11 @@ function showPlace(place){
     btn.textContent=place==='master'?'ベルゼブブさんに挑戦':(place==='kawazu'?'カワズさんに挑戦':(saveData.takumiUnlocked?'タクミさんと峠バトル':'？？？に挑戦'));
     btn.onclick=()=>startRace(false);
     actions.appendChild(btn);
+    if(place==='akina'&&saveData.takumiUnlocked&&saveData.endingSeen){
+      const secret=document.createElement('button');secret.className='menuBtn';secret.textContent='？？？と峠バトル';
+      secret.onclick=()=>{tournament={place:'akina',round:0,courseIndex:0,opponents:['Bunta'],secret:true};startRaceRound('Bunta',false);};
+      actions.appendChild(secret);
+    }
   }else{
     const p=document.createElement('div');p.className='homeBox';
     p.innerHTML='<b>'+(place==='forest'?'森':'池')+'の交流イベント</b><p>円形コース＋中央の十字通路で相手を追い、泡弾で減速させて舌で1回捕まえるとスキルを教わります。</p>';
@@ -716,10 +722,13 @@ function reset(opponentName='Plain'){
    let out=path[1],dx=out.x-p0.x,dy=out.y-p0.y,l=Math.hypot(dx,dy)||1;tx=dx/l;ty=dy/l;
  }
  const nx=-ty,ny=tx,a=Math.atan2(ty,tx);
+ if(playerName==='Takumi'&&opponentName==='Takumi')oc='#2456b8';
  racers.splice(0,2,
    makeRacer(playerName,pc,0,p0.x+tx*150+nx*34,p0.y+ty*150+ny*34),
    makeRacer(opponentName,oc,1,p0.x+tx*150-nx*34,p0.y+ty*150-ny*34)
  );
+ if(playerName==='Takumi'&&opponentName==='Takumi')racers[1].takumiBlue=true;
+ if(opponentName==='Bunta')racers[1].takumiBlue=true;
  controlledIndex=0;racers[0].ai=false;racers[1].ai=true;racers[0].face=a;racers[1].face=a;
  // Store the real signed distance from the gate because loop spawns now follow
  // the road tangent rather than the gate's averaged tangent.
@@ -817,7 +826,7 @@ function updateRacer(r,dt){
   r.tongueBoostTimer=Math.max(0,(r.tongueBoostTimer||0)-dt);
   if(r.tongueBoostTimer>0)r.speed=Math.min(maxSpeed+130,r.speed+360*dt);
 r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r.wingSnap||0)-dt);r.aiWallHitTimer=Math.max(0,(r.aiWallHitTimer||0)-dt);if(r.aiWallHitTimer<=0)r.aiWallHits=0;r.airBarrier=Math.max(0,(r.airBarrier||0)-dt);r.wallGrace=Math.max(0,(r.wallGrace||0)-dt);r.wallEscape=Math.max(0,(r.wallEscape||0)-dt);r.highJump=Math.max(0,(r.highJump||0)-dt);r.normalHighJump=Math.max(0,(r.normalHighJump||0)-dt);r.confuse=Math.max(0,(r.confuse||0)-dt);r.burningWing=Math.max(0,(r.burningWing||0)-dt);if(r.charging)r.charge=Math.min(1.8,(r.charge||0)+dt);if(r.finished)return;r.skillCdA=Math.max(0,r.skillCdA-dt);r.skillCdB=Math.max(0,r.skillCdB-dt);r.hitSlow=Math.max(0,r.hitSlow-dt);r.boost=Math.max(0,r.boost-dt);r.bump=Math.max(0,r.bump-dt);r.wing=Math.max(0,r.wing-dt);r.jumpAge+=dt;r.flapAge+=dt;r.landAge=Math.max(0,r.landAge-dt);
- const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),aiTurn=r.ai?(1.28+Math.min(.55,(r.aiBend||0)*.42)):1,driftTurn=(r.name==='Takumi'&&r.drifting)?2.15:1,turn=(turnGround*(1-ratio)+turnFast*ratio)*dt*(r.name==='Raphael'?1.22:1)*(r.highJump>0?.28:1)*aiTurn*driftTurn;
+ const inp=desiredInput(r),want=Math.atan2(inp.y,inp.x),diff=norm(want-r.face),ratio=Math.min(1,r.speed/maxSpeed),aiTurn=r.ai?((r.name==='Bunta'?2.35:1.28)+Math.min(r.name==='Bunta'?1.15:.55,(r.aiBend||0)*(r.name==='Bunta'?.78:.42))):1,driftTurn=(r.name==='Takumi'&&r.drifting)?2.15:1,turn=(turnGround*(1-ratio)+turnFast*ratio)*dt*(r.name==='Raphael'?1.22:1)*(r.highJump>0?.28:1)*aiTurn*driftTurn;
  if(Math.abs(diff)<turn)r.face=want;else r.face+=Math.sign(diff)*turn;
  if(r.name==='Takumi'&&r.drifting){
    let slip=Math.abs(norm(r.face-r.driftMoveFace));
@@ -838,6 +847,12 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
  // AI flight rhythm
  if(r.ai){if(r.flight<3&&Math.random()<dt*2.8)pressJumpSilent(r);if(r.flight===3&&r.glideClock>4.55&&r.glideClock<5.45)pressJumpSilent(r);}
  if(r.flight===0){r.speed=approach(r.speed,groundSpeed*inp.m*(r.name==='Kawazu'?1.14:r.name==='Takumi'?1.12:1),380*dt);}else if(r.flight===1){r.speed=approach(r.speed,r.name==='Takumi'?355:330,230*dt);}else if(r.flight===2){r.speed=approach(r.speed,r.name==='Takumi'?485:455,260*dt);}else {r.glideClock+=dt;if(r.glideClock<5.65)r.speed=approach(r.speed,r.name==='Kawazu'?maxSpeed+65:r.name==='Takumi'?maxSpeed+55:maxSpeed,glideAccel*dt);else{r.glideGrace+=dt;r.speed=approach(r.speed,r.name==='Takumi'?280:245,82*dt);if(r.speed<300){r.flight=0;r.onGround=true;r.glideClock=0;r.landAge=.28;}}}
+ if(r.name==='Bunta'){
+   if(r.flight===0)r.speed=Math.max(r.speed,390);
+   else if(r.flight===1)r.speed=Math.max(r.speed,525);
+   else if(r.flight===2)r.speed=Math.max(r.speed,690);
+   else r.speed=Math.max(r.speed,820);
+ }
  if(r.hitSlow>0)r.speed*=Math.pow(.78,dt*4);
  if(r.burningWing>0)r.speed=approach(r.speed,maxSpeed+205,720*dt);
  else if(r.highJump>0)r.speed=approach(r.speed,maxSpeed+70,300*dt);
@@ -849,12 +864,12 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
    else if(bend>.62)r.speed=Math.min(r.speed,400);
    else if(bend>.38)r.speed=Math.min(r.speed,470);
  }
- if(r.name==='Takumi'){
+ if(r.name==='Takumi'||r.name==='Bunta'){
    let ns=nearestTrackSegment(r.x,r.y),i=ns.i,n1=path[Math.min(path.length-1,i+1)],n2=path[Math.min(path.length-1,i+2)];
    if(!activeCourse.pointToPoint){n1=path[(i+1)%path.length];n2=path[(i+2)%path.length];}
    let bend=Math.abs(norm(Math.atan2(n2.y-n1.y,n2.x-n1.x)-Math.atan2(n1.y-r.y,n1.x-r.x)));
    if(bend>.48)r.takumiCornering=true;
-   else if(r.takumiCornering&&bend<.22&&r.takumiPassiveCd<=0){r.takumiCornering=false;r.takumiPassiveCd=.95;r.speed=Math.min(maxSpeed+210,Math.max(r.speed+185,645));r.boost=.78;if(!r.ai)msg('コーナー脱出加速！');}
+   else if(r.takumiCornering&&bend<.22&&r.takumiPassiveCd<=0){r.takumiCornering=false;r.takumiPassiveCd=.95;r.speed=Math.min(maxSpeed+(r.name==='Bunta'?360:210),Math.max(r.speed+(r.name==='Bunta'?290:185),r.name==='Bunta'?820:645));r.boost=r.name==='Bunta'?1.1:.78;if(!r.ai)msg('コーナー脱出加速！');}
  }
  // Tongue anchor overrides ordinary turn. Player/rival overlap never affects anchor tongue.
  r.gutterPullX=0;r.gutterPullY=0;
@@ -906,7 +921,8 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
    let rs=aiForwardSegment(r),dx=rs.qx-r.x,dy=rs.qy-r.y,d=Math.hypot(dx,dy)||1;
    // Invisible CPU-only lane assist. It is a small continuous force, never a position snap.
    // Stronger only when the CPU has drifted close to/outside the corridor.
-   const soft=Math.max(0,d-courseHalfWidth*.36),assist=Math.min(d,soft*1.9*dt);
+   const soft=Math.max(0,d-courseHalfWidth*(r.name==='Bunta'?.18:.36));
+   const rate=r.name==='Bunta'?6.5:1.9,assist=Math.min(d,soft*rate*dt);
    if(assist>0){r.x+=dx/d*assist;r.y+=dy/d*assist;}
  }
  if(r.ai&&r.wallEscape>0){
@@ -920,6 +936,11 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
  }
  // Guard-grass wall.
  let hit=trackInfo(r.x,r.y);
+ if(r.name==='Bunta'&&r.ai&&hit.d>courseHalfWidth*.62){
+   let rs=aiForwardSegment(r),dx=rs.qx-r.x,dy=rs.qy-r.y,d=Math.hypot(dx,dy)||1;
+   let keep=Math.min(d,Math.max(0,hit.d-courseHalfWidth*.48));
+   r.x+=dx/d*keep;r.y+=dy/d*keep;hit=trackInfo(r.x,r.y);r.wallGrace=.3;
+ }
  if(r.courseWalk>0){
    r.courseWalk-=dt;let a=Math.atan2(hit.qy-r.y,hit.qx-r.x);r.face=a;r.flight=0;r.onGround=true;r.speed=105;
    r.x+=Math.cos(a)*105*dt;r.y+=Math.sin(a)*105*dt;
@@ -974,7 +995,7 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
  if(r.ai)aiSkills(r,dt);
 }
 function pressJumpSilent(r){snapWings(r);if(r.flight===0){r.flight=1;r.speed=Math.max(r.speed,285)}else if(r.flight===1){r.flight=2;r.speed=Math.max(r.speed,405)}else if(r.flight===2){r.flight=3;r.glideClock=0;r.speed=Math.max(r.speed,520)}else if(r.glideClock>3.8){r.glideClock=0;r.speed=Math.max(r.speed,550)}}
-function aiSkills(r,dt){if(r.name==='Takumi'){let ns=nearestTrackSegment(r.x,r.y),i=ns.i,n1=path[Math.min(path.length-1,i+1)],n2=path[Math.min(path.length-1,i+2)],bend=Math.abs(norm(Math.atan2(n2.y-n1.y,n2.x-n1.x)-r.face));if(bend>.62&&r.skillCdA<=0&&Math.random()<dt*3.2)useA(r);if(bend>.48&&!r.drifting&&r.skillCdB<=0&&Math.random()<dt*2.2)startTakumiDrift(r);if(r.drifting&&(r.driftCharge>1.05||bend<.2))releaseTakumiDrift(r);return;}if(r.name!=='Gabriel')return;let ns=nearestTrackSegment(r.x,r.y),t=path[(ns.i+2)%path.length],to=Math.atan2(t.y-r.y,t.x-r.x),bend=Math.abs(norm(to-r.face));if(bend>.56&&r.skillCdB<=0&&Math.random()<dt*3){waterSkill(r,true,true)}else if(bend>.3&&r.skillCdA<=0&&Math.random()<dt*2){waterBoost(r,true)}}
+function aiSkills(r,dt){if(r.name==='Takumi'||r.name==='Bunta'){let ns=nearestTrackSegment(r.x,r.y),i=ns.i,n1=path[Math.min(path.length-1,i+1)],n2=path[Math.min(path.length-1,i+2)],bend=Math.abs(norm(Math.atan2(n2.y-n1.y,n2.x-n1.x)-r.face));if(bend>.62&&r.skillCdA<=0&&Math.random()<dt*(r.name==='Bunta'?8:3.2))useA(r);if(bend>.48&&!r.drifting&&r.skillCdB<=0&&Math.random()<dt*(r.name==='Bunta'?6:2.2))startTakumiDrift(r);if(r.drifting&&(r.driftCharge>1.05||bend<.2))releaseTakumiDrift(r);return;}if(r.name!=='Gabriel')return;let ns=nearestTrackSegment(r.x,r.y),t=path[(ns.i+2)%path.length],to=Math.atan2(t.y-r.y,t.x-r.x),bend=Math.abs(norm(to-r.face));if(bend>.56&&r.skillCdB<=0&&Math.random()<dt*3){waterSkill(r,true,true)}else if(bend>.3&&r.skillCdA<=0&&Math.random()<dt*2){waterBoost(r,true)}}
 function nearestTrackSegment(px,py){
  let best={i:0,t:0,d:1e9};for(let i=0;i<(activeCourse.pointToPoint?path.length-1:path.length);i++){let a=path[i],b=path[(i+1)%path.length],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy,t=Math.max(0,Math.min(1,((px-a.x)*vx+(py-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(px-qx,py-qy);if(d<best.d)best={i,t,d};}return best;
 }
@@ -1031,7 +1052,7 @@ function useMichaelSkill(r,id,slot){
  if(id==='poisonBoost'){r[cdKey]=2.5;r.speed=Math.min(maxSpeed+155,r.speed+150);r.boost=.72;effects.push({kind:'poisonMist',x:r.x-Math.cos(r.face)*35,y:r.y-Math.sin(r.face)*35,owner:r,t:4,max:4});msg('ポイズンブースト！');return true;}
  return false;
 }
-function useA(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Takumi'){if(r.skillCdA>0)return;
+function useA(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Takumi'||r.name==='Bunta'){if(r.skillCdA>0)return;
    // 溝落とし: ALWAYS create a local tongue grip.  Bend detection is used only
    // to decide which side is "inside"; it must never be allowed to cancel the skill.
    let ns=nearestTrackSegment(r.x,r.y),n=path.length,i=ns.i;
@@ -1101,20 +1122,20 @@ function useA(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Taku
  r.skillCdA=1.35;let o=racers[1-r.index],d=Math.hypot(o.x-r.x,o.y-r.y);if(d<90){pushRival(o,r.face,78*(r.power||1));msg('パンチ！ 相手を横へ弾いた');}else msg('パンチ！');
 }
 function startTakumiDrift(r){
- if(r.name!=='Takumi'||r.drifting||r.skillCdB>0)return;
+ if((r.name!=='Takumi'&&r.name!=='Bunta')||r.drifting||r.skillCdB>0)return;
  r.drifting=true;r.driftCharge=0;r.driftMoveFace=r.face;r.driftSide=0;r.driftFxClock=0;r.driftGhosts=[];r.skillCdB=.12;
  r.flight=Math.max(2,r.flight);r.onGround=false;r.speed=Math.max(r.speed,455);
  msg('ドリフト飛行！ B長押しで横滑り、離して加速');
 }
 function releaseTakumiDrift(r){
- if(!r||r.name!=='Takumi'||!r.drifting)return;
+ if(!r||(r.name!=='Takumi'&&r.name!=='Bunta')||!r.drifting)return;
  let p=Math.min(1,(r.driftCharge||0)/1.35);
  r.drifting=false;r.skillCdB=.65;r.driftFxClock=0;
- if(p>.12){r.speed=Math.min(maxSpeed+225,Math.max(r.speed+95+190*p,610+110*p));r.boost=.42+.55*p;msg('ドリフト加速 '+Math.round(p*100)+'%！');}
+ if(p>.12){r.speed=Math.min(maxSpeed+(r.name==='Bunta'?430:225),Math.max(r.speed+(r.name==='Bunta'?180:95)+(r.name==='Bunta'?310:190)*p,(r.name==='Bunta'?790:610)+(r.name==='Bunta'?190:110)*p));r.boost=(r.name==='Bunta'?.62:.42)+(r.name==='Bunta'?.72:.55)*p;msg('ドリフト加速 '+Math.round(p*100)+'%！');}
  else msg('ドリフト解除');
  r.driftCharge=0;r.driftMoveFace=r.face;
 }
-function useB(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Takumi'){startTakumiDrift(r);return;}if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillB||(r.name==='Kawazu'?'wallKick':'bubble'),'B');return;}if(r.skillCdB>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
+function useB(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Takumi'||r.name==='Bunta'){startTakumiDrift(r);return;}if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillB||(r.name==='Kawazu'?'wallKick':'bubble'),'B');return;}if(r.skillCdB>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
  if(r.name==='Gabriel'){waterSkill(r,true,false);return;}
  if(r.name==='Beelzebub'){r.skillCdB=2.5;r.speed=Math.min(maxSpeed+155,r.speed+150);r.boost=.72;let bx=r.x-Math.cos(r.face)*35,by=r.y-Math.sin(r.face)*35;effects.push({kind:'poisonMist',x:bx,y:by,owner:r,t:4.0,max:4.0});msg('ポイズンブースト！');return;}
  if(r.name==='Kawazu'){r.skillCdB=1.25;let ti=trackInfo(r.x,r.y);if(ti.d>165){let a=Math.atan2(r.y-ti.qy,r.x-ti.qx)+Math.PI;r.face=norm(a);r.x=ti.qx+Math.cos(a)*150;r.y=ti.qy+Math.sin(a)*150;r.speed=Math.min(maxSpeed+145,r.speed+90);r.boost=.35;msg('壁キック！')}else{let o=racers[1-r.index],dx=o.x-r.x,dy=o.y-r.y,d=Math.hypot(dx,dy),behind=Math.cos(norm(Math.atan2(dy,dx)-r.face))<-.15;if(d<135&&behind){pushRival(o,r.face+Math.PI,105);r.speed=Math.min(maxSpeed+90,r.speed+70);}msg('エアキック！')}return;}
@@ -1245,11 +1266,11 @@ function drawAnchorPole(x,y){
  ctx.fillStyle='#f7e27b';ctx.beginPath();ctx.arc(0,-53,8,0,Math.PI*2);ctx.fill();
  ctx.restore();
 }
-let currentWingSpecial=false,currentWingRed=false,currentWingBurning=false,currentWingTakumi=false,currentWingFold=0;
+let currentWingSpecial=false,currentWingRed=false,currentWingBurning=false,currentWingTakumi=false,currentWingTakumiBlue=false,currentWingFold=0;
 function angelWing(x,y,side,scale=1,tilt=0){
  // One connected angel-wing silhouette. Broad at the shoulder, tapered into layered feather tips.
  ctx.save();ctx.translate(x,y);ctx.scale(side*scale*(1-.30*currentWingFold),scale*(1-.08*currentWingFold));ctx.rotate(tilt+side*.20*currentWingFold);
- ctx.fillStyle=currentWingBurning?'#d51f2f':(currentWingRed?'#d74c57':(currentWingTakumi?'#f7f5e9':(currentWingSpecial?'#fff9d8':'#fffdf5')));ctx.strokeStyle=currentWingBurning?'#78131d':(currentWingRed?'#7e2530':(currentWingTakumi?'#242424':(currentWingSpecial?'#e4b94f':'#c9d9dc')));ctx.lineWidth=2.2;ctx.lineJoin='round';
+ ctx.fillStyle=currentWingBurning?'#d51f2f':(currentWingRed?'#d74c57':(currentWingTakumi?(currentWingTakumiBlue?'#2e67d1':'#f7f5e9'):(currentWingSpecial?'#fff9d8':'#fffdf5')));ctx.strokeStyle=currentWingBurning?'#78131d':(currentWingRed?'#7e2530':(currentWingTakumi?(currentWingTakumiBlue?'#123779':'#242424'):(currentWingSpecial?'#e4b94f':'#c9d9dc')));ctx.lineWidth=2.2;ctx.lineJoin='round';
  ctx.beginPath();
  ctx.moveTo(0,2);
  ctx.bezierCurveTo(12,-17,32,-27,55,-25);
@@ -1364,7 +1385,7 @@ function tongueMouthPoint(r){
 }
 
 function drawDriftFlightFx(r){
- if(r.name!=='Takumi')return;
+ if(r.name!=='Takumi'&&r.name!=='Bunta')return;
  const ghosts=r.driftGhosts||[];
  if(ghosts.length){
    ctx.save();
@@ -1403,24 +1424,7 @@ function drawDriftFlightFx(r){
    ctx.lineTo(bx+Math.cos(slash)*28,by+Math.sin(slash)*28);
    ctx.stroke();
  }
- // Two wake lines are locked to the real velocity vector. A tiny bend is allowed
- // only in the same direction as the body's slip, so they can never visually point
- // somewhere Takumi is not actually travelling.
- ctx.globalAlpha=.55+.25*charge;ctx.lineWidth=5;
- const wakeLen=120+55*charge,bend=Math.max(-10,Math.min(10,slip*9));
- for(const off of [-18,18]){
-   let ox=Math.cos(move+Math.PI/2)*off,oy=Math.sin(move+Math.PI/2)*off;
-   const sx=r.x-Math.cos(move)*18+ox,sy=r.y-Math.sin(move)*18+oy;
-   const ex=r.x-Math.cos(move)*wakeLen+ox,ey=r.y-Math.sin(move)*wakeLen+oy;
-   ctx.beginPath();
-   ctx.moveTo(sx,sy);
-   ctx.quadraticCurveTo(
-     r.x-Math.cos(move)*(wakeLen*.58)+ox+Math.cos(move+Math.PI/2)*bend,
-     r.y-Math.sin(move)*(wakeLen*.58)+oy+Math.sin(move+Math.PI/2)*bend,
-     ex,ey
-   );
-   ctx.stroke();
- }
+ // v2.71: long twin wake lines removed; short air-cut streaks remain.
  ctx.restore();
 }
 function drawRacer(r){
@@ -1476,7 +1480,7 @@ function drawRacer(r){
  // Glide: slight forward pitch / streamlined squash.
  if(r.flight===3){ctx.transform(1,0,-Math.sin(r.face)*.045,1,0,0);}
  if(r.name==='Takumi'&&r.drifting){let slip=norm(r.face-(r.driftMoveFace||r.face));ctx.rotate(Math.max(-.22,Math.min(.22,slip*.22)));ctx.scale(1.03,.96);}
- currentWingSpecial=r.name==='Michael';currentWingRed=r.name==='Kawazu';currentWingTakumi=r.name==='Takumi';currentWingBurning=r.burningWing>0||r.highJump>0;currentWingFold=Math.min(1,(r.wingSnap||0)/.19);if(dir==='down')frogFront(r);else if(dir==='up')frogBack(r);else frogSide(r,dir==='left');currentWingBurning=false;currentWingTakumi=false;currentWingFold=0;
+ currentWingSpecial=r.name==='Michael';currentWingRed=r.name==='Kawazu';currentWingTakumi=(r.name==='Takumi'||r.name==='Bunta');currentWingTakumiBlue=!!r.takumiBlue||r.name==='Bunta';currentWingBurning=r.burningWing>0||r.highJump>0;currentWingFold=Math.min(1,(r.wingSnap||0)/.19);if(dir==='down')frogFront(r);else if(dir==='up')frogBack(r);else frogSide(r,dir==='left');currentWingBurning=false;currentWingTakumi=false;currentWingTakumiBlue=false;currentWingFold=0;
 if(r.name==='Beelzebub'){ctx.save();
  const neon='#a8ff00',neon2='#66ff33',dark='#09120f';
  if(dir==='down'){
@@ -1499,8 +1503,8 @@ if(r.name==='Beelzebub'){ctx.save();
  }
  ctx.restore();
 }
-if(r.name==='Takumi'){ctx.save();
- const black='#151515',white='#f5f3eb';
+if(r.name==='Takumi'||r.name==='Bunta'){ctx.save();
+ const blue=!!r.takumiBlue||r.name==='Bunta',black=blue?'#173d86':'#151515',white=blue?'#2e67d1':'#f5f3eb';
  if(dir==='down'){
    ctx.fillStyle=black;ctx.beginPath();ctx.ellipse(0,-23,30,23,0,Math.PI,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(-14,-38,13,0,Math.PI*2);ctx.arc(14,-38,13,0,Math.PI*2);ctx.fill();
    ctx.fillStyle=white;ctx.beginPath();ctx.roundRect(-28,-22,56,21,9);ctx.fill();
@@ -1620,7 +1624,7 @@ function upcomingCurveGuide(r){
   if(second)return {text:`${firstArrow} ${arrowFor(second.endAng)}`,cls:'sequence'};
   return {text:firstArrow,cls};
 }
-function updateHud(r){let cg=upcomingCurveGuide(r);if(ui.curve){ui.curve.textContent=cg.text;ui.curve.className='curveGuide '+cg.cls;}ui.lap.textContent=activeCourse.pointToPoint?'POINT TO POINT':('LAP '+Math.min(r.lap,RACE_LAPS)+'/'+RACE_LAPS);ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Takumi'){al='溝落とし';bl=r.drifting?'ドリフト '+Math.round(Math.min(1,(r.driftCharge||0)/1.35)*100)+'%':'ドリフト飛行'}else if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){let aid=r.customSkillA||'airSwim',bid=r.customSkillB||'wallKick';al=skillLabel(aid)+' ∞';bl=skillLabel(bid)+' ∞'}else if(r.name==='Michael'){let aid=r.customSkillA||'punch',bid=r.customSkillB||'bubble';al=skillLabel(aid)+(aid==='burningWing'?' '+r.burnWingUses+'/3':aid==='highJump'?' '+r.burnClimbUses+'/3':'');bl=skillLabel(bid)+(bid==='burningWing'?' '+r.burnWingUses+'/3':bid==='highJump'?' '+r.burnClimbUses+'/3':'')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
+function updateHud(r){let cg=upcomingCurveGuide(r);if(ui.curve){ui.curve.textContent=cg.text;ui.curve.className='curveGuide '+cg.cls;}ui.lap.textContent=activeCourse.pointToPoint?'POINT TO POINT':('LAP '+Math.min(r.lap,RACE_LAPS)+'/'+RACE_LAPS);ui.who.textContent='操作：'+(CHARACTER_DATA[r.name]?.jp||r.name);ui.speed.textContent=Math.round(r.speed*.56)+' km/h';let al='パンチ',bl='泡弾';if(r.name==='Takumi'||r.name==='Bunta'){al='溝落とし';bl=r.drifting?'ドリフト '+Math.round(Math.min(1,(r.driftCharge||0)/1.35)*100)+'%':'ドリフト飛行'}else if(r.name==='Gabriel'){al='水ブースト';bl='水レーザー'}else if(r.name==='Raphael'){al='エアバリア';bl='エアブースト '+(r.airBoostUses||0)+'/3'}else if(r.name==='Uriel'){al='タックル';bl='ロックフォール'}else if(r.name==='Lucifer'){al='叩き落とし';bl=r.charging?'チャージ '+Math.round(Math.min(1,r.charge/1.8)*100)+'%':'チャージブースト'}else if(r.name==='Lilith'){al='キック';bl='惑いの瘴気'}else if(r.name==='Beelzebub'){al='毒液';bl='ポイズンブースト'}else if(r.name==='Kawazu'){let aid=r.customSkillA||'airSwim',bid=r.customSkillB||'wallKick';al=skillLabel(aid)+' ∞';bl=skillLabel(bid)+' ∞'}else if(r.name==='Michael'){let aid=r.customSkillA||'punch',bid=r.customSkillB||'bubble';al=skillLabel(aid)+(aid==='burningWing'?' '+r.burnWingUses+'/3':aid==='highJump'?' '+r.burnClimbUses+'/3':'');bl=skillLabel(bid)+(bid==='burningWing'?' '+r.burnWingUses+'/3':bid==='highJump'?' '+r.burnClimbUses+'/3':'')}ui.a.innerHTML='A<small>'+al+'</small>';ui.b.innerHTML='B<small>'+bl+'</small>';let phase=['地上','ジャンプ','羽ばたき','滑空'][r.flight];if(r.flight===3){let remain=Math.max(0,5.65-r.glideClock);phase+=(r.glideClock>=3.55?' ⚠ '+remain.toFixed(1)+'s':' '+r.glideClock.toFixed(1)+'s');}ui.jump.innerHTML='ジャンプ<small>'+phase+'</small>'}
 function msg(t){ui.status.textContent=t;clearTimeout(msg.timer);msg.timer=setTimeout(()=>ui.status.textContent='ジャンプ3回＋舌ターンで最速を狙え！',2200)}
 function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;if(appState==='race'){
  if(raceStartDelay>0){raceStartDelay=Math.max(0,raceStartDelay-dt);draw();}
