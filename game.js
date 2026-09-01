@@ -465,28 +465,40 @@ const COURSE_SETS={
  kawazu:[{name:'カワズ水脈',theme:'water',noWalls:true,path:[[700,700],[2700,500],[5000,850],[5150,1800],[4200,2200],[2850,1900],[2400,2450],[3300,2900],[5100,2850],[5000,3650],[3400,3900],[1700,3600],[600,3000],[800,2050],[2100,1650],[700,1300]]}]
 };
 let activeCourse=COURSE_SETS.arena1[0],courseTheme=activeCourse.theme,courseHalfWidth=activeCourse.halfWidth||195,courseNoWalls=false,courseBranches=[];
+let courseControlPath=[];
 let path=activeCourse.path.map(([x,y])=>({x,y})),anchors=[],lilies=[],checkpoints=[];
 function rebuildCourseObjects(){
  anchors=[];
- for(let i=activeCourse.pointToPoint?1:0;i<(activeCourse.pointToPoint?path.length-1:path.length);i++){
-   let a=path[(i-1+path.length)%path.length],b=path[i],c=path[(i+1)%path.length];
+ const cornerPath=(courseTheme==='akina'&&courseControlPath.length)?courseControlPath:path;
+ const start=activeCourse.pointToPoint?1:0,end=activeCourse.pointToPoint?cornerPath.length-1:cornerPath.length;
+ let lastAkinaTree=null;
+ for(let i=start;i<end;i++){
+   let a=cornerPath[(i-1+cornerPath.length)%cornerPath.length],b=cornerPath[i],c=cornerPath[(i+1)%cornerPath.length];
    let ix=b.x-a.x,iy=b.y-a.y,ox=c.x-b.x,oy=c.y-b.y,il=Math.hypot(ix,iy)||1,ol=Math.hypot(ox,oy)||1;
    ix/=il;iy/=il;ox/=ol;oy/=ol;
    let cross=ix*oy-iy*ox,dot=ix*ox+iy*oy,angle=Math.acos(Math.max(-1,Math.min(1,dot)));
-   if(angle>.38){
-     // Put the tree AFTER the apex, on the inside of the outgoing leg.
-     // This makes the tongue pull the racer around the corner instead of aiming them into the sharp tip.
+   const threshold=courseTheme==='akina'?.72:.38;
+   if(angle>threshold){
      let side=Math.sign(cross)||1;
-     let inx=-oy*side,iny=ox*side;
-     let forward=angle>1.05?300:245;
-     let inward=angle>1.05?255:225;
-     const ax=b.x+ox*forward+inx*inward,ay=b.y+oy*forward+iny*inward;
-     // Keep only enough clearance from the start line itself; do not suppress a useful corner tree far down the approach.
-     if(Math.hypot(ax-path[0].x,ay-path[0].y)>360)anchors.push({x:ax,y:ay,corner:i});
+     // Inside of the bend, just beyond the apex. Akina trees are visual/tongue aids only at real hairpins.
+     let bisx=ix+ox,bisy=iy+oy,bl=Math.hypot(bisx,bisy);
+     if(bl<.12){bisx=-iy*side;bisy=ix*side;bl=1;}
+     bisx/=bl;bisy/=bl;
+     // For a left turn, inside is left of travel; for right turn, right of travel.
+     let nx=-bisy*side,ny=bisx*side;
+     let inward=courseTheme==='akina'?Math.max(120,courseHalfWidth*.72):(angle>1.05?255:225);
+     let forward=courseTheme==='akina'?35:(angle>1.05?300:245);
+     const ax=b.x+bisx*forward+nx*inward,ay=b.y+bisy*forward+ny*inward;
+     if(Math.hypot(ax-path[0].x,ay-path[0].y)>360){
+       if(courseTheme!=='akina'||!lastAkinaTree||Math.hypot(ax-lastAkinaTree.x,ay-lastAkinaTree.y)>520){
+         anchors.push({x:ax,y:ay,corner:i});if(courseTheme==='akina')lastAkinaTree={x:ax,y:ay};
+       }
+     }
    }
  }
  if(activeCourse.extraAnchors)for(const [x,y] of activeCourse.extraAnchors)anchors.push({x,y,manual:true});
- lilies=[];for(let i=0;i<15;i++){let x=350+(i*977)%5300,y=300+(i*613)%3800;if(trackDistance(x,y)>330)lilies.push({x,y,r:48+(i%4)*10});}
+ lilies=[];
+ if(courseTheme!=='akina'){for(let i=0;i<15;i++){let x=350+(i*977)%5300,y=300+(i*613)%3800;if(trackDistance(x,y)>330)lilies.push({x,y,r:48+(i%4)*10});}}
  checkpoints=path.map((q,i)=>({x:q.x,y:q.y,r:240,i}));
 }
 const COURSE_ORDER={
@@ -533,6 +545,7 @@ function selectCourse(place,round=0){
  const cv=([x,y])=>({x:x*cs,y:(activeCourse.originBottomLeft?(sourceH-y):y)*cs});
  courseBranches=(activeCourse.branches||[]).map(br=>br.map(cv));
  const control=activeCourse.path.map(cv);
+ courseControlPath=control;
  path=activeCourse.spline==='centripetal'
    ?sampleCentripetalPath(control,activeCourse.splineSteps||7,activeCourse.splineAlpha??.5,activeCourse.splineTension??.38)
    :control;
@@ -850,14 +863,7 @@ function drawWorld(){
  const pal=courseTheme==='akina'?{water:'#4f8a43',grass:'#275d31',inner:'#777b7d'}:courseTheme==='autumn'?{water:'#d8b46a',grass:'#713d25',inner:'#d9c39a'}:courseTheme==='wind'?{water:'#9edee8',grass:'#55995b',inner:'#b7e4e7'}:courseTheme==='forest'?{water:'#77b8a5',grass:'#245f38',inner:'#86c3ae'}:courseTheme==='master'?{water:'#77758d',grass:'#403d52',inner:'#8b879d'}:{water:'#58bdd5',grass:'#397e48',inner:'#70c8d9'};ctx.fillStyle=pal.water;ctx.fillRect(0,0,world.w,world.h);
  // soft scenery texture; Akina is land, not pond.
  if(courseTheme==='akina'){
-   // Only decorate the visible camera neighborhood. The 40000×40000 Akina world used
-   // to scan thousands of scenery points and run trackDistance() against ~785 road
-   // segments every frame, which caused mobile stutter.
-   ctx.save();ctx.globalAlpha=.18;
-   let x0=Math.max(0,camera.x-300),x1=Math.min(world.w,camera.x+W+300),y0=Math.max(0,camera.y-300),y1=Math.min(world.h,camera.y+H+300);
-   for(let y=Math.floor(y0/620)*620;y<=y1;y+=620){for(let x=Math.floor(x0/720)*720;x<=x1;x+=720){
-     let n=((x*11+y*5)%150)-75;ctx.fillStyle=((x+y)%3)?'#285f32':'#6b9a4e';ctx.beginPath();ctx.arc(x+n,y,42+((x+y)%31),0,Math.PI*2);ctx.fill();
-   }}ctx.restore();
+   // Akina: intentionally plain green outside the asphalt for performance and readability.
  }else{
    for(let y=240;y<world.h;y+=620){for(let x=260;x<world.w;x+=760){let n=((x*13+y*7)%190)-95;ctx.fillStyle='rgba(255,255,255,.055)';ctx.beginPath();ctx.ellipse(x+n,y-n*.35,170,72,.18,0,Math.PI*2);ctx.fill();}}
    for(const l of lilies)drawLily(l.x,l.y,l.r);
@@ -872,7 +878,7 @@ function drawWorld(){
  // because losing the inside boundary makes the route unreadable and creates accidental cuts.
  ctx.strokeStyle=pal.grass;ctx.lineWidth=courseHalfWidth*2+(courseTheme==='akina'?24:70);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
  ctx.strokeStyle=pal.inner;ctx.lineWidth=courseHalfWidth*2;drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);
- drawGrassBlades();
+ if(courseTheme!=='akina')drawGrassBlades();
  ctx.strokeStyle=courseTheme==='akina'?'rgba(245,245,235,.72)':'rgba(255,255,255,.16)';ctx.lineWidth=courseTheme==='akina'?5:3;ctx.setLineDash(courseTheme==='akina'?[34,42]:[18,46]);drawRoute(path,!activeCourse.pointToPoint);for(const br of courseBranches)drawRoute(br,false);ctx.setLineDash([]);
  if(courseTheme!=='akina')for(const a of anchors)drawTree(a.x,a.y);
  // start gate across the water corridor
