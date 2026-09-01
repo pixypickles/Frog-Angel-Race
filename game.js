@@ -1004,6 +1004,33 @@ function frogSide(r,left){
  ctx.strokeStyle='#17352d';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.arc(22,-17,7,.35,Math.PI-.5);ctx.stroke();
  ctx.restore();
 }
+
+function tongueMouthPoint(r){
+  // Visual-only mouth origin. Tongue physics / racer center of mass are unchanged.
+  // This keeps steering and anchor-turn balance identical while making the tongue
+  // visibly leave the frog's mouth in every facing direction.
+  const now=performance.now()/1000;
+  let lift=0,lean=0,poseScale=1;
+  if(r.highJump>0){let hp=1-r.highJump/Math.max(.001,r.highJumpTotal||1.05);lift=118*Math.sin(Math.PI*Math.max(0,Math.min(1,hp)));poseScale=.96-.10*Math.sin(Math.PI*hp);}
+  else if(r.normalHighJump>0){let hp=1-r.normalHighJump/.72;lift=72*Math.sin(Math.PI*Math.max(0,Math.min(1,hp)));poseScale=.98-.05*Math.sin(Math.PI*hp);}
+  else if(r.flight===1){let t=Math.min(1,r.jumpAge/.42);lift=30*Math.sin(t*Math.PI*.92)+10;poseScale=1+.08*Math.sin(t*Math.PI);}
+  else if(r.flight===2){lift=35+5*Math.sin(now*12);poseScale=1+.035*Math.sin(now*12);}
+  else if(r.flight===3){lift=30;lean=13;poseScale=.98;}
+  if(r.landAge>0)poseScale=1-.08*Math.sin((r.landAge/.28)*Math.PI);
+  const charScale=courseTheme==='akina'?.58:1;
+  const sc=poseScale*charScale;
+  let a=norm(r.face),dir=Math.abs(a)<Math.PI/4?'right':Math.abs(a)>Math.PI*3/4?'left':a<0?'up':'down';
+  // Match the cardinal character art rather than using the raw continuous face angle.
+  let ox=0,oy=0;
+  if(dir==='right'){ox=27;oy=-12;}
+  else if(dir==='left'){ox=-27;oy=-12;}
+  else if(dir==='up'){ox=0;oy=-27;}
+  else {ox=0;oy=-17;}
+  return {
+    x:r.x+Math.cos(r.face)*lean+ox*sc,
+    y:r.y+Math.sin(r.face)*lean-lift+oy*sc
+  };
+}
 function drawRacer(r){
  if(r.highJump>0){ctx.save();ctx.globalAlpha=.22;ctx.strokeStyle='#ff5964';ctx.lineWidth=5;ctx.beginPath();ctx.arc(r.x,r.y,62,0,Math.PI*2);ctx.stroke();ctx.restore();}
  if(r.burningWing>0||r.highJump>0){
@@ -1030,7 +1057,13 @@ function drawRacer(r){
     ctx.restore();
   }
 
- if(r.tongue){let t=r.tongue.target;ctx.strokeStyle='#e86a91';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(r.x,r.y+2);ctx.quadraticCurveTo((r.x+t.x)/2,(r.y+t.y)/2+18,t.x,t.y);ctx.stroke()}
+ if(r.tongue){
+   let t=r.tongue.target,m=tongueMouthPoint(r);
+   ctx.strokeStyle='#e86a91';ctx.lineWidth=9;ctx.lineCap='round';
+   ctx.beginPath();ctx.moveTo(m.x,m.y);
+   ctx.quadraticCurveTo((m.x+t.x)/2,(m.y+t.y)/2+18,t.x,t.y);ctx.stroke();
+   ctx.lineCap='butt';
+ }
  const now=performance.now()/1000;
  // Jump reads as actual lift in this top-down view: body rises away from its shadow.
  let lift=0,lean=0,poseScale=1;
