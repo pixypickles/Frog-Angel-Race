@@ -669,13 +669,23 @@ const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,
 function reset(opponentName='Plain'){
  globalTimeStop=0;globalTimeLag=0;
  let playerName=saveData.selectedCharacter||'Michael',pc=CHARACTER_DATA[playerName]?.color||'#49a94f',oc=CHARACTER_DATA[opponentName]?.color||'#78a83c';
- const g=activeCourse.pointToPoint?startGate():finishGate(),p0=g.p0,tx=g.tx,ty=g.ty,nx=g.nx,ny=g.ny,a=Math.atan2(ty,tx);
+ const gate=activeCourse.pointToPoint?startGate():finishGate(),p0=gate.p0;
+ let tx=gate.tx,ty=gate.ty;
+ if(!activeCourse.pointToPoint){
+   let out=path[1],dx=out.x-p0.x,dy=out.y-p0.y,l=Math.hypot(dx,dy)||1;tx=dx/l;ty=dy/l;
+ }
+ const nx=-ty,ny=tx,a=Math.atan2(ty,tx);
  racers.splice(0,2,
    makeRacer(playerName,pc,0,p0.x+tx*150+nx*34,p0.y+ty*150+ny*34),
    makeRacer(opponentName,oc,1,p0.x+tx*150-nx*34,p0.y+ty*150-ny*34)
  );
  controlledIndex=0;racers[0].ai=false;racers[1].ai=true;racers[0].face=a;racers[1].face=a;
- racers[0].startLineLong=150;racers[1].startLineLong=150;
+ // Store the real signed distance from the gate because loop spawns now follow
+ // the road tangent rather than the gate's averaged tangent.
+ for(const r of racers){
+   r.startLineLong=(r.x-gate.p0.x)*gate.tx+(r.y-gate.p0.y)*gate.ty;
+   r.aiPathIndex=0;
+ }
  racers[0].lapPrevX=racers[0].x;racers[0].lapPrevY=racers[0].y;racers[1].lapPrevX=racers[1].x;racers[1].lapPrevY=racers[1].y;
  if(playerName==='Uriel')racers[0].power=1.2;if(opponentName==='Uriel')racers[1].power=1.2;
  if(playerName==='Kawazu'){racers[0].burnWingUses=Infinity;racers[0].burnClimbUses=Infinity;racers[0].timeStopUsed=false;}
@@ -698,7 +708,13 @@ function aiForwardSegment(r){
   // jump to a geometrically-near but logically-wrong segment.
   for(let off=-2;off<=14;off++){
     let i=base+off;
-    if(closed){i=(i%(n)+n)%n;}else if(i<0||i>=n-1)continue;
+    if(closed){
+      // Never wrap a negative look-behind from segment 0/1 to the end of the
+      // previous lap. At race start that old segment is physically nearby and
+      // used to make the CPU turn around in circles.
+      if(i<0)continue;
+      i=i%n;
+    }else if(i<0||i>=n-1)continue;
     let a=path[i],b=path[(i+1)%n],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy||1;
     let t=Math.max(0,Math.min(1,((r.x-a.x)*vx+(r.y-a.y)*vy)/l2)),qx=a.x+t*vx,qy=a.y+t*vy,d=Math.hypot(r.x-qx,r.y-qy);
     // Small forward bias on ties so progress wins over a nearby old segment.
@@ -709,6 +725,13 @@ function aiForwardSegment(r){
   else{
     let advance=(best.i-base+n)%n;
     if(advance<=14)r.aiPathIndex=best.i;
+    else{
+      // Safety fallback: steering must use the same logical segment that the
+      // progress state accepts, otherwise the CPU can aim at the road behind it.
+      let a=path[base],b=path[(base+1)%n],vx=b.x-a.x,vy=b.y-a.y,l2=vx*vx+vy*vy||1;
+      let t=Math.max(0,Math.min(1,((r.x-a.x)*vx+(r.y-a.y)*vy)/l2));
+      best={i:base,t,rawD:Math.hypot(r.x-(a.x+t*vx),r.y-(a.y+t*vy)),qx:a.x+t*vx,qy:a.y+t*vy};
+    }
   }
   return best;
 }
