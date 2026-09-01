@@ -844,20 +844,36 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
  if(r.tongue&&(r.tongue.kind==='anchor'||r.tongue.kind==='gutter')){
    let a=r.tongue.target,gutter=r.tongue.kind==='gutter';
    if(gutter&&a.slide){
-     // Sliding grip: continually relocate the virtual grip to the local inside edge.
-     let ns=nearestTrackSegment(r.x,r.y),i=ns.i,p0=path[i],p1=path[activeCourse.pointToPoint?Math.min(path.length-1,i+1):(i+1)%path.length];
-     let fa=Math.atan2(p1.y-p0.y,p1.x-p0.x),side=a.turnSide||1,nx=-Math.sin(fa)*side,ny=Math.cos(fa)*side;
-     let tx=ns.qx+Math.cos(fa)*115+nx*Math.max(50,courseHalfWidth*.72),ty=ns.qy+Math.sin(fa)*115+ny*Math.max(50,courseHalfWidth*.72);
-     let dd=Math.hypot(tx-r.x,ty-r.y)||1;if(dd>315){tx=r.x+(tx-r.x)/dd*315;ty=r.y+(ty-r.y)/dd*315;}
-     a.x+=(tx-a.x)*Math.min(1,dt*9);a.y+= (ty-a.y)*Math.min(1,dt*9);
-     // Besides turning, physically pull Takumi toward the inside so the technique
-     // behaves like dropping the inside wheels into a gutter.
-     let pull=Math.min(145*dt,Math.hypot(tx-r.x,ty-r.y)*.18);
-     r.x+=nx*pull;r.y+=ny*pull;
+     // 溝落とし is kept entirely local to the current road segment.  Do not move the
+     // racer toward a remote virtual point: that could push the player outside the
+     // corridor and trigger the ordinary wall-recovery code.
+     let ns=nearestTrackSegment(r.x,r.y),i=ns.i;
+     let ni=activeCourse.pointToPoint?Math.min(path.length-1,i+1):(i+1)%path.length;
+     let p0=path[i],p1=path[ni],fa=Math.atan2(p1.y-p0.y,p1.x-p0.x);
+     let side=a.turnSide||1,nx=-Math.sin(fa)*side,ny=Math.cos(fa)*side;
+     const edge=Math.max(48,courseHalfWidth*.68);
+     let tx=ns.qx+Math.cos(fa)*95+nx*edge,ty=ns.qy+Math.sin(fa)*95+ny*edge;
+     let dd=Math.hypot(tx-r.x,ty-r.y)||1;
+     if(dd>260){tx=r.x+(tx-r.x)/dd*260;ty=r.y+(ty-r.y)/dd*260;}
+     a.x+=(tx-a.x)*Math.min(1,dt*8);a.y+=(ty-a.y)*Math.min(1,dt*8);
+
+     // Inward force is a small, bounded attraction toward the inside edge.  It can
+     // tighten the line but can never fling Takumi across the course.
+     let pdx=tx-r.x,pdy=ty-r.y,pd=Math.hypot(pdx,pdy)||1;
+     let pull=Math.min(52*dt,pd*.055);
+     r.x+=pdx/pd*pull;r.y+=pdy/pd*pull;
+     r.wallGrace=Math.max(r.wallGrace,.12);
+
+     // Steering follows the road tangent rather than orbiting around the virtual
+     // tongue point. This is the key safety difference from v2.63.
+     let routeTurn=fa;
+     r.face=lerpAngle(r.face,routeTurn,Math.min(1,dt*8.5));
+     r.speed=Math.max(r.speed,Math.min(maxSpeed+35,550));
+   }else{
+     let dx=a.x-r.x,dy=a.y-r.y,d=Math.hypot(dx,dy)||1,tan=Math.atan2(dy,dx)+(r.tongue.side>0?Math.PI/2:-Math.PI/2),hold=(performance.now()-r.tongue.started)/1000;
+     r.face=lerpAngle(r.face,tan,Math.min(1,dt*7.5));
+     if(hold>1.05)r.speed=Math.max(220,r.speed-250*dt);else r.speed=Math.max(r.speed,Math.min(maxSpeed,520));
    }
-   let dx=a.x-r.x,dy=a.y-r.y,d=Math.hypot(dx,dy)||1,tan=Math.atan2(dy,dx)+(r.tongue.side>0?Math.PI/2:-Math.PI/2),hold=(performance.now()-r.tongue.started)/1000;
-   r.face=lerpAngle(r.face,tan,Math.min(1,dt*(gutter?11.5:7.5)));
-   if(gutter){r.speed=Math.max(r.speed,Math.min(maxSpeed+40,555));}else if(hold>1.05)r.speed=Math.max(220,r.speed-250*dt);else r.speed=Math.max(r.speed,Math.min(maxSpeed,520));
  }
  let moveFace=r.face;
  if(r.name==='Takumi'&&r.drifting){
@@ -1013,14 +1029,14 @@ function useA(r){if(appState==='race'&&raceStartDelay>0)return;if(r.name==='Taku
    let ex=-Math.sin(best.ia)*side,ey=Math.cos(best.ia)*side;
    let dx=best.b.x-r.x,dy=best.b.y-r.y,d=Math.hypot(dx,dy)||1;
    // Entry-side target, capped so the tongue never appears to grab something far away.
-   let along=Math.min(230,Math.max(85,d*.48));
-   let tx=r.x+Math.cos(best.ia)*along+ex*Math.max(55,courseHalfWidth*.72);
-   let ty=r.y+Math.sin(best.ia)*along+ey*Math.max(55,courseHalfWidth*.72);
-   let td=Math.hypot(tx-r.x,ty-r.y);
-   if(td>310){tx=r.x+(tx-r.x)/td*310;ty=r.y+(ty-r.y)/td*310;}
+   let along=Math.min(170,Math.max(70,d*.34));
+   let tx=r.x+Math.cos(best.ia)*along+ex*Math.max(48,courseHalfWidth*.66);
+   let ty=r.y+Math.sin(best.ia)*along+ey*Math.max(48,courseHalfWidth*.66);
+   let td=Math.hypot(tx-r.x,ty-r.y)||1;
+   if(td>250){tx=r.x+(tx-r.x)/td*250;ty=r.y+(ty-r.y)/td*250;}
    let target={x:tx,y:ty,virtualWall:true,slide:true,turnSide:side};
    r.skillCdA=.72;r.tongue={kind:'gutter',target,started:performance.now()-250,side:side>0?-1:1};
-   r.speed=Math.max(r.speed,535);msg('溝落とし！ 内側を舌で滑らせる！');
+   r.speed=Math.max(r.speed,500);r.wallGrace=Math.max(r.wallGrace,.15);msg('溝落とし！ 内側を舌で滑らせる！');
    setTimeout(()=>{if(r.tongue?.kind==='gutter'&&r.tongue.target===target){r.boost=.28;r.tongue=null;}},650);
    return;}if(r.name==='Michael'||r.name==='Kawazu'){useMichaelSkill(r,r.customSkillA||(r.name==='Kawazu'?'airSwim':'punch'),'A');return;}if(r.skillCdA>0)return;if(r.name==='Beelzebub'){let o=racers[1-r.index];if(o.tongue?.kind==='rival'&&o.tongue.target===r){forceFall(o);o.tongue=null;msg('毒反撃！ 舌を掴んだ相手が落下');}}
  if(r.name==='Gabriel'){waterBoost(r,false);return;}
