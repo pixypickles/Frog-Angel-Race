@@ -168,7 +168,7 @@ function showPlace(place){
   document.querySelector('#placeTitle').textContent=data[0];
   document.querySelector('#placeDesc').textContent=data[1];
   const actions=document.querySelector('#placeActions');actions.innerHTML='';
-  if(place==='practice'){const guide=document.createElement('button');guide.className='menuBtn';guide.textContent='📖 操作・加速システムの説明を見る';guide.onclick=()=>showTutorial('practice');actions.appendChild(guide);const box=document.createElement('div');box.className='homeBox';box.innerHTML='<b>練習相手を選択</b><p class="panelNote">これまで大会で対戦した相手から選べます。</p>';for(const n of (saveData.encountered||['Plain'])){const q=document.createElement('button');q.className='menuBtn';q.textContent=CHARACTER_DATA[n]?.jp||n;q.onclick=()=>{tournament=null;startRaceRound(n,true)};box.appendChild(q)}actions.appendChild(box);}else if(place.startsWith('arena')){
+  if(place==='practice'){const guide=document.createElement('button');guide.className='menuBtn';guide.textContent='📖 操作・加速システムの説明を見る';guide.onclick=()=>showTutorial('practice');actions.appendChild(guide);const box=document.createElement('div');box.className='homeBox';box.innerHTML='<b>練習相手を選択</b><p class="panelNote">これまで大会で対戦した相手から選べます。</p>';const practiceRoster=(saveData.encountered||['Plain']).filter(n=>['Plain','Gabriel','Raphael','Uriel','Lucifer','Lilith','Beelzebub','Kawazu','Takumi','Bunta'].includes(n)&&CHARACTER_DATA[n]);for(const n of practiceRoster){const q=document.createElement('button');q.className='menuBtn';q.textContent=CHARACTER_DATA[n].jp;q.onclick=()=>{tournament=null;startRaceRound(n,true)};box.appendChild(q)}actions.appendChild(box);}else if(place.startsWith('arena')){
     const set=COURSE_SETS[place]||[];
     const box=document.createElement('div');box.className='homeBox';
     box.innerHTML='<b>A〜D大会</b><p class="panelNote">各大会は同じコースで2戦。1回戦はもぶさん、2回戦は他のキャラです。</p>';
@@ -1132,7 +1132,14 @@ function startTongue(r){if(appState==='race'&&raceStartDelay>0)return;if(r.finis
  let near=nearestAnchor(r,560);if(near){msg('アンカーが遠い！ 外へ膨らみすぎて舌が届かない');}else msg('舌を伸ばしたが対象なし');}
 function endTongue(r){if(!r.tongue)return;if(r.tongue.kind==='anchor'){let held=(performance.now()-r.tongue.started)/1000;if(held<.35)msg('舌を離すのが早い！ 外へ膨らむ');else if(held>.98){r.speed*=.82;msg('離すのが遅い！ 木に引かれて減速');}else{r.boost=.18;msg('ナイス舌ターン！');}}r.tongue=null;}
 function nearestAnchor(r,range){let best=null,bd=1e9;for(const a of anchors){let d=Math.hypot(a.x-r.x,a.y-r.y),front=Math.cos(norm(Math.atan2(a.y-r.y,a.x-r.x)-r.face));if(d<range&&d<bd&&front>-.25){best=a;bd=d}}return best;}
-function forceFall(o){forceFall(o);}
+function forceFall(o){
+ if(!o)return;
+ o.flight=0;o.onGround=true;o.glideClock=0;o.glideExtendStock=false;o.glideExtendUsed=false;
+ o.boost=0;o.highJump=0;o.drifting=false;o.driftCharge=0;o.tongue=null;
+ o.speed=Math.min(o.speed||0,o.ai?115:70);
+ o.vx=Math.cos(o.face||0)*o.speed;o.vy=Math.sin(o.face||0)*o.speed;
+ o.landAge=0;o.wallGrace=Math.max(o.wallGrace||0,.18);
+}
 function useMichaelSkill(r,id,slot){
  let cdKey=slot==='A'?'skillCdA':'skillCdB';if(r[cdKey]>0)return true;
  let o=racers[1-r.index];
