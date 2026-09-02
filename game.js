@@ -721,7 +721,7 @@ rebuildCourseObjects();
 let controlledIndex=0, camera={x:0,y:0}, joy={id:null,x:0,y:0},keys={},tongueHeld=false,last=performance.now(),finished=false,raceStartDelay=0;
 const racers=[makeRacer('Michael','#49a94f',0,720,680),makeRacer('Gabriel','#3188e6',1,720,740)];
 let globalTimeStop=0,globalTimeLag=0;
-function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,glideExtendStock:false,glideExtendUsed:false,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0,aiPathIndex:0,aiWallHits:0,aiWallHitTimer:0,aiBend:0,aiAssist:0,wingSnap:0,drifting:false,driftCharge:0,driftMoveFace:0,driftSide:0,driftFxClock:0,driftGhosts:[],gutterPullX:0,gutterPullY:0};}
+function makeRacer(name,color,index,x,y){return {name,color,index,x,y,vx:0,vy:0,face:0,speed:0,r:25,flight:0,glideClock:0,glideGrace:0,glideExtendStock:false,glideExtendUsed:false,onGround:true,tongue:null,cp:1,lap:1,finished:false,hitSlow:0,boost:0,bump:0,skillCdA:0,skillCdB:0,ai:index===1,wing:0,jumpAge:0,flapAge:0,landAge:0,airBarrier:0,airBoostUses:3,power:1,rockImmuneSlow:false,character:name,confuse:0,charge:0,charging:false,burningWing:0,highJump:0,highJumpTotal:0,highJumpDir:0,normalHighJump:0,burnWingUses:3,burnClimbUses:3,startLineLong:null,lapPrevX:null,lapPrevY:null,wallGrace:0,wallEscape:0,courseWalk:0,timeStopUsed:false,takumiCornering:false,takumiPassiveCd:0,aiPathIndex:0,aiWallHits:0,aiWallHitTimer:0,aiBend:0,aiAssist:0,wingSnap:0,drifting:false,driftCharge:0,driftMoveFace:0,driftSide:0,driftFxClock:0,driftGhosts:[],gutterPullX:0,gutterPullY:0,lastSteerX:null,lastSteerY:null};}
 const maxSpeed=585,groundSpeed=255,flapSpeed=405,glideAccel=690,turnGround=2.85,turnFast=1.05;
 function reset(opponentName='Plain'){
  globalTimeStop=0;globalTimeLag=0;
@@ -833,7 +833,21 @@ function aiLookTarget(r,seg){
   }
   return {x,y};
 }
-function desiredInput(r){if(!r.ai){let kx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),ky=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);let x=joy.x||kx,y=joy.y||ky;if(r.confuse>0){x=-x;y=-y;}let m=Math.hypot(x,y);return m>.08?{x:x/m,y:y/m,m:Math.min(1,m)}:{x:Math.cos(r.face),y:Math.sin(r.face),m:0};}
+function desiredInput(r){if(!r.ai){
+ let kx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),ky=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);
+ let x=joy.x||kx,y=joy.y||ky;if(r.confuse>0){x=-x;y=-y;}let m=Math.hypot(x,y);
+ if(m>.08){
+   x/=m;y/=m;
+   if(r.flight>0){r.lastSteerX=x;r.lastSteerY=y;}
+   return {x,y,m:Math.min(1,m),active:true};
+ }
+ // Airborne steering keeps the last deliberate direction. This removes the need
+ // to hold the mobile stick continuously through a narrow road.
+ if(r.flight>0&&Number.isFinite(r.lastSteerX)&&Number.isFinite(r.lastSteerY)){
+   return {x:r.lastSteerX,y:r.lastSteerY,m:0,active:false};
+ }
+ return {x:Math.cos(r.face),y:Math.sin(r.face),m:0,active:false};
+}
  let near=aiForwardSegment(r),target=aiLookTarget(r,near);
  if(activeCourse.pointToPoint&&r.aiPathIndex>=path.length-3){let g=finishGate();target={x:g.p0.x+g.tx*650,y:g.p0.y+g.ty*650};}
  let dx=target.x-r.x,dy=target.y-r.y,m=Math.hypot(dx,dy)||1;return {x:dx/m,y:dy/m,m:1};}
@@ -975,6 +989,25 @@ r.takumiPassiveCd=Math.max(0,(r.takumiPassiveCd||0)-dt);r.wingSnap=Math.max(0,(r
    moveFace=r.driftMoveFace;r.speed=Math.max(r.speed,430);
  }
  const downhillMul=courseTheme==='akina'?1.12:1;let mvx=Math.cos(moveFace)*r.speed*downhillMul,mvy=Math.sin(moveFace)*r.speed*downhillMul;
+
+ // Touge-style player road assist:
+ // on narrow roads, approaching an edge gently bends the velocity back toward the
+ // drivable corridor. It does NOT move the racer directly, does not cancel shortcuts,
+ // and preserves current speed, so it feels like steering support rather than rails.
+ if(!r.ai&&r.highJump<=0&&r.flight>0){
+   const guide=trackInfo(r.x,r.y);
+   const softEdge=courseHalfWidth*.50;
+   if(guide.d>softEdge&&guide.d<courseHalfWidth+8){
+     let gx=guide.qx-r.x,gy=guide.qy-r.y,gd=Math.hypot(gx,gy)||1;
+     gx/=gd;gy/=gd;
+     const edge=Math.max(0,Math.min(1,(guide.d-softEdge)/Math.max(1,courseHalfWidth-softEdge)));
+     const narrow=Math.max(0,Math.min(1,(220-courseHalfWidth)/70));
+     const assist=55+edge*(80+55*narrow);
+     mvx+=gx*assist;mvy+=gy*assist;
+     const ml=Math.hypot(mvx,mvy)||1,targetSpeed=r.speed*downhillMul;
+     mvx=mvx/ml*targetSpeed;mvy=mvy/ml*targetSpeed;
+   }
+ }
  if(r.name==='Takumi'&&(r.gutterPullX||r.gutterPullY)){
    // Equivalent to a mild inward aerodynamic pull: bend velocity by at most ~9 degrees.
    const inward=90;
