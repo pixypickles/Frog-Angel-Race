@@ -2,7 +2,7 @@
 
 
 // ===== v1.5 meta game / field map =====
-const VERSION='v2.49';
+const VERSION='v2.93';
 const RACE_LAPS=2;
 
 const CHARACTER_DATA={
@@ -37,6 +37,8 @@ function tournamentKey(place,courseIndex){return place+'_'+TOURNAMENT_LABELS[cou
 let appState='title';
 let currentPlace='field';
 let tournament=null;
+const NORMAL_SAVE_KEY='angelFrogRaceSaveNormal';
+const LEGACY_SHARED_SAVE_KEY='angelFrogRaceSave';
 let saveData={
   started:false,
   selectedCharacter:'Michael',
@@ -50,23 +52,39 @@ let saveData={
   tournamentWins:{},masterUnlocked:false,kawazuUnlocked:false,takumiUnlocked:false,timeLagUnlocked:false,timeStopUnlocked:false
 };
 
+const NORMAL_CHARACTERS=['Plain','Gabriel','Raphael','Uriel','Lucifer','Lilith','Beelzebub','Kawazu','Takumi','Bunta'];
+const NORMAL_SKILLS=['punch','bubble','normalHighJump','burningWing','highJump','timeLag','timeStop','waterBoost','waterLaser','airBarrier','airBoost','tackle','rockFall','smashDown','chargeBoost','kick','bewitch','poisonShot','poisonBoost'];
+function sanitizeNormalSave(){
+  saveData.encountered=(Array.isArray(saveData.encountered)?saveData.encountered:['Plain']).filter(n=>NORMAL_CHARACTERS.includes(n));
+  if(!saveData.encountered.includes('Plain'))saveData.encountered.unshift('Plain');
+  saveData.unlockedSkills=(Array.isArray(saveData.unlockedSkills)?saveData.unlockedSkills:['punch','bubble']).filter(id=>NORMAL_SKILLS.includes(id));
+  if(!saveData.unlockedSkills.includes('punch'))saveData.unlockedSkills.unshift('punch');
+  if(!saveData.unlockedSkills.includes('bubble'))saveData.unlockedSkills.push('bubble');
+  const michaelAllowed=new Set(['punch','bubble','normalHighJump',...saveData.unlockedSkills]);
+  if(!michaelAllowed.has(saveData.michaelSkillA))saveData.michaelSkillA='punch';
+  if(!michaelAllowed.has(saveData.michaelSkillB))saveData.michaelSkillB='bubble';
+  if(saveData.michaelSkillA===saveData.michaelSkillB)saveData.michaelSkillB=saveData.michaelSkillA==='bubble'?'punch':'bubble';
+  if(!saveData.kawazuSkillA||!NORMAL_SKILLS.includes(saveData.kawazuSkillA)||saveData.kawazuSkillA==='airSwim')saveData.kawazuSkillA='burningWing';
+  if(!saveData.kawazuSkillB||!NORMAL_SKILLS.includes(saveData.kawazuSkillB)||saveData.kawazuSkillB==='wallKick')saveData.kawazuSkillB='highJump';
+  if(!CHARACTER_DATA[saveData.selectedCharacter]||['Inu','Saru','Nakazato','Keisuke','Akiyama','Ryosuke','Kai','Kyoichi'].includes(saveData.selectedCharacter))saveData.selectedCharacter='Michael';
+}
 function loadSave(){
   try{
-    const raw=localStorage.getItem('angelFrogRaceSave');
+    const raw=localStorage.getItem(NORMAL_SAVE_KEY)||localStorage.getItem(LEGACY_SHARED_SAVE_KEY);
     if(raw) saveData={...saveData,...JSON.parse(raw)};
-    saveData.encountered=saveData.encountered||['Plain'];
-    saveData.unlockedSkills=saveData.unlockedSkills||['punch','bubble'];
-    if(!saveData.kawazuSkillA||saveData.kawazuSkillA==='airSwim')saveData.kawazuSkillA='burningWing';
-    if(!saveData.kawazuSkillB||saveData.kawazuSkillB==='wallKick')saveData.kawazuSkillB='highJump';
+    sanitizeNormalSave();
     saveData.takumiUnlocked=!!saveData.takumiUnlocked;saveData.timeLagUnlocked=!!saveData.timeLagUnlocked;saveData.timeStopUnlocked=!!saveData.timeStopUnlocked;
     if(!saveData.timeStopUnlocked)saveData.unlockedSkills=saveData.unlockedSkills.filter(x=>x!=='timeStop');
     if(saveData.timeLagUnlocked&&!saveData.unlockedSkills.includes('timeLag'))saveData.unlockedSkills.push('timeLag');
     if(saveData.timeStopUnlocked&&!saveData.unlockedSkills.includes('timeStop'))saveData.unlockedSkills.push('timeStop');
+    // Persist the cleaned migration immediately so the Touge save can no longer re-contaminate this version.
+    localStorage.setItem(NORMAL_SAVE_KEY,JSON.stringify(saveData));
   }catch(e){}
 }
 function saveGame(){
   saveData.started=true;
-  try{localStorage.setItem('angelFrogRaceSave',JSON.stringify(saveData));}catch(e){}
+  sanitizeNormalSave();
+  try{localStorage.setItem(NORMAL_SAVE_KEY,JSON.stringify(saveData));}catch(e){}
   const st=document.querySelector('#status'); if(st) st.textContent='セーブしました';
 }
 function hideAllScreens(){
@@ -125,6 +143,7 @@ function rebuildSkillSelects(){
  if(!ids.includes(saveData[kb]))saveData[kb]=isKawazu?'highJump':'bubble';
  if(saveData[ka]===saveData[kb])saveData[kb]=ids.find(x=>x!==saveData[ka])||saveData[kb];
  a.value=saveData[ka];b.value=saveData[kb];
+ saveGame();
  const heading=document.querySelector('#skillSetupTitle');
  if(heading)heading.textContent=(isKawazu?'カワズ':'ミカエル')+' スキル設定';
  const note=document.querySelector('#skillSetupNote');
@@ -392,6 +411,7 @@ function applySelectedCharacter(){
   racers.forEach((r,i)=>r.ai=i!==controlledIndex);
 }
 function applyMichaelSkills(){
+  sanitizeNormalSave();
   const michael=racers.find(r=>r.name==='Michael');
   if(michael){michael.customSkillA=saveData.michaelSkillA;michael.customSkillB=saveData.michaelSkillB;}
   const kawazu=racers.find(r=>r.name==='Kawazu');
